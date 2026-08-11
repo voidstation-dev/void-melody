@@ -262,6 +262,10 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
             {job.rate?.toFixed(1) || "1.0"}x
           </span>
 
+          <span className="rounded-[4px] bg-muted/50 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground border border-border/50 truncate max-w-[120px]" title={job.voiceDisplayName || job.voiceType}>
+            {job.voiceDisplayName || job.voiceType}
+          </span>
+
           {(job.status === "completed" || job.status === "failed") && job.startedAt && (job.completedAt || job.updatedAt) && (
             <span className="text-[9px] font-medium text-muted-foreground/60 flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" />

@@ -26,7 +26,10 @@ const TauriContext = createContext<TauriContextValue | null>(null);
 function hasTauriRuntime() {
   return (
     typeof window !== "undefined" &&
-    Boolean((window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__)
+    Boolean(
+      (window as Window & { __TAURI_INTERNALS__?: unknown })
+        .__TAURI_INTERNALS__,
+    )
   );
 }
 
@@ -69,6 +72,9 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
           MELODY_API_TOKEN: apiToken,
           MELODY_DATA_DIR: dataDir,
           MELODY_CATALOG_PATH: catalogPath,
+          TTS_APPLY_RATE_WITH_FFMPEG: "true",
+          TTS_QUEUE_CONCURRENCY: "1",
+          TTS_CHUNK_CONCURRENCY: "1",
         },
       });
 
@@ -84,7 +90,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       // the bundled binary and blocks its launch silently), the ready promise
       // would never settle and the UI would hang on "Starting local
       // environment..." forever. Time out so the user gets actionable guidance.
-      const startupTimeoutMs = 15_000;
+      const startupTimeoutMs = 120_000;
       const startupTimer = setTimeout(() => {
         if (didResolve || !mountedRef.current) return;
         rejectReady?.(new Error("Local API did not start in time"));
@@ -93,7 +99,9 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       const probeHealth = async (url: string) => {
         for (let attempt = 0; attempt < 10; attempt++) {
           try {
-            const response = await fetch(`${url}/api/v1/health/live`, { method: "GET" });
+            const response = await fetch(`${url}/api/v1/health/live`, {
+              method: "GET",
+            });
             if (response.ok && mountedRef.current && !didResolve) {
               didResolve = true;
               clearTimeout(startupTimer);
@@ -115,8 +123,9 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       const handleOutput = (line: string, source: "STDOUT" | "STDERR") => {
         console.log(`[API ${source}]:`, line);
         const match =
-          line.match(/(?:https?:\/\/)?(?:127\.0\.0\.1|localhost|0\.0\.0\.0):(\d+)/) ??
-          line.match(/port\s+(\d+)/i);
+          line.match(
+            /(?:https?:\/\/)?(?:127\.0\.0\.1|localhost|0\.0\.0\.0):(\d+)/,
+          ) ?? line.match(/port\s+(\d+)/i);
         const port = match?.[1];
         if (port && port !== "0" && mountedRef.current) {
           console.log(`Resolved local API port from ${source}: ${port}`);
@@ -213,9 +222,12 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         {isStartupTimeout && (
           <div className="max-w-md text-sm text-muted-foreground">
             <p className="mb-2">
-              macOS may be blocking the bundled API binary. Open Terminal and run:
+              macOS may be blocking the bundled API binary. Open Terminal and
+              run:
             </p>
-            <pre className="rounded bg-muted p-2 text-left text-xs">xattr -cr /Applications/VoidMelody.app</pre>
+            <pre className="rounded bg-muted p-2 text-left text-xs">
+              xattr -cr /Applications/VoidMelody.app
+            </pre>
             <p className="mt-2">Then relaunch the app.</p>
           </div>
         )}
@@ -227,10 +239,16 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 text-primary motion-safe:animate-spin" />
-        <p className="text-sm font-medium text-muted-foreground">Starting local environment...</p>
+        <p className="text-sm font-medium text-muted-foreground">
+          Starting local environment...
+        </p>
       </div>
     );
   }
 
-  return <TauriContext.Provider value={contextValue}>{children}</TauriContext.Provider>;
+  return (
+    <TauriContext.Provider value={contextValue}>
+      {children}
+    </TauriContext.Provider>
+  );
 }

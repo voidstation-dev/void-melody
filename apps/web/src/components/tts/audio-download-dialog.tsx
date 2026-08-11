@@ -133,6 +133,23 @@ export function AudioDownloadDialog({
                 .{format}
               </span>
             </div>
+            {job && (
+              <div className="flex items-center gap-2 ml-1 mt-0.5">
+                <span className="text-[10px] text-muted-foreground">Append:</span>
+                <button
+                  onClick={() => setFileName(prev => `${prev}_${slugify(job.voiceDisplayName || job.voiceType)}`)}
+                  className="text-[10px] font-medium px-2 py-1 rounded-md bg-muted hover:bg-primary/10 hover:text-primary transition-colors border border-border/50"
+                >
+                  + Voice Name
+                </button>
+                <button
+                  onClick={() => setFileName(prev => `${prev}_${job.rate?.toFixed(1) || "1.0"}x`)}
+                  className="text-[10px] font-medium px-2 py-1 rounded-md bg-muted hover:bg-primary/10 hover:text-primary transition-colors border border-border/50"
+                >
+                  + Speed
+                </button>
+              </div>
+            )}
           </div>
 
           {isDesktop && (
