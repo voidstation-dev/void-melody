@@ -65,6 +65,47 @@ async def convert_mp3_to_m4a(input_path: str, output_path: str) -> None:
             temporary.unlink(missing_ok=True)
 
 
+async def convert_mp3_to_wav(input_path: str, output_path: str) -> None:
+    output = Path(output_path)
+    temporary = Path(f"{output_path}.tmp")
+    async with _conversion_lock(output):
+        if output.exists():
+            validate_audio_file(output, mime_type="audio/wav")
+            return
+
+        command = [
+            settings.ffmpeg_binary_path,
+            "-y",
+            "-i",
+            input_path,
+            "-c:a",
+            "pcm_s16le",
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
+            "-vn",
+            str(temporary),
+        ]
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await process.communicate()
+            if process.returncode != 0:
+                raise TTSJobError(
+                    code="FFMPEG_FAILED",
+                    message="FFmpeg conversion failed: " + stderr.decode("utf-8", errors="ignore"),
+                    retryable=False,
+                )
+            validate_audio_file(temporary, mime_type="audio/wav")
+            temporary.replace(output)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
 async def get_audio_duration(file_path: Path) -> float | None:
     ffmpeg_binary = settings.ffmpeg_binary_path
     command = [

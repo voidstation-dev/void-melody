@@ -13,6 +13,7 @@ _catalog_path = Path(
 
 class Settings(BaseSettings):
     app_env: str = "development"
+    voice_lab_enabled: bool = True
     api_host: str = "127.0.0.1"
     api_port: int = int(os.environ.get("API_PORT", "8000"))
     melody_api_token: str | None = None

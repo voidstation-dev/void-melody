@@ -20,8 +20,9 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const isMultipart = typeof FormData !== "undefined" && init?.body instanceof FormData
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isMultipart ? {} : { "Content-Type": "application/json" }),
     ...(init?.headers as Record<string, string> | undefined),
   }
   if (API_TOKEN) headers["X-Melody-Token"] = API_TOKEN

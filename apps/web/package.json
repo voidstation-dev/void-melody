@@ -1,6 +1,6 @@
 {
   "name": "voidmelody-web",
-  "version": "0.2.7"",
+  "version": "0.2.7",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",

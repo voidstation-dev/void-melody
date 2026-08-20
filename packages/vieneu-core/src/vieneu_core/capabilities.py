@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .engine import RuntimeProbe
+
 
 @dataclass(frozen=True)
 class Capabilities:
@@ -31,6 +33,55 @@ class ProviderDescriptor:
     label: str
     version: str | None
     capabilities: Capabilities
+
+
+@dataclass(frozen=True)
+class RuntimeCapabilities:
+    """Capabilities available on the current installed runtime."""
+
+    provider_id: str = "vieneu"
+    engine_id: str = "v3turbo"
+    engine_version: str | None = None
+    device: str = "cpu"
+    backend: str = "onnx"
+    runtime_available: bool = False
+    supports_preset_voices: bool = False
+    supports_voice_cloning: bool = False
+    supports_denoise: bool = False
+    supports_streaming: bool = False
+    reason_code: str | None = None
+    reason: str | None = None
+
+
+def capabilities_for_runtime(
+    probe: RuntimeProbe, *, engine_version: str | None = None
+) -> RuntimeCapabilities:
+    """Translate a lightweight runtime probe into an honest feature gate."""
+
+    runtime_available = (
+        probe.onnxruntime_available
+        if probe.backend == "onnx"
+        else probe.torch_cuda_available
+    )
+    if not runtime_available:
+        return RuntimeCapabilities(
+            engine_version=engine_version,
+            device=probe.device,
+            backend=probe.backend,
+            reason_code="RUNTIME_UNAVAILABLE",
+            reason="VieNeu runtime is not installed for this device.",
+        )
+
+    return RuntimeCapabilities(
+        engine_version=engine_version,
+        device=probe.device,
+        backend=probe.backend,
+        runtime_available=True,
+        supports_preset_voices=True,
+        supports_voice_cloning=True,
+        supports_denoise=True,
+        supports_streaming=probe.backend == "onnx",
+    )
 
 
 def default_capabilities() -> Capabilities:

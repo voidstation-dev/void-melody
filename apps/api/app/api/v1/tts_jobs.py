@@ -3,11 +3,14 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_async_session
 from app.models.tts_job import TTSJobModel
+from app.models.custom_voice import CustomVoiceModel
+from app.providers.base import ProviderVoice
 from app.schemas.tts import (
     BatchJobCreateResponse,
     CreateTTSJobRequest,
@@ -79,6 +82,18 @@ async def create_job_endpoint(
         raise HTTPException(status_code=422, detail="TEXT_TOO_LONG")
 
     matched = voice_catalog.get_voice(req.voiceType)
+    if not matched:
+        custom_voice = await session.scalar(
+            select(CustomVoiceModel).where(CustomVoiceModel.id == req.voiceType)
+        )
+        if custom_voice and custom_voice.status == "ready":
+            matched = ProviderVoice(
+                language_short="vi",
+                language_code="vi-VN",
+                voice_type=custom_voice.id,
+                display_name=custom_voice.display_name,
+                provider_id=custom_voice.provider_id,
+            )
 
     if not matched:
         raise HTTPException(
@@ -145,8 +160,12 @@ async def export_job_endpoint(
         export_file = Path(req.exportPath)
         export_file.parent.mkdir(parents=True, exist_ok=True)
 
+        if req.exportFormat not in {"mp3", "m4a", "wav"}:
+            raise HTTPException(status_code=400, detail="Unsupported export format")
         if req.exportFormat == "mp3":
             await asyncio.to_thread(shutil.copy2, job.audio_path, export_file)
+        elif req.exportFormat == "wav":
+            await convert_mp3_to_wav(job.audio_path, str(export_file))
         else:
             ffmpeg_binary = settings.ffmpeg_binary_path
             command = [
@@ -205,7 +224,7 @@ async def get_job_endpoint(
 
 import os
 
-from app.utils.audio_utils import convert_mp3_to_m4a
+from app.utils.audio_utils import convert_mp3_to_m4a, convert_mp3_to_wav
 
 
 @router.get("/tts/jobs/{job_id}/audio")
@@ -226,6 +245,11 @@ async def stream_audio_endpoint(
         await convert_mp3_to_m4a(job.audio_path, m4a_path)
         file_path = m4a_path
         media_type = "audio/mp4"
+    elif format == "wav":
+        wav_path = job.audio_path.replace(".mp3", ".wav")
+        await convert_mp3_to_wav(job.audio_path, wav_path)
+        file_path = wav_path
+        media_type = "audio/wav"
 
     headers = {
         "Accept-Ranges": "bytes",
@@ -258,6 +282,11 @@ async def download_audio_endpoint(
         await convert_mp3_to_m4a(job.audio_path, m4a_path)
         file_path = m4a_path
         media_type = "audio/mp4"
+    elif format == "wav":
+        wav_path = job.audio_path.replace(".mp3", ".wav")
+        await convert_mp3_to_wav(job.audio_path, wav_path)
+        file_path = wav_path
+        media_type = "audio/wav"
 
     slug = slugify_vietnamese(job.text)
     filename = f"{slug}.{format}"

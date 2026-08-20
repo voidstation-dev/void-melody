@@ -49,4 +49,18 @@ describe("authenticated API client", () => {
       expect.objectContaining({ "X-Melody-Token": "secret-token" }),
     )
   })
+
+  it("does not override the browser boundary for multipart uploads", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const body = new FormData()
+    body.append("audio_file", new File(["audio"], "sample.wav", { type: "audio/wav" }))
+
+    await apiFetch("/api/v1/tts/voices/analyze", { method: "POST", body })
+
+    expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("Content-Type")
+    expect(fetchMock.mock.calls[0][1].body).toBe(body)
+  })
 })

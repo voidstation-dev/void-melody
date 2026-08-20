@@ -55,8 +55,11 @@ export function AppSidebar() {
     <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card">
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         <nav className="space-y-1">
-          {navItem("/", "Text to Speech", Mic, true)}
-          {navItem("/vieneu", "VieNeu", Sparkles)}
+          {navItem("/", "Generate", Mic)}
+          {navItem("/vieneu", "Voice Lab", Sparkles)}
+          {navItem("/voices", "Voices", User)}
+          {navItem("/history", "History", FileText)}
+          {navItem("/settings", "Settings", Settings2)}
         </nav>
       </div>
 

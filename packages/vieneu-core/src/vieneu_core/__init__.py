@@ -7,6 +7,8 @@ no dependency on FastAPI, SQLAlchemy, Next.js, Tauri, or VoidMelody app state.
 from vieneu_core.capabilities import (
     Capabilities,
     ProviderDescriptor,
+    RuntimeCapabilities,
+    capabilities_for_runtime,
     default_capabilities,
     default_descriptor,
 )
@@ -47,6 +49,12 @@ from vieneu_core.errors import (
     VieneuCoreError,
     VoiceNotFoundError,
 )
+from vieneu_core.voice_profiles import (
+    VoiceProfileRequest,
+    VoiceProfileResult,
+    VoiceProfileValidationError,
+    create_reference_profile,
+)
 
 __all__ = [
     "MOSS_ONNX_REPO",
@@ -67,6 +75,7 @@ __all__ = [
     "ModelManifest",
     "ModelNotAvailableError",
     "ProviderDescriptor",
+    "RuntimeCapabilities",
     "ResourceBusyError",
     "RuntimeProbe",
     "Style",
@@ -76,9 +85,14 @@ __all__ = [
     "VieneuEngine",
     "Voice",
     "VoiceNotFoundError",
+    "VoiceProfileRequest",
+    "VoiceProfileResult",
+    "VoiceProfileValidationError",
+    "create_reference_profile",
     "default_capabilities",
     "default_descriptor",
     "default_manifests",
+    "capabilities_for_runtime",
     "probe_runtime",
     "verify_cache",
     "verify_file",

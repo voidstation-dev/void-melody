@@ -23,6 +23,8 @@ from vieneu_core import (
     default_capabilities,
     default_descriptor,
 )
+from vieneu_core.capabilities import capabilities_for_runtime
+from vieneu_core.engine import RuntimeProbe
 from vieneu_core.fixtures import (
     FIXTURE_STYLES,
     FIXTURE_VOICES,
@@ -96,7 +98,47 @@ def test_make_capabilities_overrides():
     caps = make_capabilities(supports_streaming=False, sample_rate=24000)
     assert caps.supports_streaming is False
     assert caps.sample_rate == 24000
-    assert caps.supports_preset_voices is True  # unchanged
+
+
+def test_cpu_onnx_runtime_supports_zero_shot_clone_and_denoise():
+    probe = RuntimeProbe(
+        device="cpu",
+        backend="onnx",
+        onnxruntime_available=True,
+        torch_available=False,
+        torch_cuda_available=False,
+        cpu_count=8,
+        threads=0,
+        platform="test",
+    )
+
+    capabilities = capabilities_for_runtime(probe, engine_version="3.2.4")
+
+    assert capabilities.supports_preset_voices is True
+    assert capabilities.supports_voice_cloning is True
+    assert capabilities.supports_denoise is True
+    assert capabilities.supports_streaming is True
+    assert capabilities.reason_code is None
+
+
+def test_missing_runtime_disables_clone_without_disabling_contract_shape():
+    probe = RuntimeProbe(
+        device="cpu",
+        backend="onnx",
+        onnxruntime_available=False,
+        torch_available=False,
+        torch_cuda_available=False,
+        cpu_count=8,
+        threads=0,
+        platform="test",
+    )
+
+    capabilities = capabilities_for_runtime(probe, engine_version="3.2.4")
+
+    assert capabilities.supports_preset_voices is False
+    assert capabilities.supports_voice_cloning is False
+    assert capabilities.supports_denoise is False
+    assert capabilities.reason_code == "RUNTIME_UNAVAILABLE"
 
 
 def test_synthesize_result_pcm_roundtrip():
