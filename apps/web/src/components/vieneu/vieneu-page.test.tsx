@@ -1,45 +1,73 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { VieneuPage } from "./vieneu-page";
 
+vi.mock("@/hooks/use-voice-capabilities", () => ({
+  useVoiceCapabilities: () => ({
+    data: {
+      provider_id: "vieneu",
+      engine_id: "v3turbo",
+      engine_version: "3.2.4",
+      runtime_available: true,
+      device: "cpu",
+      backend: "onnx",
+      supports_preset_voices: true,
+      supports_voice_cloning: true,
+      supports_denoise: true,
+      supports_streaming: true,
+      reason_code: null,
+      reason: null,
+    },
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
+vi.mock("@/hooks/use-voice-lab", () => ({
+  useVoiceLab: () => ({
+    analysis: { data: null, isPending: false, isError: false, mutate: vi.fn(), reset: vi.fn() },
+    clone: { data: null, isPending: false, isError: false, mutate: vi.fn(), reset: vi.fn() },
+  }),
+}));
+
+vi.mock("@/hooks/use-tts-job", () => ({
+  useTTSJob: () => ({ data: null }),
+}));
+
 describe("VieneuPage", () => {
-  it("renders both section labels and the unavailable state", () => {
+  it("renders the Voice Lab workspace and runtime status", () => {
     render(<VieneuPage />);
 
-    expect(screen.getByRole("button", { name: /giọng nói/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /nhân bản giọng/i })).toBeInTheDocument();
-    expect(screen.getByText(/đang tích hợp · chưa khả dụng/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Voice Lab" })).toBeInTheDocument();
+    expect(screen.getByText(/clone ready/i)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /preset voices/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /clone voice/i })).toBeInTheDocument();
   });
 
   it("shows the preset-voices section by default", () => {
     render(<VieneuPage />);
-    expect(screen.getByRole("heading", { name: /giọng nói \(preset\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /preset voices/i })).toBeInTheDocument();
   });
 
-  it("switches to the cloning section on click and shows its body copy", () => {
+  it("switches to the cloning workspace and keeps Create Voice gated", () => {
     render(<VieneuPage />);
-    const cloningToggle = screen.getByRole("button", { name: /nhân bản giọng/i });
+    const cloningToggle = screen.getByRole("tab", { name: /clone voice/i });
     fireEvent.click(cloningToggle);
-    expect(
-      screen.getByRole("heading", { name: /nhân bản giọng \(voice cloning\)/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/tạo giọng nói tùy chỉnh từ đoạn âm thanh tham chiếu/i),
-    ).toBeInTheDocument();
-    expect(cloningToggle).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("heading", { name: /upload sample/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /preview & output/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create voice/i })).toBeDisabled();
+    expect(cloningToggle).toHaveAttribute("aria-selected", "true");
   });
 
-  it("marks the active section toggle with aria-pressed", () => {
+  it("renders a selected audio file without calling a backend", () => {
     render(<VieneuPage />);
-    const voicesToggle = screen.getByRole("button", { name: /giọng nói/i });
-    expect(voicesToggle).toHaveAttribute("aria-pressed", "true");
-  });
-
-  it("renders a disabled coming-soon action", () => {
-    render(<VieneuPage />);
-    const comingSoon = screen.getByRole("button", { name: /sắp ra mắt/i });
-    expect(comingSoon).toBeDisabled();
+    fireEvent.click(screen.getByRole("tab", { name: /clone voice/i }));
+    const input = screen.getByLabelText(/voice sample file/i) as HTMLInputElement;
+    const file = new File([new Uint8Array([1, 2, 3])], "sample.wav", { type: "audio/wav" });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(screen.getByText("sample.wav")).toBeInTheDocument();
+    expect(screen.getByText(/analysis pending/i)).toBeInTheDocument();
   });
 });

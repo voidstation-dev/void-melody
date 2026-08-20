@@ -90,7 +90,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       // the bundled binary and blocks its launch silently), the ready promise
       // would never settle and the UI would hang on "Starting local
       // environment..." forever. Time out so the user gets actionable guidance.
-      const startupTimeoutMs = 120_000;
+      const startupTimeoutMs = 15_000;
       const startupTimer = setTimeout(() => {
         if (didResolve || !mountedRef.current) return;
         rejectReady?.(new Error("Local API did not start in time"));

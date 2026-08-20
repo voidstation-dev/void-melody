@@ -9,6 +9,7 @@ ALLOWED_CONTENT_TYPES = {
     "audio/mp3",
     "audio/x-mpeg",
     "audio/mp4",
+    "audio/wav",
     "application/octet-stream",
     "video/mp4",
 }
@@ -66,6 +67,12 @@ def _has_mp4_signature(path: Path) -> bool:
     return len(header) >= 8 and header[4:8] == b"ftyp"
 
 
+def _has_wav_signature(path: Path) -> bool:
+    with path.open("rb") as source:
+        header = source.read(12)
+    return len(header) >= 12 and header[:4] == b"RIFF" and header[8:12] == b"WAVE"
+
+
 def validate_audio_file(path: Path, *, mime_type: str) -> int:
     if mime_type not in ALLOWED_CONTENT_TYPES:
         raise TTSJobError(
@@ -81,11 +88,12 @@ def validate_audio_file(path: Path, *, mime_type: str) -> int:
             message=str(exc),
             retryable=False,
         ) from exc
-    has_valid_signature = (
-        _has_mp4_signature(path)
-        if mime_type in MP4_CONTENT_TYPES
-        else _has_mp3_signature(path)
-    )
+    if mime_type in MP4_CONTENT_TYPES:
+        has_valid_signature = _has_mp4_signature(path)
+    elif mime_type == "audio/wav":
+        has_valid_signature = _has_wav_signature(path)
+    else:
+        has_valid_signature = _has_mp3_signature(path)
     if size <= 0 or not has_valid_signature:
         raise TTSJobError(
             code="AUDIO_INVALID_CONTENT",
