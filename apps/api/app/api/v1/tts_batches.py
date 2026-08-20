@@ -16,6 +16,7 @@ from app.schemas.tts import BatchJobCreateResponse, BatchStatusResponse
 from app.services.batch_manager import parse_batch_file
 from app.services.tts_service import create_tts_job_with_batch_limits
 from app.services.voice_catalog import voice_catalog
+from app.services.voice_resolver import VoiceResolutionError, resolve_voice
 from app.utils.text_utils import slugify_vietnamese
 from app.workers.queue_manager import queue_manager
 
@@ -35,12 +36,13 @@ async def create_batch(
     if not items:
         raise HTTPException(status_code=400, detail="Uploaded file contains no valid text items.")
         
-    matched = voice_catalog.get_voice(voiceType)
-    if not matched:
+    try:
+        matched = await resolve_voice(session, voiceType)
+    except VoiceResolutionError as exc:
         raise HTTPException(
             status_code=422,
-            detail="VOICE_NOT_FOUND: Selected voice type does not exist in catalog",
-        )
+            detail=f"{exc.code}: {exc.message}",
+        ) from exc
         
     batch_id = str(uuid.uuid4())
     created_jobs = []

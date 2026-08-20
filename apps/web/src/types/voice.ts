@@ -19,12 +19,20 @@ export type VoiceCapabilities = {
   supports_voice_cloning: boolean
   supports_denoise: boolean
   supports_streaming: boolean
+  torch_available?: boolean
+  torchaudio_available?: boolean
+  clone_frontend_available?: boolean
+  speaker_encoder_artifact_available?: boolean
+  denoiser_artifact_available?: boolean
+  codec_encoder_artifact_available?: boolean
   reason_code: string | null
   reason: string | null
 }
 
 export type VoiceAnalysis = {
   duration_seconds: number
+  source_duration_seconds?: number | null
+  reference_duration_seconds?: number | null
   selected_start_seconds: number
   selected_end_seconds: number
   speech_ratio: number
@@ -46,6 +54,8 @@ export type CustomVoice = {
   engine_id: string
   status: string
   duration_seconds?: number | null
+  source_duration_seconds?: number | null
+  reference_duration_seconds?: number | null
   selected_start_seconds?: number | null
   selected_end_seconds?: number | null
   quality_score?: number | null

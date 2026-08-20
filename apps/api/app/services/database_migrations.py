@@ -84,6 +84,10 @@ POST_BASELINE_COLUMNS = {
     "export_path",
     "export_format",
 }
+POST_BASELINE_CUSTOM_VOICE_COLUMNS = {
+    "source_duration_seconds",
+    "reference_duration_seconds",
+}
 
 
 class MigrationError(RuntimeError):
@@ -127,7 +131,15 @@ def _has_post_baseline_columns(connection: sqlite3.Connection) -> bool:
     if not _table_exists(connection, "tts_jobs"):
         return False
     columns = {row[1] for row in connection.execute("PRAGMA table_info(tts_jobs)")}
-    return POST_BASELINE_COLUMNS.issubset(columns)
+    if not POST_BASELINE_COLUMNS.issubset(columns):
+        return False
+    if not _table_exists(connection, "tts_custom_voices"):
+        return False
+    custom_columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(tts_custom_voices)")
+    }
+    return POST_BASELINE_CUSTOM_VOICE_COLUMNS.issubset(custom_columns)
 
 
 def _backup_database(database_path: Path, *, retain: int = 3) -> Path:

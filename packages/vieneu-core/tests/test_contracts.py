@@ -100,7 +100,7 @@ def test_make_capabilities_overrides():
     assert caps.sample_rate == 24000
 
 
-def test_cpu_onnx_runtime_supports_zero_shot_clone_and_denoise():
+def test_cpu_onnx_runtime_without_clone_frontend_does_not_claim_clone_support():
     probe = RuntimeProbe(
         device="cpu",
         backend="onnx",
@@ -115,9 +115,33 @@ def test_cpu_onnx_runtime_supports_zero_shot_clone_and_denoise():
     capabilities = capabilities_for_runtime(probe, engine_version="3.2.4")
 
     assert capabilities.supports_preset_voices is True
+    assert capabilities.supports_voice_cloning is False
+    assert capabilities.supports_denoise is False
+    assert capabilities.supports_streaming is True
+    assert capabilities.reason_code == "CLONE_FRONTEND_UNAVAILABLE"
+
+
+def test_cpu_onnx_runtime_claims_clone_only_with_frontend_and_artifacts():
+    probe = RuntimeProbe(
+        device="cpu",
+        backend="onnx",
+        onnxruntime_available=True,
+        torch_available=True,
+        torch_cuda_available=False,
+        cpu_count=8,
+        threads=0,
+        platform="test",
+        torchaudio_available=True,
+        speaker_encoder_artifact_available=True,
+        denoiser_artifact_available=True,
+        codec_encoder_artifact_available=True,
+    )
+
+    capabilities = capabilities_for_runtime(probe, engine_version="3.2.4")
+
+    assert capabilities.supports_preset_voices is True
     assert capabilities.supports_voice_cloning is True
     assert capabilities.supports_denoise is True
-    assert capabilities.supports_streaming is True
     assert capabilities.reason_code is None
 
 

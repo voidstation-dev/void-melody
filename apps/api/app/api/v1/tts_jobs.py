@@ -3,14 +3,11 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import FileResponse
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_async_session
 from app.models.tts_job import TTSJobModel
-from app.models.custom_voice import CustomVoiceModel
-from app.providers.base import ProviderVoice
 from app.schemas.tts import (
     BatchJobCreateResponse,
     CreateTTSJobRequest,
@@ -25,6 +22,7 @@ from app.services.tts_service import (
     list_jobs,
 )
 from app.services.voice_catalog import voice_catalog
+from app.services.voice_resolver import VoiceResolutionError, resolve_voice
 from app.utils.text_utils import slugify_vietnamese
 
 router = APIRouter()
@@ -81,25 +79,13 @@ async def create_job_endpoint(
     if len(req.text) > settings.tts_max_text_chars:
         raise HTTPException(status_code=422, detail="TEXT_TOO_LONG")
 
-    matched = voice_catalog.get_voice(req.voiceType)
-    if not matched:
-        custom_voice = await session.scalar(
-            select(CustomVoiceModel).where(CustomVoiceModel.id == req.voiceType)
-        )
-        if custom_voice and custom_voice.status == "ready":
-            matched = ProviderVoice(
-                language_short="vi",
-                language_code="vi-VN",
-                voice_type=custom_voice.id,
-                display_name=custom_voice.display_name,
-                provider_id=custom_voice.provider_id,
-            )
-
-    if not matched:
+    try:
+        matched = await resolve_voice(session, req.voiceType)
+    except VoiceResolutionError as exc:
         raise HTTPException(
             status_code=422,
-            detail="VOICE_NOT_FOUND: Selected voice type does not exist in catalog",
-        )
+            detail=f"{exc.code}: {exc.message}",
+        ) from exc
 
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="Empty text provided")
@@ -378,30 +364,25 @@ async def retry_job_endpoint(
 
 from fastapi.responses import StreamingResponse
 
-from app.providers.capcut_provider import CapCutProvider
-from app.providers.vieneu_provider import VieneuProvider
-
-
 @router.post("/tts/preview")
 async def preview_tts_endpoint(
     req: TTSPreviewRequest,
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ):
     if len(req.text) > 1000:
         raise HTTPException(status_code=422, detail="Text too long for preview")
 
-    matched = voice_catalog.get_voice(req.voiceType)
-    if not matched:
+    try:
+        matched = await resolve_voice(session, req.voiceType)
+    except VoiceResolutionError as exc:
         raise HTTPException(
             status_code=422,
-            detail="VOICE_NOT_FOUND: Selected voice type does not exist",
-        )
+            detail=f"{exc.code}: {exc.message}",
+        ) from exc
 
-    provider_id = getattr(matched, "provider_id", "capcut")
-    provider = (
-        VieneuProvider()
-        if provider_id == "vieneu"
-        else CapCutProvider(catalog_path=settings.capcut_catalog_path)
-    )
+    provider = queue_manager.provider_registry.get(matched.provider_id)
+    if provider is None:
+        raise HTTPException(status_code=422, detail="PROVIDER_NOT_FOUND")
 
     # We return a StreamingResponse that yields bytes
     async def generator():

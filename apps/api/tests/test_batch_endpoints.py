@@ -1,9 +1,47 @@
 import pytest
 import io
 from fastapi.testclient import TestClient
+from fastapi import UploadFile
 from app.main import app
+from app.api.v1.tts_batches import create_batch
+from app.models.custom_voice import CustomVoiceModel
 
 client = TestClient(app)
+
+
+@pytest.mark.asyncio
+async def test_create_batch_resolves_custom_voice(async_session, tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    reference = tmp_path / "batch-custom.wav"
+    reference.write_bytes(b"reference")
+    voice = CustomVoiceModel(
+        display_name="Batch custom voice",
+        reference_audio_path=str(reference),
+        transcript="hello",
+        consent_given=True,
+        status="ready",
+    )
+    async_session.add(voice)
+    await async_session.commit()
+    await async_session.refresh(voice)
+
+    enqueue_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr("app.api.v1.tts_batches.queue_manager.enqueue", enqueue_mock)
+    upload = UploadFile(filename="batch.txt", file=io.BytesIO(b"first\nsecond"))
+
+    response = await create_batch(
+        file=upload,
+        voiceType=voice.id,
+        rate=1.0,
+        style=None,
+        session=async_session,
+    )
+
+    assert len(response.jobs) == 2
+    assert all(job.voiceType == voice.id for job in response.jobs)
+    assert all(job.providerId == "vieneu" for job in response.jobs)
+    assert enqueue_mock.await_count == 2
 
 @pytest.mark.asyncio
 async def test_create_batch_txt(monkeypatch):

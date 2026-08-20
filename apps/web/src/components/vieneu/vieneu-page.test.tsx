@@ -36,6 +36,10 @@ vi.mock("@/hooks/use-tts-job", () => ({
   useTTSJob: () => ({ data: null }),
 }));
 
+vi.mock("@/hooks/use-custom-voice", () => ({
+  useCustomVoice: () => ({ data: null, isLoading: false, isError: false }),
+}));
+
 describe("VieneuPage", () => {
   it("renders the Voice Lab workspace and runtime status", () => {
     render(<VieneuPage />);
