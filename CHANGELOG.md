@@ -4,6 +4,23 @@ All notable changes to VoidMelody Desktop are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-21
+
+### Added
+
+- Integrated VieNeu TTS & OmniVoice Runtime for local neural voice cloning and speech synthesis.
+- Complete redesign of Voice Library cards with studio descriptions, clean metadata tags, and unified action buttons.
+- Modernized Voice Selector dropdown with sound wave avatar icons and clean category tabs.
+- Full localization (i18n) support with structured dictionary schema for Vietnamese and English.
+- Enhanced Audio Download Dialog with hyphen-separated tag append and right-aligned compact actions.
+- Resilient sidecar process supervision and safe background task termination capabilities in Tauri.
+
+### Fixed
+
+- Fixed transparent download format dropdown menu overlap in Job Queue cards.
+- Fixed ONNX runtime error message overflow with clean text wrapping and scrollbox.
+- Fixed orphaned sidecar processes locking binary during app restarts.
+
 ## [0.2.6] - 2026-08-05
 
 ### Added
