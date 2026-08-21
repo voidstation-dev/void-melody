@@ -2,6 +2,7 @@
 
 from app.providers.registry import (
     CAPCUT,
+    OMNIVOICE,
     VIENEU,
     ProviderRegistry,
     provider_registry,
@@ -15,6 +16,7 @@ def test_default_provider_is_capcut():
 def test_known_providers_registered():
     assert provider_registry.is_known(CAPCUT)
     assert provider_registry.is_known(VIENEU)
+    assert provider_registry.is_known(OMNIVOICE)
     assert not provider_registry.is_known("bogus")
 
 
@@ -39,10 +41,23 @@ def test_vieneu_descriptor_from_core():
     assert desc.capabilities.sample_rate == 48000
 
 
-def test_list_providers_returns_both():
+def test_omnivoice_descriptor_shape():
+    desc = provider_registry.get_descriptor(OMNIVOICE)
+    assert desc is not None
+    assert desc.id == OMNIVOICE
+    assert desc.label == "OmniVoice"
+    assert desc.version == "0.2.1"
+    assert desc.capabilities.supports_multilingual is True
+    assert desc.capabilities.supports_voice_design is True
+    assert desc.capabilities.supports_target_duration is True
+    assert desc.capabilities.supports_voice_cloning is True
+    assert desc.capabilities.sample_rate == 24000
+
+
+def test_list_providers_returns_all():
     providers = provider_registry.list_providers()
     ids = {p.id for p in providers}
-    assert ids == {CAPCUT, VIENEU}
+    assert ids == {CAPCUT, VIENEU, OMNIVOICE}
 
 
 def test_empty_registry_is_safe():

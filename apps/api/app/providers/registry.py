@@ -16,14 +16,15 @@ from vieneu_core import default_descriptor as vieneu_default_descriptor
 # Stable provider ids. These are stored on tts_jobs.provider_id.
 CAPCUT = "capcut"
 VIENEU = "vieneu"
+OMNIVOICE = "omnivoice"
 
 
 @dataclass(frozen=True)
 class Capabilities:
-    """Lightweight capabilities for the CapCut (legacy) provider.
+    """Lightweight capabilities for providers.
 
-    Mirrors the vieneu_core.Capabilities shape so the registry can answer
-    capability queries uniformly without importing the core for CapCut.
+    Mirrors the capability shape so the registry can answer
+    capability queries uniformly without importing external runtimes.
     """
 
     supports_preset_voices: bool = True
@@ -32,10 +33,14 @@ class Capabilities:
     supports_styles: bool = False
     supports_batch: bool = True
     supports_emotion_tags: bool = False
+    supports_multilingual: bool = False
+    supports_voice_design: bool = False
+    supports_target_duration: bool = False
+    supports_text_normalization: bool = False
+    supports_cross_lingual_clone: bool = False
     max_text_chars: int | None = None
-    sample_rate: int | None = (
-        None  # CapCut audio format is server-side; not a fixed rate here
-    )
+    sample_rate: int | None = None
+    languages: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -62,6 +67,29 @@ def _vieneu_descriptor() -> ProviderDescriptor:
         label=desc.label,
         version=desc.version,
         capabilities=desc.capabilities,
+    )
+
+
+def _omnivoice_descriptor() -> ProviderDescriptor:
+    return ProviderDescriptor(
+        id=OMNIVOICE,
+        label="OmniVoice",
+        version="0.2.1",
+        capabilities=Capabilities(
+            supports_preset_voices=False,
+            supports_voice_cloning=True,
+            supports_streaming=False,
+            supports_styles=False,
+            supports_batch=True,
+            supports_emotion_tags=False,
+            supports_multilingual=True,
+            supports_voice_design=True,
+            supports_target_duration=True,
+            supports_text_normalization=True,
+            supports_cross_lingual_clone=True,
+            max_text_chars=5000,
+            sample_rate=24000,
+        ),
     )
 
 
@@ -92,3 +120,4 @@ class ProviderRegistry:
 provider_registry = ProviderRegistry()
 provider_registry.register(_capcut_descriptor())
 provider_registry.register(_vieneu_descriptor())
+provider_registry.register(_omnivoice_descriptor())

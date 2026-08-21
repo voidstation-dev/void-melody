@@ -4,7 +4,7 @@ from typing import Any
 
 from capcut_tts_api import CapCutClient
 
-from app.providers.base import ProviderResult, ProviderVoice
+from app.providers.base import ProviderResult, ProviderVoice, SynthesisOptions
 from app.services.provider_circuit_breaker import ProviderCircuitBreaker
 from app.services.provider_response_parser import extract_audio_urls
 from app.services.retry_policy import map_provider_error
@@ -44,6 +44,7 @@ class CapCutProvider:
         resource_id: str | None,
         rate: float,
         style: str | None = None,
+        options: SynthesisOptions | None = None,
     ) -> ProviderResult:
         import asyncio
 
@@ -81,6 +82,7 @@ class CapCutProvider:
         resource_id: str | None,
         rate: float,
         style: str | None = None,
+        options: SynthesisOptions | None = None,
     ) -> AsyncGenerator[bytes, None]:
         import httpx
 
@@ -92,6 +94,7 @@ class CapCutProvider:
             resource_id=resource_id,
             rate=rate,
             style=style,
+            options=options,
         )
         if not result.audio_urls:
             raise TTSJobError(

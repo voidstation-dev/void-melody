@@ -15,6 +15,14 @@ class ProviderVoice:
 
 
 @dataclass(frozen=True)
+class SynthesisOptions:
+    language: str | None = None
+    instruction: str | None = None
+    target_duration_seconds: float | None = None
+    normalize_text: bool = False
+
+
+@dataclass(frozen=True)
 class ProviderResult:
     raw_response: dict[str, Any]
     audio_urls: list[str]
@@ -31,6 +39,7 @@ class TTSProvider(Protocol):
         resource_id: str | None,
         rate: float,
         style: str | None = None,
+        options: SynthesisOptions | None = None,
     ) -> ProviderResult: ...
     async def synthesize_stream(
         self,
@@ -40,4 +49,5 @@ class TTSProvider(Protocol):
         resource_id: str | None,
         rate: float,
         style: str | None = None,
+        options: SynthesisOptions | None = None,
     ) -> AsyncGenerator[bytes, None]: ...
