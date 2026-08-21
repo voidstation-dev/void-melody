@@ -6,6 +6,8 @@ import { UpdateProvider } from "@/contexts/update-provider"
 import { UpdateModal } from "@/components/update/update-modal"
 import { QueueProvider } from "@/contexts/queue-context"
 import { I18nProvider } from "@/contexts/i18n-provider"
+import { AuthProvider } from "@/contexts/auth-context"
+import { AuthGuard } from "@/components/auth/auth-guard"
 
 export const metadata = {
   title: "Melody - Text to Speech Studio",
@@ -19,14 +21,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <QueryProvider>
           <ThemeProvider attribute="class" defaultTheme="light" forcedTheme="light">
             <I18nProvider>
-              <TauriProvider>
-                <UpdateProvider>
-                  <QueueProvider>
-                    {children}
-                  </QueueProvider>
-                  <UpdateModal />
-                </UpdateProvider>
-              </TauriProvider>
+              <AuthProvider>
+                <TauriProvider>
+                  <UpdateProvider>
+                    <AuthGuard>
+                      <QueueProvider>
+                        {children}
+                      </QueueProvider>
+                    </AuthGuard>
+                    <UpdateModal />
+                  </UpdateProvider>
+                </TauriProvider>
+              </AuthProvider>
             </I18nProvider>
           </ThemeProvider>
         </QueryProvider>

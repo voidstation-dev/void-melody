@@ -1,6 +1,7 @@
 "use client"
 import { PageContainer } from "@/components/app-shell/page-container"
 import { UpdateSettings } from "@/components/settings/update-settings"
+import { LicenseSettings } from "@/components/settings/license-settings"
 import { useTheme } from "next-themes"
 import { useTranslation } from "@/hooks/use-translation"
 import { Locale } from "@/locales"
@@ -18,6 +19,9 @@ export default function SettingsPage() {
         </div>
 
         <div className="max-w-2xl space-y-4">
+          {/* License & Activation Section */}
+          <LicenseSettings />
+
           {/* Language Selection Section */}
           <section aria-labelledby="language-heading" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
