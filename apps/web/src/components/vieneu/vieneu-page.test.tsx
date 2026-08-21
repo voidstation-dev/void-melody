@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { VieneuPage } from "./vieneu-page";
+import { I18nProvider } from "@/contexts/i18n-provider";
 
 vi.mock("@/hooks/use-voice-capabilities", () => ({
   useVoiceCapabilities: () => ({
@@ -40,9 +41,17 @@ vi.mock("@/hooks/use-custom-voice", () => ({
   useCustomVoice: () => ({ data: null, isLoading: false, isError: false }),
 }));
 
+function renderVieneu() {
+  return render(
+    <I18nProvider initialLocale="en">
+      <VieneuPage />
+    </I18nProvider>
+  );
+}
+
 describe("VieneuPage", () => {
   it("renders the Voice Lab workspace and runtime status", () => {
-    render(<VieneuPage />);
+    renderVieneu();
 
     expect(screen.getByRole("heading", { name: "Voice Lab" })).toBeInTheDocument();
     expect(screen.getByText(/clone ready/i)).toBeInTheDocument();
@@ -51,22 +60,22 @@ describe("VieneuPage", () => {
   });
 
   it("shows the preset-voices section by default", () => {
-    render(<VieneuPage />);
+    renderVieneu();
     expect(screen.getByRole("heading", { name: /preset voices/i })).toBeInTheDocument();
   });
 
   it("switches to the cloning workspace and keeps Create Voice gated", () => {
-    render(<VieneuPage />);
+    renderVieneu();
     const cloningToggle = screen.getByRole("tab", { name: /clone voice/i });
     fireEvent.click(cloningToggle);
-    expect(screen.getByRole("heading", { name: /upload sample/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /upload reference audio/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /preview & output/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /create voice/i })).toBeDisabled();
     expect(cloningToggle).toHaveAttribute("aria-selected", "true");
   });
 
   it("renders a selected audio file without calling a backend", () => {
-    render(<VieneuPage />);
+    renderVieneu();
     fireEvent.click(screen.getByRole("tab", { name: /clone voice/i }));
     const input = screen.getByLabelText(/voice sample file/i) as HTMLInputElement;
     const file = new File([new Uint8Array([1, 2, 3])], "sample.wav", { type: "audio/wav" });

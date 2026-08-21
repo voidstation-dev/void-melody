@@ -244,8 +244,10 @@ class OmniVoiceRuntimeClient:
                 timeout,
                 gen,
             )
-            # Invalidate and kill the stuck synchronous worker process
-            await self._kill_generation(proc, gen)
+            # Fully terminate, await process exit, and reap reader tasks for the poisoned generation
+            stdout_task = self._stdout_task if self._generation == gen else None
+            stderr_task = self._stderr_task if self._generation == gen else None
+            await self._dispose_generation(proc, gen, stdout_task, stderr_task, force=True)
             raise OmniVoiceRuntimeError(
                 "OMNI_RUNTIME_TIMEOUT",
                 f"OmniVoice RPC method '{method}' timed out after {timeout}s",
@@ -254,17 +256,54 @@ class OmniVoiceRuntimeClient:
             self._pending_requests.pop(req_id, None)
             raise
 
-    async def _kill_generation(self, proc: asyncio.subprocess.Process, gen: str) -> None:
-        """Immediately terminate a poisoned or crashed worker generation."""
-        try:
-            proc.kill()
-        except ProcessLookupError:
-            pass
+    async def _dispose_generation(
+        self,
+        proc: asyncio.subprocess.Process | None,
+        gen: str | None,
+        stdout_task: asyncio.Task[None] | None,
+        stderr_task: asyncio.Task[None] | None,
+        *,
+        force: bool = False,
+    ) -> None:
+        """Fully terminate, await process exit, and reap reader tasks for a generation."""
+        if proc:
+            if force:
+                try:
+                    proc.kill()
+                except ProcessLookupError:
+                    pass
+            else:
+                try:
+                    if proc.stdin and not proc.stdin.is_closing():
+                        req_id = "shutdown-req"
+                        payload = {"id": req_id, "method": "shutdown", "params": {}}
+                        proc.stdin.write((json.dumps(payload) + "\n").encode("utf-8"))
+                        await proc.stdin.drain()
+                    await asyncio.wait_for(proc.wait(), timeout=2.0)
+                except Exception:
+                    try:
+                        proc.kill()
+                    except ProcessLookupError:
+                        pass
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=5.0)
+            except Exception:
+                pass
 
-        self._cancel_generation_pending(gen, "Worker process terminated due to timeout")
-        if self._process == proc:
+        tasks = [t for t in (stdout_task, stderr_task) if t and not t.done()]
+        for t in tasks:
+            t.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        if gen:
+            self._cancel_generation_pending(gen, "Worker process generation terminated")
+
+        if self._generation == gen:
             self._process = None
             self._generation = None
+            self._stdout_task = None
+            self._stderr_task = None
 
     async def ping(self, timeout_seconds: float = 5.0) -> bool:
         result = await self._call_rpc("ping", timeout_seconds=timeout_seconds)
@@ -335,33 +374,6 @@ class OmniVoiceRuntimeClient:
         self._is_shutting_down = True
         proc = self._process
         gen = self._generation
-
-        if proc and self.is_running:
-            try:
-                if proc.stdin:
-                    req_id = "shutdown-req"
-                    payload = {"id": req_id, "method": "shutdown", "params": {}}
-                    proc.stdin.write((json.dumps(payload) + "\n").encode("utf-8"))
-                    await proc.stdin.drain()
-                await asyncio.wait_for(proc.wait(), timeout=2.0)
-            except Exception:
-                try:
-                    proc.kill()
-                except ProcessLookupError:
-                    pass
-                await proc.wait()
-
-        # Cleanly cancel and gather reader tasks
-        tasks = [t for t in (self._stdout_task, self._stderr_task) if t and not t.done()]
-        for t in tasks:
-            t.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
-
-        if gen:
-            self._cancel_generation_pending(gen, "Worker process shut down")
-
-        self._process = None
-        self._generation = None
-        self._stdout_task = None
-        self._stderr_task = None
+        stdout_task = self._stdout_task
+        stderr_task = self._stderr_task
+        await self._dispose_generation(proc, gen, stdout_task, stderr_task, force=False)

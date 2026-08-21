@@ -87,9 +87,9 @@ class RealOmniBackend:
         try:
             from omnivoice import OmniVoice
 
-            self.model = OmniVoice.from_pretrained(str(model_path), device=device)
+            self.model = OmniVoice.from_pretrained(str(model_path), device_map=device)
             self.model_path = str(model_path)
-            self.device = device
+            self.device = str(getattr(self.model, "device", device))
             return {"status": "loaded", "device": self.device, "model_path": self.model_path}
         except Exception as exc:
             raise WorkerError(
@@ -139,7 +139,7 @@ class RealOmniBackend:
                 ) from exc
 
         try:
-            wav = self.model.generate(
+            audios = self.model.generate(
                 text=text,
                 language=language,
                 voice_clone_prompt=prompt,
@@ -148,16 +148,27 @@ class RealOmniBackend:
                 speed=speed,
                 normalize_text=normalize_text,
             )
+            if not audios:
+                raise WorkerError(
+                    OMNI_INFERENCE_FAILED,
+                    "OmniVoice returned no audio.",
+                )
+
+            wav = audios[0]
+            sample_rate = int(getattr(self.model, "sampling_rate", 24000))
+
             import soundfile as sf
 
-            sf.write(str(output_path), wav, 24000)
-            duration_seconds = len(wav) / 24000.0
+            sf.write(str(output_path), wav, sample_rate)
+            duration_seconds = len(wav) / float(sample_rate)
 
             return {
                 "output_path": str(output_path),
-                "sample_rate": 24000,
+                "sample_rate": sample_rate,
                 "duration_seconds": duration_seconds,
             }
+        except WorkerError:
+            raise
         except Exception as exc:
             raise WorkerError(
                 OMNI_INFERENCE_FAILED,

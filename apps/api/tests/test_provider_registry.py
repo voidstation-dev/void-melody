@@ -91,9 +91,19 @@ def test_omnivoice_runtime_status_not_installed():
     status = get_provider_runtime_status(OMNIVOICE)
     assert isinstance(status, ProviderRuntimeStatus)
     assert status.provider_id == OMNIVOICE
-    # Without O3 installer manifest, it must report not_installed / available=False
+    # Source worker file in repo and unverified manifest must not mean installed/available
+    assert status.installed is False
     assert status.available is False
-    assert status.status in ("not_installed", "ready")
+    assert status.model_installed is False
+    assert status.status == "not_installed"
+    assert status.reason_code == "OMNI_RUNTIME_NOT_INSTALLED"
+
+
+def test_vieneu_runtime_status_reuses_core_runtime_truth():
+    status = get_provider_runtime_status(VIENEU)
+    assert isinstance(status, ProviderRuntimeStatus)
+    assert status.provider_id == VIENEU
+    assert status.status in ("ready", "broken")
 
 
 def test_capcut_runtime_status_ready():

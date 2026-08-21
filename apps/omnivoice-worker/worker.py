@@ -14,6 +14,7 @@ from typing import Any
 
 from backend import OmniBackend
 from errors import (
+    OMNI_INVALID_PARAMS,
     OMNI_INVALID_REQUEST,
     OMNI_METHOD_NOT_FOUND,
     OMNI_WORKER_INTERNAL_ERROR,
@@ -82,6 +83,9 @@ class OmniVoiceWorker:
                 if not method or not isinstance(method, str):
                     raise WorkerError(OMNI_INVALID_REQUEST, "Field 'method' (string) is required")
 
+                if not isinstance(params, dict):
+                    raise WorkerError(OMNI_INVALID_PARAMS, "Field 'params' must be a JSON object")
+
                 result = self.dispatch(method, params)
                 response = {"id": req_id, "ok": True, "result": result}
 
@@ -124,6 +128,7 @@ def main() -> None:
     is_mock = args.mock or os.environ.get("OMNIVOICE_WORKER_MODE") == "mock"
 
     if is_mock:
+        os.environ["OMNIVOICE_WORKER_MODE"] = "mock"
         log_debug("Starting worker with MockOmniBackend")
         backend: OmniBackend = MockOmniBackend()
     else:

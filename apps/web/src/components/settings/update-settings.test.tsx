@@ -33,9 +33,10 @@ function deferred<T>() {
 }
 
 async function renderSettings(desktop: boolean) {
-  const [{ TauriProvider }, { UpdateProvider }, { UpdateSettings }] = await Promise.all([
+  const [{ TauriProvider }, { UpdateProvider }, { I18nProvider }, { UpdateSettings }] = await Promise.all([
     import("@/contexts/tauri-provider"),
     import("@/contexts/update-provider"),
+    import("@/contexts/i18n-provider"),
     import("./update-settings"),
   ]);
   Object.defineProperty(window, "__TAURI_INTERNALS__", {
@@ -51,11 +52,13 @@ async function renderSettings(desktop: boolean) {
   bridge.sidecar.mockReturnValue(command);
 
   render(
-    <TauriProvider>
-      <UpdateProvider>
-        <UpdateSettings />
-      </UpdateProvider>
-    </TauriProvider>,
+    <I18nProvider initialLocale="en">
+      <TauriProvider>
+        <UpdateProvider>
+          <UpdateSettings />
+        </UpdateProvider>
+      </TauriProvider>
+    </I18nProvider>,
   );
 
   if (desktop) {

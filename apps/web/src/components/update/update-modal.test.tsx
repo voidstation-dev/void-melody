@@ -49,9 +49,10 @@ function makeUpdate(overrides: Record<string, unknown> = {}) {
 }
 
 async function renderModal(update: ReturnType<typeof makeUpdate>) {
-  const [{ TauriProvider }, { UpdateProvider }, { UpdateModal }] = await Promise.all([
+  const [{ TauriProvider }, { UpdateProvider }, { I18nProvider }, { UpdateModal }] = await Promise.all([
     import("@/contexts/tauri-provider"),
     import("@/contexts/update-provider"),
+    import("@/contexts/i18n-provider"),
     import("./update-modal"),
   ]);
   Object.defineProperty(window, "__TAURI_INTERNALS__", { configurable: true, value: {} });
@@ -66,12 +67,14 @@ async function renderModal(update: ReturnType<typeof makeUpdate>) {
   bridge.check.mockResolvedValue(update);
 
   render(
-    <TauriProvider>
-      <UpdateProvider>
-        <button>Workspace action</button>
-        <UpdateModal />
-      </UpdateProvider>
-    </TauriProvider>,
+    <I18nProvider initialLocale="en">
+      <TauriProvider>
+        <UpdateProvider>
+          <button>Workspace action</button>
+          <UpdateModal />
+        </UpdateProvider>
+      </TauriProvider>
+    </I18nProvider>,
   );
   await waitFor(() => expect(command.spawn).toHaveBeenCalledOnce());
   act(() => stdoutHandlers[0]("Listening on 127.0.0.1:45001"));

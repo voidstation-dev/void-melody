@@ -90,14 +90,14 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       // the bundled binary and blocks its launch silently), the ready promise
       // would never settle and the UI would hang on "Starting local
       // environment..." forever. Time out so the user gets actionable guidance.
-      const startupTimeoutMs = 15_000;
+      const startupTimeoutMs = 30_000;
       const startupTimer = setTimeout(() => {
         if (didResolve || !mountedRef.current) return;
         rejectReady?.(new Error("Local API did not start in time"));
       }, startupTimeoutMs);
 
       const probeHealth = async (url: string) => {
-        for (let attempt = 0; attempt < 10; attempt++) {
+        for (let attempt = 0; attempt < 15; attempt++) {
           try {
             const response = await fetch(`${url}/api/v1/health/live`, {
               method: "GET",
@@ -122,10 +122,16 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
       const handleOutput = (line: string, source: "STDOUT" | "STDERR") => {
         console.log(`[API ${source}]:`, line);
+        if (didResolve || !mountedRef.current) return;
+        // Ignore HTTP access log lines like `INFO: 127.0.0.1:55140 - "GET ..."`
+        if (/-\s+"[A-Z]+\s+/.test(line) || /(?:INFO|DEBUG|WARNING|ERROR):\s+\d+\.\d+\.\d+\.\d+:\d+/.test(line)) return;
         const match =
           line.match(
-            /(?:https?:\/\/)?(?:127\.0\.0\.1|localhost|0\.0\.0\.0):(\d+)/,
-          ) ?? line.match(/port\s+(\d+)/i);
+            /(?:running on|listening on|server started at port|port:?)\s*(?:https?:\/\/)?(?:127\.0\.0\.1|localhost|0\.0\.0\.0)?:?(\d{4,5})/i,
+          ) ??
+          line.match(
+            /(?:https?:\/\/)(?:127\.0\.0\.1|localhost|0\.0\.0\.0):(\d{4,5})/,
+          );
         const port = match?.[1];
         if (port && port !== "0" && mountedRef.current) {
           console.log(`Resolved local API port from ${source}: ${port}`);
@@ -139,7 +145,11 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       const process = await sidecar.spawn();
       if (!mountedRef.current) {
         clearTimeout(startupTimer);
-        await process.kill();
+        try {
+          await process.kill();
+        } catch {
+          // ignore
+        }
         throw new Error("Sidecar provider unmounted during startup");
       }
       sidecarProcessRef.current = process;
@@ -158,7 +168,15 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
     const process = sidecarProcessRef.current;
     sidecarProcessRef.current = null;
-    const shutdown = process ? process.kill() : Promise.resolve();
+    const shutdown = (async () => {
+      if (process) {
+        try {
+          await process.kill();
+        } catch {
+          // ignore
+        }
+      }
+    })();
     shutdownPromiseRef.current = shutdown.finally(() => {
       shutdownPromiseRef.current = null;
     });
@@ -219,16 +237,30 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen flex-col items-center justify-center gap-4 p-8 text-center text-destructive">
         <h2 className="text-xl font-bold">Failed to start local API</h2>
         <p className="font-mono text-sm">{error}</p>
+        <button
+          type="button"
+          onClick={() => void restartSidecar()}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+        >
+          Restart API / Thử lại
+        </button>
         {isStartupTimeout && (
-          <div className="max-w-md text-sm text-muted-foreground">
-            <p className="mb-2">
-              macOS may be blocking the bundled API binary. Open Terminal and
-              run:
-            </p>
-            <pre className="rounded bg-muted p-2 text-left text-xs">
-              xattr -cr /Applications/VoidMelody.app
-            </pre>
-            <p className="mt-2">Then relaunch the app.</p>
+          <div className="max-w-md text-sm text-muted-foreground text-left space-y-2 mt-2">
+            <div>
+              <p className="font-semibold text-foreground">macOS:</p>
+              <p className="mb-1 text-xs">
+                macOS may be blocking the bundled API binary. Run:
+              </p>
+              <pre className="rounded bg-muted p-2 text-xs">
+                xattr -cr /Applications/VoidMelody.app
+              </pre>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Windows / Linux:</p>
+              <p className="text-xs">
+                Ensure antivirus is not locking temp files and close any background instances, then click Restart API.
+              </p>
+            </div>
           </div>
         )}
       </div>

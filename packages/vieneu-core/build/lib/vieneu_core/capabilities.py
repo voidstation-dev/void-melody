@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .engine import RuntimeProbe
+
 
 @dataclass(frozen=True)
 class Capabilities:
@@ -31,6 +33,91 @@ class ProviderDescriptor:
     label: str
     version: str | None
     capabilities: Capabilities
+
+
+@dataclass(frozen=True)
+class RuntimeCapabilities:
+    """Capabilities available on the current installed runtime."""
+
+    provider_id: str = "vieneu"
+    engine_id: str = "v3turbo"
+    engine_version: str | None = None
+    device: str = "cpu"
+    backend: str = "onnx"
+    runtime_available: bool = False
+    supports_preset_voices: bool = False
+    supports_voice_cloning: bool = False
+    supports_denoise: bool = False
+    supports_streaming: bool = False
+    torch_available: bool = False
+    torchaudio_available: bool = False
+    clone_frontend_available: bool = False
+    speaker_encoder_artifact_available: bool = False
+    denoiser_artifact_available: bool = False
+    codec_encoder_artifact_available: bool = False
+    reason_code: str | None = None
+    reason: str | None = None
+
+
+def capabilities_for_runtime(
+    probe: RuntimeProbe, *, engine_version: str | None = None
+) -> RuntimeCapabilities:
+    """Translate a lightweight runtime probe into an honest feature gate."""
+
+    runtime_available = (
+        probe.onnxruntime_available
+        if probe.backend == "onnx"
+        else probe.torch_cuda_available
+    )
+    if not runtime_available:
+        return RuntimeCapabilities(
+            engine_version=engine_version,
+            device=probe.device,
+            backend=probe.backend,
+            torch_available=probe.torch_available,
+            torchaudio_available=probe.torchaudio_available,
+            clone_frontend_available=probe.torch_available and probe.torchaudio_available,
+            speaker_encoder_artifact_available=probe.speaker_encoder_artifact_available,
+            denoiser_artifact_available=probe.denoiser_artifact_available,
+            codec_encoder_artifact_available=probe.codec_encoder_artifact_available,
+            reason_code="RUNTIME_UNAVAILABLE",
+            reason="VieNeu runtime is not installed for this device.",
+        )
+
+    clone_frontend_available = probe.torch_available and probe.torchaudio_available
+    clone_artifacts_available = (
+        probe.speaker_encoder_artifact_available
+        and probe.denoiser_artifact_available
+        and probe.codec_encoder_artifact_available
+    )
+    supports_voice_cloning = clone_frontend_available and clone_artifacts_available
+    reason_code: str | None = None
+    reason: str | None = None
+    if not clone_frontend_available:
+        reason_code = "CLONE_FRONTEND_UNAVAILABLE"
+        reason = "Voice cloning requires the torch and torchaudio speaker frontend."
+    elif not clone_artifacts_available:
+        reason_code = "CLONE_ARTIFACTS_UNAVAILABLE"
+        reason = "Voice cloning model artifacts are not available in this installation."
+
+    return RuntimeCapabilities(
+        engine_version=engine_version,
+        device=probe.device,
+        backend=probe.backend,
+        runtime_available=True,
+        supports_preset_voices=True,
+        supports_voice_cloning=supports_voice_cloning,
+        supports_denoise=probe.denoiser_artifact_available,
+        supports_streaming=probe.backend == "onnx",
+        torch_available=probe.torch_available,
+        torchaudio_available=probe.torchaudio_available,
+        clone_frontend_available=clone_frontend_available,
+        speaker_encoder_artifact_available=probe.speaker_encoder_artifact_available,
+        denoiser_artifact_available=probe.denoiser_artifact_available,
+        codec_encoder_artifact_available=probe.codec_encoder_artifact_available,
+        reason_code=reason_code,
+        reason=reason,
+    )
 
 
 def default_capabilities() -> Capabilities:

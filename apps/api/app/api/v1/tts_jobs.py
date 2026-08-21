@@ -10,6 +10,7 @@ from app.database import get_async_session
 from app.models.tts_job import TTSJobModel
 from app.schemas.tts import (
     BatchJobCreateResponse,
+    CreateTTSBatchJobsRequest,
     CreateTTSJobRequest,
     TTSJobListResponse,
     TTSJobResponse,
@@ -120,6 +121,62 @@ async def create_job_endpoint(
     await queue_manager.enqueue(job.id, batch_position=job.batch_position or 0)
 
     return BatchJobCreateResponse(batchId=batch_id, jobs=[serialize_job(job)])
+
+
+@router.post(
+    "/tts/jobs/batch",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=BatchJobCreateResponse,
+)
+async def create_batch_jobs_endpoint(
+    req: CreateTTSBatchJobsRequest,
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008,
+):
+    if not req.items:
+        raise HTTPException(status_code=400, detail="No items provided in batch request")
+
+    batch_id = str(uuid.uuid4())
+    created_jobs = []
+
+    for i, item in enumerate(req.items):
+        if not item.text.strip():
+            continue
+        if len(item.text) > settings.tts_max_text_chars:
+            raise HTTPException(status_code=422, detail="TEXT_TOO_LONG")
+        try:
+            matched = await resolve_voice(session, item.voiceType)
+        except VoiceResolutionError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{exc.code}: {exc.message}",
+            ) from exc
+
+        job = await create_tts_job_with_batch_limits(
+            session,
+            text=item.text,
+            voice_type=item.voiceType,
+            voice_display_name=matched.display_name,
+            language_code=matched.language_code,
+            resource_id=matched.resource_id,
+            rate=item.rate,
+            batch_id=batch_id,
+            batch_position=i,
+            style=item.style,
+            provider_id=getattr(matched, "provider_id", "capcut"),
+            source_file_name=item.sourceFileName,
+            source_file_size=item.sourceFileSize,
+            export_path=item.exportPath,
+            export_format=item.exportFormat,
+            max_files=settings.tts_max_batch_files,
+            max_total_chars=settings.tts_max_batch_total_chars,
+        )
+        created_jobs.append(job)
+        await queue_manager.enqueue(job.id, batch_position=job.batch_position or 0)
+
+    if not created_jobs:
+        raise HTTPException(status_code=400, detail="No valid jobs could be created from the batch.")
+
+    return BatchJobCreateResponse(batchId=batch_id, jobs=[serialize_job(j) for j in created_jobs])
 
 
 from pydantic import BaseModel
