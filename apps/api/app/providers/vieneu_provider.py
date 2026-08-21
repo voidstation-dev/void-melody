@@ -101,6 +101,17 @@ class VieneuProvider:
         finally:
             wav_path.unlink(missing_ok=True)
 
+    async def preflight_clone_reference(self, reference_audio_path: Path) -> None:
+        """Run the real speaker-enrollment path before a profile is persisted."""
+
+        engine = await self.manager.get_engine()
+        async with self._inference_semaphore:
+            await asyncio.to_thread(
+                engine.encode_reference,
+                str(reference_audio_path),
+                denoise=True,
+            )
+
     async def synthesize_stream(
         self,
         *,

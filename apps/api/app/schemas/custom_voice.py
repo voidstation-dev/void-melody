@@ -13,6 +13,8 @@ class CustomVoiceResponse(BaseModel):
     engine_id: str = "v3turbo"
     status: str = "ready"
     duration_seconds: float | None = None
+    source_duration_seconds: float | None = None
+    reference_duration_seconds: float | None = None
     selected_start_seconds: float | None = None
     selected_end_seconds: float | None = None
     quality_score: int | None = None
@@ -38,12 +40,20 @@ class VoiceCapabilitiesResponse(BaseModel):
     supports_voice_cloning: bool
     supports_denoise: bool
     supports_streaming: bool
+    torch_available: bool = False
+    torchaudio_available: bool = False
+    clone_frontend_available: bool = False
+    speaker_encoder_artifact_available: bool = False
+    denoiser_artifact_available: bool = False
+    codec_encoder_artifact_available: bool = False
     reason_code: str | None
     reason: str | None
 
 
 class VoiceAnalysisResponse(BaseModel):
     duration_seconds: float
+    source_duration_seconds: float | None = None
+    reference_duration_seconds: float | None = None
     selected_start_seconds: float
     selected_end_seconds: float
     speech_ratio: float

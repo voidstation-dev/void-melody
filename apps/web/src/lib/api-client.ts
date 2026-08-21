@@ -14,8 +14,13 @@ export function resolveApiUrl(path: string): string {
   return `${API_BASE_URL}${path}`
 }
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public code?: string) {
-    super(message)
+  constructor(message: unknown, public status: number, public code?: string) {
+    const readable = typeof message === "string"
+      ? message
+      : (message as { message?: string; code?: string } | null)?.message
+        ?? (message as { code?: string } | null)?.code
+        ?? "Request failed"
+    super(readable)
   }
 }
 
@@ -33,22 +38,25 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    throw new ApiError(body?.detail ?? "Request failed", response.status, body?.code)
+    const detail = body?.detail
+    throw new ApiError(detail ?? "Request failed", response.status, body?.code ?? detail?.code)
   }
   if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
 }
 
-export async function apiFetchBlob(path: string): Promise<Blob> {
+export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {
   const headers: Record<string, string> = {}
+  if (!(init?.body instanceof FormData)) headers["Content-Type"] = "application/json"
+  Object.assign(headers, init?.headers as Record<string, string> | undefined)
   if (API_TOKEN) headers["X-Melody-Token"] = API_TOKEN
-  const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     throw new ApiError(
       body?.detail ?? "Request failed",
       response.status,
-      body?.code,
+      body?.code ?? body?.detail?.code,
     )
   }
   return response.blob()

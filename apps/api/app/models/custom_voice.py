@@ -34,6 +34,8 @@ class CustomVoiceModel(Base):
         String(20), default="ready", server_default="ready", nullable=False, index=True
     )
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source_duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reference_duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     selected_start_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     selected_end_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)

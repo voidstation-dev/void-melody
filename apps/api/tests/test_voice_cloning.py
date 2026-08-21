@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from vieneu_core.capabilities import RuntimeCapabilities
 
 from app.database import Base, get_async_session
 from app.main import app
@@ -23,6 +24,25 @@ async def override_get_async_session():
 app.dependency_overrides[get_async_session] = override_get_async_session
 
 
+@pytest.fixture
+def enable_clone_runtime(monkeypatch):
+    monkeypatch.setattr(
+        "app.api.v1.voices._clone_runtime_capabilities",
+        lambda: RuntimeCapabilities(
+            runtime_available=True,
+            supports_preset_voices=True,
+            supports_voice_cloning=True,
+            supports_denoise=True,
+            supports_streaming=True,
+        ),
+    )
+
+    async def fake_preflight(_reference_path):
+        return None
+
+    monkeypatch.setattr("app.api.v1.voices.preflight_clone_reference", fake_preflight)
+
+
 @pytest.mark.asyncio
 async def test_voice_capabilities_report_runtime_gate():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -37,6 +57,30 @@ async def test_voice_capabilities_report_runtime_gate():
     assert payload["engine_id"] == "v3turbo"
     assert "supports_voice_cloning" in payload
     assert "reason_code" in payload
+
+
+@pytest.mark.asyncio
+async def test_clone_voice_rejects_when_runtime_cannot_enroll(monkeypatch):
+    monkeypatch.setattr(
+        "app.api.v1.voices._clone_runtime_capabilities",
+        lambda: RuntimeCapabilities(
+            runtime_available=True,
+            supports_preset_voices=True,
+            supports_voice_cloning=False,
+            reason_code="CLONE_FRONTEND_UNAVAILABLE",
+            reason="Voice cloning requires the torch and torchaudio speaker frontend.",
+        ),
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/tts/voices/clone",
+            data={"display_name": "Unavailable Voice", "consent_given": "true"},
+            files={"audio_file": ("test.wav", io.BytesIO(b"fake audio"), "audio/wav")},
+            headers={"X-Melody-Token": "test-token"},
+        )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "VOICE_CLONING_UNAVAILABLE"
 
 @pytest.mark.asyncio
 async def test_clone_voice_no_consent():
@@ -79,7 +123,7 @@ async def test_clone_voice_invalid_extension():
 
 
 @pytest.mark.asyncio
-async def test_clone_voice_success():
+async def test_clone_voice_success(enable_clone_runtime):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         file_content = b"fake audio content"
         files = {"audio_file": ("test.wav", io.BytesIO(file_content), "audio/wav")}
@@ -120,7 +164,7 @@ async def test_clone_voice_success():
 
 
 @pytest.mark.asyncio
-async def test_clone_voice_does_not_use_user_filename_as_temp_path():
+async def test_clone_voice_does_not_use_user_filename_as_temp_path(enable_clone_runtime):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         files = {"audio_file": ("../../voice.wav", io.BytesIO(b"fake audio content"), "audio/wav")}
         data = {"transcript": "Hello world", "display_name": "Safe Voice", "consent_given": "true"}
@@ -139,7 +183,7 @@ async def test_clone_voice_does_not_use_user_filename_as_temp_path():
 
 
 @pytest.mark.asyncio
-async def test_clone_voice_uses_selected_segment_for_long_source():
+async def test_clone_voice_uses_selected_segment_for_long_source(enable_clone_runtime):
     async def fake_extract(_source, destination, *, start_seconds, end_seconds):
         assert (start_seconds, end_seconds) == (2.0, 8.0)
         destination.write_bytes(b"selected reference")

@@ -1,12 +1,15 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
 
 from app.api.v1.router import api_router
 from app.config import settings
+from app.database import AsyncSessionLocal
 from app.middleware.local_auth import LocalAuthMiddleware, validate_runtime_security
 from app.services.audio_cleanup import cleanup_stale_temp_files
 from app.services.audio_storage import close_http_client
@@ -14,6 +17,8 @@ from app.services.database_migrations import run_database_migrations
 from app.services.job_recovery import recover_jobs
 from app.services.logging_config import configure_logging
 from app.services.raw_response_storage import cleanup_stale_raw_responses
+from app.services.voice_artifact_cleanup import cleanup_orphan_voice_artifacts
+from app.models.custom_voice import CustomVoiceModel
 from app.workers.queue_manager import queue_manager
 
 
@@ -22,6 +27,17 @@ async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
     validate_runtime_security()
     await run_database_migrations()
+    async with AsyncSessionLocal() as session:
+        known_reference_paths = await session.scalars(
+            select(CustomVoiceModel.reference_audio_path).where(
+                CustomVoiceModel.status.in_(["creating", "ready"])
+            )
+        )
+        await asyncio.to_thread(
+            cleanup_orphan_voice_artifacts,
+            settings.custom_voices_dir,
+            known_paths={Path(path) for path in known_reference_paths if path},
+        )
     await asyncio.to_thread(
         cleanup_stale_temp_files,
         audio_dir=settings.audio_storage_dir,

@@ -20,7 +20,7 @@ from app.config import settings
 
 SUPPORTED_EXTENSIONS = {".wav", ".mp3", ".m4a"}
 ANALYSIS_SAMPLE_RATE = 16_000
-MIN_REFERENCE_SECONDS = 1.0
+MIN_REFERENCE_SECONDS = 3.0
 MAX_REFERENCE_SECONDS = 8.0
 
 
@@ -42,6 +42,8 @@ class VoiceAnalysis:
     quality_score: int
     waveform_peaks: list[float]
     warnings: list[str]
+    source_duration_seconds: float | None = None
+    reference_duration_seconds: float | None = None
 
 
 def normalized_extension(filename: str | None) -> str | None:
@@ -152,7 +154,10 @@ def analyze_audio_file(source: Path) -> VoiceAnalysis:
         _normalize_with_ffmpeg(source, normalized)
         duration, levels, speech_ratio, noise_db, clipping_ratio = _read_levels(normalized)
         if duration < MIN_REFERENCE_SECONDS:
-            raise VoiceAnalysisError("TOO_SHORT", "Audio must be at least one second long.")
+            raise VoiceAnalysisError(
+                "TOO_SHORT",
+                "Audio must be at least three seconds long.",
+            )
         start, end = choose_reference_segment(levels, sample_rate=10)
         warnings: list[str] = []
         if speech_ratio < 0.25:
@@ -172,6 +177,8 @@ def analyze_audio_file(source: Path) -> VoiceAnalysis:
             quality_score=quality,
             waveform_peaks=_waveform_peaks(normalized),
             warnings=warnings,
+            source_duration_seconds=round(duration, 3),
+            reference_duration_seconds=round(min(end, duration) - start, 3),
         )
     finally:
         normalized.unlink(missing_ok=True)
@@ -199,6 +206,8 @@ def validate_reference_selection(
         raise VoiceAnalysisError("INVALID_SEGMENT", "Reference segment exceeds the source duration.")
     if end_seconds - start_seconds > MAX_REFERENCE_SECONDS + 0.01:
         raise VoiceAnalysisError("INVALID_SEGMENT", "Reference segment cannot exceed 8 seconds.")
+    if end_seconds - start_seconds < MIN_REFERENCE_SECONDS:
+        raise VoiceAnalysisError("INVALID_SEGMENT", "Reference segment must be at least 3 seconds.")
     return (round(start_seconds, 3), round(min(end_seconds, duration_seconds), 3))
 
 

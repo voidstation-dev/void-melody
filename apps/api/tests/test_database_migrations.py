@@ -12,7 +12,7 @@ from app.services.database_migrations import (
 )
 
 ALEMBIC_INI = Path(__file__).parents[1] / "alembic.ini"
-HEAD_REVISION = "8b7f2c9d4e1a"
+HEAD_REVISION = "f4a8b6c2d1e0"
 
 
 def sqlite_url(path: Path) -> str:
@@ -65,7 +65,73 @@ async def test_migrations_create_fresh_database(tmp_path):
             "SELECT version_num FROM alembic_version"
         ).fetchone()[0]
     assert "tts_jobs" in tables
+    with sqlite3.connect(database_path) as connection:
+        custom_voice_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(tts_custom_voices)")
+        }
+    assert {"source_duration_seconds", "reference_duration_seconds"}.issubset(
+        custom_voice_columns
+    )
     assert revision == HEAD_REVISION
+
+
+@pytest.mark.asyncio
+async def test_voice_duration_migration_preserves_source_and_bounded_reference(tmp_path):
+    database_path = tmp_path / "voice-duration.db"
+
+    from alembic import command
+    from alembic.config import Config
+    from app.services.database_migrations import _sync_database_url
+
+    await run_database_migrations(
+        database_url=sqlite_url(database_path),
+        alembic_ini_path=ALEMBIC_INI,
+    )
+    config = Config(str(ALEMBIC_INI))
+    sync_database_url = _sync_database_url(sqlite_url(database_path))
+    config.set_main_option("sqlalchemy.url", sync_database_url)
+    config.attributes["database_url"] = sync_database_url
+    config.attributes["configure_logger"] = False
+    command.downgrade(config, "8b7f2c9d4e1a")
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO tts_custom_voices
+                (id, display_name, reference_audio_path, transcript,
+                 consent_given, consent_version, provider_id, engine_id,
+                 status, duration_seconds, selected_start_seconds,
+                 selected_end_seconds, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "legacy-voice",
+                "Legacy voice",
+                "/safe/reference.wav",
+                "hello",
+                1,
+                "voice-lab-v1",
+                "vieneu",
+                "v3turbo",
+                "ready",
+                30.0,
+                0.0,
+                6.0,
+                "2026-08-01T00:00:00Z",
+            ),
+        )
+        connection.commit()
+
+    command.upgrade(config, "head")
+
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT duration_seconds, source_duration_seconds, "
+            "reference_duration_seconds FROM tts_custom_voices WHERE id = ?",
+            ("legacy-voice",),
+        ).fetchone()
+
+    assert row == (6.0, 30.0, 6.0)
 
 
 @pytest.mark.asyncio

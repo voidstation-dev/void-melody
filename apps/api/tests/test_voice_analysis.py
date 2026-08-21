@@ -36,6 +36,10 @@ def test_short_source_is_not_silently_expanded():
 
 def test_reference_selection_is_bounded_to_the_source_and_eight_seconds():
     assert validate_reference_selection(2.0, 8.0, duration_seconds=12.0) == (2.0, 8.0)
+    assert validate_reference_selection(0.0, 3.0, duration_seconds=12.0) == (0.0, 3.0)
+
+    with pytest.raises(VoiceAnalysisError, match="3 seconds"):
+        validate_reference_selection(0.0, 2.99, duration_seconds=12.0)
 
     with pytest.raises(VoiceAnalysisError, match="8 seconds"):
         validate_reference_selection(0.0, 9.0, duration_seconds=12.0)
