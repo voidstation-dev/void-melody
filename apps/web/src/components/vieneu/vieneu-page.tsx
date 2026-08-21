@@ -9,12 +9,14 @@ import { useCustomVoice } from "@/hooks/use-custom-voice"
 import { apiFetch } from "@/lib/api-client"
 import { BatchJobCreateResponse } from "@/types/tts-job"
 import { useTranslation } from "@/hooks/use-translation"
+import {
+  ACCEPTED_AUDIO_MIME_TYPES,
+  ACCEPTED_AUDIO_EXTENSIONS,
+  MAX_VOICE_SAMPLE_BYTES,
+  DEFAULT_WAVEFORM_PEAKS,
+} from "@/constants"
 
 type Section = "voices" | "cloning"
-
-const ACCEPTED_AUDIO = ["audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp3", "audio/mp4", "audio/x-m4a"]
-const ACCEPTED_EXTENSIONS = [".wav", ".mp3", ".m4a"]
-const MAX_FILE_BYTES = 50 * 1024 * 1024
 
 function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
@@ -31,7 +33,7 @@ function StepCard({ step, title, children }: { step: string; title: string; chil
 }
 
 function Waveform({ peaks = [] }: { peaks?: number[] }) {
-  const bars = peaks.length ? peaks : [24, 42, 30, 64, 48, 78, 54, 36, 70, 46, 82, 58, 32, 66, 44, 74, 40, 60, 28, 52, 38, 72, 48, 34, 68, 44, 76, 56, 32, 62, 42, 70]
+  const bars = peaks.length ? peaks : DEFAULT_WAVEFORM_PEAKS
   return <div className="flex h-24 items-center gap-1 rounded-xl border border-dashed border-border bg-muted/40 p-3" aria-label="Audio waveform preview">{bars.map((height, index) => <span key={index} className="w-full rounded-full bg-muted-foreground/25" style={{ height: `${height}%` }} />)}</div>
 }
 
@@ -94,12 +96,14 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
   const selectFile = (nextFile: File | undefined) => {
     if (!nextFile) return
     const extension = `.${nextFile.name.split(".").pop()?.toLowerCase()}`
-    if (!ACCEPTED_EXTENSIONS.includes(extension) || (nextFile.type && !ACCEPTED_AUDIO.includes(nextFile.type))) {
+    const isExtensionValid = (ACCEPTED_AUDIO_EXTENSIONS as readonly string[]).includes(extension)
+    const isMimeValid = !nextFile.type || (ACCEPTED_AUDIO_MIME_TYPES as readonly string[]).includes(nextFile.type)
+    if (!isExtensionValid || !isMimeValid) {
       setFile(null)
       setFileError(t("voiceLab.errorAudioFormat"))
       return
     }
-    if (nextFile.size > MAX_FILE_BYTES) {
+    if (nextFile.size > MAX_VOICE_SAMPLE_BYTES) {
       setFile(null)
       setFileError(t("voiceLab.errorAudioSize"))
       return

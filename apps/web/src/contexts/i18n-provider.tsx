@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { Locale, TranslationKey, defaultLocale, getTranslation } from "@/locales";
+import { STORAGE_KEYS } from "@/constants";
 
 interface I18nContextType {
   locale: Locale;
@@ -10,8 +11,6 @@ interface I18nContextType {
   isVi: boolean;
   isEn: boolean;
 }
-
-const STORAGE_KEY = "voidmelody_locale";
 
 const I18nContext = createContext<I18nContextType | null>(null);
 
@@ -25,7 +24,7 @@ export function I18nProvider({
   const [locale, setLocaleState] = useState<Locale>(() => {
     if (typeof window !== "undefined") {
       try {
-        const savedLocale = localStorage.getItem(STORAGE_KEY) as Locale | null;
+        const savedLocale = localStorage.getItem(STORAGE_KEYS.LOCALE) as Locale | null;
         if (savedLocale === "vi" || savedLocale === "en") {
           return savedLocale;
         }
@@ -39,7 +38,7 @@ export function I18nProvider({
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
     try {
-      localStorage.setItem(STORAGE_KEY, newLocale);
+      localStorage.setItem(STORAGE_KEYS.LOCALE, newLocale);
     } catch {
       // Ignore localStorage write errors
     }

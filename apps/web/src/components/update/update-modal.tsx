@@ -4,8 +4,7 @@ import { useEffect, useRef } from "react";
 import { AlertCircle, Download } from "lucide-react";
 import { useUpdate } from "@/contexts/update-provider";
 import { useTranslation } from "@/hooks/use-translation";
-
-const WAVE_HEIGHTS = [6, 10, 15, 9, 18, 12, 7, 14, 20, 11, 16, 8, 13, 19, 10, 15, 7, 12];
+import { DEFAULT_WAVE_HEIGHTS } from "@/constants";
 
 function formatReleaseDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", {
@@ -26,7 +25,7 @@ function DownloadProgress({
   const { t } = useTranslation();
   const hasTotal = typeof totalBytes === "number" && totalBytes > 0;
   const ratio = hasTotal ? Math.min(downloadedBytes / totalBytes, 1) : 0;
-  const activeSegments = hasTotal ? Math.ceil(ratio * WAVE_HEIGHTS.length) : 0;
+  const activeSegments = hasTotal ? Math.ceil(ratio * DEFAULT_WAVE_HEIGHTS.length) : 0;
   const percentage = hasTotal ? Math.round(ratio * 100) : undefined;
 
   return (
@@ -40,7 +39,7 @@ function DownloadProgress({
         aria-valuetext={hasTotal ? `${percentage}% ${t("update.ariaDownloaded")}` : t("update.ariaDownloading")}
         className={`flex h-7 items-center gap-1 ${hasTotal ? "" : "motion-safe:animate-pulse"}`}
       >
-        {WAVE_HEIGHTS.map((height, index) => (
+        {DEFAULT_WAVE_HEIGHTS.map((height, index) => (
           <span
             key={`${height}-${index}`}
             aria-hidden="true"

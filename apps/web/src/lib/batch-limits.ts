@@ -1,5 +1,6 @@
-export const MAX_BATCH_FILES = 50
-export const MAX_BATCH_TOTAL_CHARS = 500_000
+import { MAX_BATCH_FILES, MAX_BATCH_TOTAL_CHARS } from "@/constants";
+
+export { MAX_BATCH_FILES, MAX_BATCH_TOTAL_CHARS };
 
 export type BatchLimitError =
   | "BATCH_FILE_LIMIT_EXCEEDED"

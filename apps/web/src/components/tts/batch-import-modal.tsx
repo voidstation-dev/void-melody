@@ -16,6 +16,7 @@ import {
 import { useTauri } from "@/contexts/tauri-provider";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "@/hooks/use-translation";
+import { AUDIO_SPEED_OPTIONS } from "@/constants";
 import {
   DndContext,
   closestCenter,
@@ -431,7 +432,7 @@ export function BatchImportModal({
                              value={activeFile.speed || 1.0}
                              onChange={(e) => updateFileSpeed(activeFile.id, parseFloat(e.target.value))}
                            >
-                             {[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(s => (
+                             {AUDIO_SPEED_OPTIONS.map((s) => (
                                <option key={s} value={s}>{s.toFixed(2)}x</option>
                              ))}
                            </select>
