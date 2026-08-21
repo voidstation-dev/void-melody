@@ -349,6 +349,26 @@ export type TranslationSchema = {
     cloneFailed: string;
     generateFailed: string;
   };
+  auth: {
+    title: string;
+    subtitle: string;
+    keyPlaceholder: string;
+    activateBtn: string;
+    activatingBtn: string;
+    keyRequired: string;
+    invalidKey: string;
+    pasteBtn: string;
+    clearBtn: string;
+    demoKeyNotice: string;
+    needHelp: string;
+    licenseStatus: string;
+    licenseActive: string;
+    licenseOwner: string;
+    licenseTier: string;
+    changeKeyBtn: string;
+    logoutBtn: string;
+    logoutConfirm: string;
+  };
 };
 
 export type NestedKeyOf<ObjectType extends object> = {
