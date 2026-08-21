@@ -66,7 +66,22 @@ def _vieneu_descriptor() -> ProviderDescriptor:
         id=desc.id,
         label=desc.label,
         version=desc.version,
-        capabilities=desc.capabilities,
+        capabilities=Capabilities(
+            supports_preset_voices=desc.capabilities.supports_preset_voices,
+            supports_voice_cloning=desc.capabilities.supports_voice_cloning,
+            supports_streaming=desc.capabilities.supports_streaming,
+            supports_styles=desc.capabilities.supports_styles,
+            supports_batch=desc.capabilities.supports_batch,
+            supports_emotion_tags=desc.capabilities.supports_emotion_tags,
+            supports_multilingual=False,
+            supports_voice_design=False,
+            supports_target_duration=False,
+            supports_text_normalization=False,
+            supports_cross_lingual_clone=False,
+            max_text_chars=desc.capabilities.max_text_chars,
+            sample_rate=desc.capabilities.sample_rate,
+            languages=("vi-VN", "en-US"),
+        ),
     )
 
 

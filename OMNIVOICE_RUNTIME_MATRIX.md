@@ -5,15 +5,17 @@
 
 ---
 
-## 1. Supported Platform & Acceleration Matrix
+## 1. Platform & Verification Status Matrix
 
-| Platform | Arch | Acceleration | Engine Backend | Status | Notes |
-|---|---|---|---|---|---|
-| Windows | x86_64 | CUDA (NVIDIA) | `torch` + `cuda` | Supported | Recommended for high throughput dubbing |
-| Windows | x86_64 | CPU | `torch` (CPU) | Supported | Default fallback for generic PCs |
-| macOS | arm64 | MPS (Apple Silicon) | `torch` + `mps` | Supported | Metal Performance Shaders |
-| macOS | x86_64 | CPU | `torch` (CPU) | Supported | Intel Mac fallback |
-| Linux | x86_64 | CUDA / CPU | `torch` | Supported | Headless / container environments |
+| Platform | Arch | Target | Contract Tested (Mock) | Real Runtime Tested | Packaged Tested | Notes |
+|---|---|---|---|---|---|---|
+| Windows | x86_64 CPU | Yes | PASS | Pending O3+ | Pending O15 | Default fallback for PC |
+| Windows | x86_64 CUDA | Yes | PASS | Pending O3+ | Pending O15 | Recommended for GPU acceleration |
+| macOS | arm64 (MPS) | Yes | PASS | Pending O3+ | Pending O15 | Apple Silicon MPS |
+| macOS | x86_64 CPU | Optional | PASS | Pending O3+ | Pending O15 | Intel Mac fallback |
+| Linux | x86_64 CPU/CUDA | Yes | PASS | Pending O3+ | Pending O15 | CI / Server environments |
+
+*Note: Platform entries are only labeled "Verified / Production Ready" once real-runtime tests (O3+) and packaging smoke tests (O15) pass on target hardware.*
 
 ---
 
