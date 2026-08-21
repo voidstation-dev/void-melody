@@ -18,7 +18,7 @@ import { Loader2, Clipboard, FileUp, FolderOpen } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 
 export function TTSStudio() {
-  const { t, isVi } = useTranslation();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const voiceParam = searchParams.get("voice");
   const [text, setText] = useState("");
@@ -154,7 +154,7 @@ export function TTSStudio() {
       }
     } catch (err) {
       console.error("Failed to read clipboard contents: ", err);
-      alert(isVi ? "Vui lòng cho phép quyền truy cập clipboard hoặc dán thủ công." : "Please allow clipboard permissions or paste manually.");
+      alert(t("generate.clipboardError"));
     }
   };
 
@@ -173,7 +173,7 @@ export function TTSStudio() {
         file: {
           id: crypto.randomUUID(),
           text: jobText,
-          fileName: fileName || (isVi ? "Văn bản nạp lại" : "Reparsed Text"),
+          fileName: fileName || t("generate.reparsedText"),
           sizeBytes: jobText.length,
           mimeType: "text/plain",
           characterCount: jobText.length,
@@ -194,7 +194,7 @@ export function TTSStudio() {
               onClick={handlePaste}
               disabled={isSubmitting}
               className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-              title={isVi ? "Dán từ bộ nhớ tạm" : "Paste from clipboard"}
+              title={t("generate.pasteTooltip")}
             >
               <Clipboard className="h-4 w-4" />
               <span className="hidden sm:inline">{t("generate.paste")}</span>
@@ -204,7 +204,7 @@ export function TTSStudio() {
               onClick={() => fileInputRef.current?.click()}
               disabled={isSubmitting}
               className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-              title={isVi ? "Nhập file văn bản (.txt)" : "Import text file"}
+              title={t("generate.importFileTooltip")}
             >
               <FileUp className="h-4 w-4" />
               <span className="hidden sm:inline">{t("generate.importFile")}</span>
@@ -221,7 +221,7 @@ export function TTSStudio() {
               onClick={() => folderInputRef.current?.click()}
               disabled={isSubmitting}
               className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-50"
-              title={isVi ? "Nhập thư mục chứa các file .txt" : "Import folder of TXT files"}
+              title={t("generate.importFolderTooltip")}
             >
               <FolderOpen className="h-4 w-4" />
               <span className="hidden sm:inline">{t("generate.importFolder")}</span>

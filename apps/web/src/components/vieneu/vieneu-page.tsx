@@ -20,9 +20,10 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-function RuntimeBadge({ isLoading, available, reason, isVi }: { isLoading: boolean; available: boolean; reason?: string | null; isVi: boolean }) {
-  if (isLoading) return <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">{isVi ? "Đang kiểm tra động cơ…" : "Checking runtime…"}</span>
-  return <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${available ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" : "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"}`} title={reason ?? undefined}><span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${available ? "bg-emerald-500" : "bg-amber-500"}`} />{available ? (isVi ? "Sẵn sàng nhân bản" : "Clone ready") : (isVi ? "Chưa sẵn sàng" : "Clone unavailable")}</span>
+function RuntimeBadge({ isLoading, available, reason }: { isLoading: boolean; available: boolean; reason?: string | null }) {
+  const { t } = useTranslation();
+  if (isLoading) return <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">{t("voiceLab.runtimeChecking")}</span>
+  return <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${available ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" : "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"}`} title={reason ?? undefined}><span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${available ? "bg-emerald-500" : "bg-amber-500"}`} />{available ? t("voiceLab.cloneReady") : t("voiceLab.cloneUnavailable")}</span>
 }
 
 function StepCard({ step, title, children }: { step: string; title: string; children: React.ReactNode }) {
@@ -35,7 +36,7 @@ function Waveform({ peaks = [] }: { peaks?: number[] }) {
 }
 
 export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string | null } = {}) {
-  const { t, isVi } = useTranslation();
+  const { t } = useTranslation();
   const [section, setSection] = useState<Section>(initialVoiceId ? "cloning" : "voices")
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
@@ -95,12 +96,12 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
     const extension = `.${nextFile.name.split(".").pop()?.toLowerCase()}`
     if (!ACCEPTED_EXTENSIONS.includes(extension) || (nextFile.type && !ACCEPTED_AUDIO.includes(nextFile.type))) {
       setFile(null)
-      setFileError(isVi ? "Vui lòng chọn file âm thanh WAV, MP3 hoặc M4A." : "Choose a WAV, MP3, or M4A audio file.")
+      setFileError(t("voiceLab.errorAudioFormat"))
       return
     }
     if (nextFile.size > MAX_FILE_BYTES) {
       setFile(null)
-      setFileError(isVi ? "Dung lượng file âm thanh phải nhỏ hơn 50 MB." : "Audio files must be smaller than 50 MB.")
+      setFileError(t("voiceLab.errorAudioSize"))
       return
     }
     setFileError(null)
@@ -134,7 +135,7 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
       })
       setPreviewJobId(response.jobs[0]?.id ?? null)
     } catch (error) {
-      setPreviewError(readableError(error, isVi ? "Không thể tạo tác vụ nghe thử." : "Preview could not be queued."))
+      setPreviewError(readableError(error, t("voiceLab.errorQueuePreview")))
     }
   }
 
@@ -146,7 +147,7 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
           <h1 className="text-2xl font-bold tracking-tight">{t("voiceLab.title")}</h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">{t("voiceLab.subtitle")}</p>
         </div>
-        <RuntimeBadge isLoading={capabilities.isLoading} available={cloneAvailable} reason={runtime?.reason} isVi={isVi} />
+        <RuntimeBadge isLoading={capabilities.isLoading} available={cloneAvailable} reason={runtime?.reason} />
       </header>
 
       <div className="mb-5 flex shrink-0 items-center justify-between gap-4">
@@ -181,14 +182,14 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
             </div>
             <h2 className="mt-5 text-lg font-bold">{t("voiceLab.tabPresets")}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {isVi ? "Khám phá danh sách giọng đọc tiếng Việt phong phú tại Thư viện giọng, hoặc tạo hồ sơ giọng riêng từ mẫu âm thanh của bạn." : "Browse the built-in Vietnamese voices in Voice Library, or create a reusable profile from your own sample."}
+              {t("voiceLab.voiceLabDesc")}
             </p>
             <a
               href="/voices"
               className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 shadow-xs"
             >
               <AudioLines className="h-4 w-4" />
-              <span>{isVi ? "Mở Thư viện giọng" : "Open Voice Library"}</span>
+              <span>{t("voiceLab.openVoiceLibrary")}</span>
             </a>
           </div>
         </div>
@@ -220,7 +221,7 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-bold">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">{formatBytes(file.size)} · {isVi ? "Xử lý cục bộ" : "Local only"}</p>
+                          <p className="text-xs text-muted-foreground">{formatBytes(file.size)} · {t("voiceLab.localOnly")}</p>
                         </div>
                       </div>
                       <button
@@ -228,7 +229,7 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                         onClick={() => { setFile(null); setFileUrl(null); setFileError(null) }}
                         className="shrink-0 text-xs font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
                       >
-                        {isVi ? "Đổi file" : "Replace"}
+                        {t("voiceLab.replaceFile")}
                       </button>
                     </div>
                   ) : (
@@ -248,14 +249,14 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                 </div>
                 {fileUrl && (
                   <div className="mt-3 rounded-xl border border-border bg-card p-3">
-                    <p className="mb-2 text-xs font-semibold text-muted-foreground">{isVi ? "Phát lại nguồn âm thanh" : "Source playback"}</p>
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">{t("voiceLab.sourcePlayback")}</p>
                     <audio ref={sourceAudioRef} className="w-full" controls src={fileUrl} onTimeUpdate={handleAudioTimeUpdate} />
                   </div>
                 )}
                 {fileError && <p className="mt-3 text-xs font-semibold text-destructive" role="alert">{fileError}</p>}
                 <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                   <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                  <span>{isVi ? "Âm thanh được xử lý hoàn toàn trên máy tính của bạn, không gửi lên máy chủ bên ngoài." : "Audio is processed locally and never uploaded."}</span>
+                  <span>{t("voiceLab.localPrivacyNotice")}</span>
                 </div>
               </StepCard>
 
@@ -265,28 +266,28 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                   <>
                     <div className="mb-3 flex flex-wrap gap-2 text-xs">
                       <span className={`rounded-full px-2.5 py-1 font-semibold ${analysisMutation.isError ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400" : analysisMutation.isPending ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"}`}>
-                        {analysisMutation.isError ? (isVi ? "Phân tích thất bại" : "Analysis failed") : analysisMutation.isPending ? (isVi ? "Đang phân tích…" : "Analyzing…") : analysis ? (isVi ? "Phân tích xong" : "Analysis ready") : (isVi ? "Chờ phân tích" : "Analysis pending")}
+                        {analysisMutation.isError ? t("voiceLab.analysisFailed") : analysisMutation.isPending ? t("voiceLab.analysisPending") : analysis ? t("voiceLab.analysisReady") : t("voiceLab.analysisWaiting")}
                       </span>
                       <span className="rounded-full bg-muted px-2.5 py-1 font-semibold text-muted-foreground">
-                        {isVi ? "Đoạn đã chọn: " : "Selected segment: "}
+                        {t("voiceLab.selectedSegment")}{" "}
                         {analysis ? `${selectedStart.toFixed(1)}–${selectedEnd.toFixed(1)}s` : "—"}
                       </span>
                     </div>
                     {analysisMutation.isError && (
                       <p className="mb-3 text-xs font-semibold text-destructive" role="alert">
-                        {readableError(analysisMutation.error, isVi ? "Phân tích thất bại. Vui lòng đảm bảo file mẫu dài ít nhất 3 giây." : "Audio analysis failed. Check that the sample is at least 3 seconds long.")}
+                        {readableError(analysisMutation.error, t("voiceLab.analysisSampleLengthError"))}
                       </p>
                     )}
                     <Waveform peaks={analysis?.waveform_peaks} />
                     {analysis && (
                       <div className="mt-4 rounded-xl border border-border bg-muted/20 p-3">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold">{isVi ? "Đoạn mẫu trích xuất" : "Reference segment"}</span>
+                          <span className="font-semibold">{t("voiceLab.referenceSegment")}</span>
                           <span className="font-bold text-primary">{selectedEnd - selectedStart > 0 ? `${(selectedEnd - selectedStart).toFixed(1)}s` : "—"} · 3–8s</span>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
                           <span>0.0s</span>
-                          <span>{sourceDuration.toFixed(1)}s {isVi ? "nguồn" : "source"}</span>
+                          <span>{t("voiceLab.sourceDurationLabel", { duration: sourceDuration.toFixed(1) })}</span>
                         </div>
                         <button
                           type="button"
@@ -294,10 +295,10 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                           disabled={!fileUrl || selectedEnd <= selectedStart}
                           className="mt-3 rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold disabled:opacity-40"
                         >
-                          {isVi ? "Phát đoạn đã chọn" : "Play selected segment"}
+                          {t("voiceLab.playSelectedSegment")}
                         </button>
                         <label className="mt-3 block text-xs text-muted-foreground">
-                          {isVi ? "Điểm bắt đầu: " : "Start: "}{selectedStart.toFixed(1)}s
+                          {t("voiceLab.startLabel")}{" "}{selectedStart.toFixed(1)}s
                           <input
                             aria-label="Reference segment start"
                             type="range"
@@ -310,7 +311,7 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                           />
                         </label>
                         <label className="mt-3 block text-xs text-muted-foreground">
-                          {isVi ? "Điểm kết thúc: " : "End: "}{selectedEnd.toFixed(1)}s
+                          {t("voiceLab.endLabel")}{" "}{selectedEnd.toFixed(1)}s
                           <input
                             aria-label="Reference segment end"
                             type="range"
@@ -326,10 +327,10 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                     )}
                     <div className="mt-3 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                       {[
-                        [isVi ? "Giọng nói" : "Speech", analysis ? `${Math.round(analysis.speech_ratio * 100)}%` : "—"],
-                        [isVi ? "Độ ồn" : "Noise", analysis ? `${analysis.noise_level_db} dB` : "—"],
-                        [isVi ? "Cắt đỉnh" : "Clipping", analysis ? `${(analysis.clipping_ratio * 100).toFixed(1)}%` : "—"],
-                        [isVi ? "Chất lượng" : "Quality", analysis ? `${analysis.quality_score}/100` : "—"]
+                        [t("voiceLab.speechLabel"), analysis ? `${Math.round(analysis.speech_ratio * 100)}%` : "—"],
+                        [t("voiceLab.noiseLabel"), analysis ? `${analysis.noise_level_db} dB` : "—"],
+                        [t("voiceLab.clippingLabel"), analysis ? `${(analysis.clipping_ratio * 100).toFixed(1)}%` : "—"],
+                        [t("voiceLab.qualityLabel"), analysis ? `${analysis.quality_score}/100` : "—"]
                       ].map(([label, value]) => (
                         <div key={label} className="rounded-xl bg-card border border-border/60 p-2.5">
                           <p className="text-muted-foreground text-[11px]">{label}</p>
@@ -343,7 +344,7 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                   </>
                 ) : (
                   <div className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-center text-sm text-muted-foreground">
-                    {isVi ? "Tải lên mẫu âm thanh để hiển thị biểu đồ sóng và đoạn trích xuất gợi ý." : "Upload a sample to see its waveform and recommended reference segment."}
+                    {t("voiceLab.uploadSampleHint")}
                   </div>
                 )}
               </StepCard>
@@ -363,7 +364,7 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                   <label className="text-xs font-semibold">
                     {t("voiceLab.languageLabel")}
                     <input
-                      value={isVi ? "Tiếng Việt" : "Vietnamese"}
+                      value={t("voiceLab.langVietnamese")}
                       readOnly
                       className="mt-2 w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground outline-none"
                     />
@@ -393,18 +394,18 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
                 </button>
                 {!cloneAvailable && (
                   <p className="mt-3 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                    {runtime?.reason ?? (isVi ? "Đang kiểm tra khả năng nhân bản trên thiết bị này." : "Checking whether this device can clone voices.")}
+                    {runtime?.reason ?? t("voiceLab.checkingCloneCapability")}
                   </p>
                 )}
                 {cloneMutation.isError && (
                   <p className="mt-3 text-xs font-semibold text-destructive" role="alert">
-                    {readableError(cloneMutation.error, isVi ? "Không thể tạo hồ sơ giọng đọc. Vui lòng kiểm tra lại file mẫu." : "Voice profile could not be created. Check the sample and runtime prerequisites.")}
+                    {readableError(cloneMutation.error, t("voiceLab.errorCreatingProfile"))}
                   </p>
                 )}
                 {profile && (
                   <p className="mt-3 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                    {isVi ? "Hồ sơ giọng đã tạo thành công! Bạn có thể sử dụng lại trong " : "Voice profile ready. You can reuse it from the "}
-                    <a href="/voices" className="underline underline-offset-2">{isVi ? "Thư viện giọng" : "Voice Library"}</a>.
+                    {t("voiceLab.profileCreatedSuccess")}
+                    <a href="/voices" className="underline underline-offset-2">{t("voiceLab.voiceLibraryLink")}</a>.
                   </p>
                 )}
               </StepCard>
@@ -413,48 +414,48 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
             {/* SIDEBAR: Preview & Output */}
             <aside className="h-fit rounded-2xl border border-border bg-card p-5 shadow-sm xl:sticky xl:top-0">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold">{isVi ? "Xem trước & Xuất" : "Preview & Output"}</h2>
+                <h2 className="text-base font-bold">{t("voiceLab.previewOutputHeading")}</h2>
                 <Sparkles className="h-4 w-4 text-primary/60" />
               </div>
               <div className="mt-5 space-y-4 text-sm">
                 <div className="flex items-center justify-between border-b border-border pb-3">
-                  <span className="text-muted-foreground">{isVi ? "Nguồn mẫu" : "Reference"}</span>
-                  <span className="font-semibold">{file ? (isVi ? "Đã chọn mẫu" : "Selected sample") : initialVoiceId ? (isVi ? "Hồ sơ thư viện" : "Library profile") : (isVi ? "Chưa chọn" : "Not selected")}</span>
+                  <span className="text-muted-foreground">{t("voiceLab.referenceSourceLabel")}</span>
+                  <span className="font-semibold">{file ? t("voiceLab.selectedSample") : initialVoiceId ? t("voiceLab.libraryProfile") : t("voiceLab.notSelected")}</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-border pb-3">
-                  <span className="text-muted-foreground">{isVi ? "Phân tích" : "Analysis"}</span>
-                  <span className="font-semibold">{analysis ? (isVi ? "Hoàn tất" : "Ready") : file ? (isVi ? "Đang xử lý" : "Pending") : (isVi ? "Chờ" : "Waiting")}</span>
+                  <span className="text-muted-foreground">{t("voiceLab.analysisStatusLabel")}</span>
+                  <span className="font-semibold">{analysis ? t("voiceLab.ready") : file ? t("voiceLab.pending") : t("voiceLab.waiting")}</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-border pb-3">
-                  <span className="text-muted-foreground">{isVi ? "Động cơ" : "Engine"}</span>
+                  <span className="text-muted-foreground">{t("voiceLab.engineLabel")}</span>
                   <span className="font-semibold">VieNeu v3 Turbo</span>
                 </div>
                 {selectedProfile.isLoading && initialVoiceId && (
-                  <p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">{isVi ? "Đang tải hồ sơ giọng…" : "Loading selected voice profile…"}</p>
+                  <p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">{t("voiceLab.loadingProfile")}</p>
                 )}
                 {selectedProfile.isError && (
-                  <p className="rounded-xl bg-red-50 dark:bg-red-950/40 p-3 text-xs font-semibold text-destructive">{isVi ? "Không thể tải hồ sơ giọng." : "Selected voice profile could not be loaded."}</p>
+                  <p className="rounded-xl bg-red-50 dark:bg-red-950/40 p-3 text-xs font-semibold text-destructive">{t("voiceLab.errorLoadingProfile")}</p>
                 )}
                 <div className="rounded-xl bg-muted/50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{isVi ? "Trạng thái hồ sơ" : "Profile status"}</p>
-                  <p className="mt-2 text-sm font-bold text-foreground">{profile?.display_name ?? (isVi ? "Chưa có hồ sơ" : "No profile yet")}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("voiceLab.profileStatus")}</p>
+                  <p className="mt-2 text-sm font-bold text-foreground">{profile?.display_name ?? t("voiceLab.noProfileYet")}</p>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     {profile
-                      ? (isVi ? "Đã sẵn sàng sử dụng trong Thư viện giọng và Tạo âm thanh." : "Ready to reuse in Voice Library and Melody jobs.")
-                      : (isVi ? "Tạo hồ sơ giọng để mở khóa tính năng nghe thử và tạo âm thanh." : "Create a profile to unlock preview generation and reuse across Melody jobs.")}
+                      ? t("voiceLab.profileReadyDesc")
+                      : t("voiceLab.createProfileToUnlockDesc")}
                   </p>
                 </div>
-                {previewJobError && <p className="rounded-xl bg-red-50 dark:bg-red-950/40 p-3 text-xs font-semibold text-destructive">{isVi ? "Không thể tải trạng thái nghe thử." : "Preview status could not be loaded."}</p>}
+                {previewJobError && <p className="rounded-xl bg-red-50 dark:bg-red-950/40 p-3 text-xs font-semibold text-destructive">{t("voiceLab.errorLoadingPreviewStatus")}</p>}
                 {previewError && <p className="rounded-xl bg-red-50 dark:bg-red-950/40 p-3 text-xs font-semibold text-destructive" role="alert">{previewError}</p>}
                 {previewJob && (
                   <div className="rounded-xl border border-border p-4">
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{isVi ? "Bản nghe thử" : "Preview"}</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("voiceLab.previewTitle")}</p>
                     <p className="mt-2 text-sm font-semibold">
                       {previewJob.status === "completed"
-                        ? (isVi ? "Bản nghe thử sẵn sàng" : "Preview ready")
+                        ? t("voiceLab.previewReadyDesc")
                         : previewJob.status === "failed"
-                          ? (previewJob.errorMessage ?? (isVi ? "Nghe thử thất bại" : "Preview failed"))
-                          : `${isVi ? "Đang tạo: " : "Preview "}${previewJob.status}`}
+                          ? (previewJob.errorMessage ?? t("voiceLab.analysisFailed"))
+                          : `${t("voiceLab.generatingPreview")} ${previewJob.status}`}
                     </p>
                     {previewJob.audioUrl && <audio className="mt-3 w-full" controls src={previewJob.audioUrl} />}
                     {previewJob.status === "completed" && previewJob.downloadUrl && (
@@ -474,16 +475,16 @@ export function VieneuPage({ initialVoiceId = null }: { initialVoiceId?: string 
           <section className="mt-5 rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-2">
               <Check className="h-4 w-4 text-primary" />
-              <h2 className="text-base font-bold">{isVi ? "Tạo âm thanh với giọng này" : "Generate with this Voice"}</h2>
+              <h2 className="text-base font-bold">{t("voiceLab.useInStudio")}</h2>
             </div>
             <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_180px_auto] lg:items-end">
               <label className="text-xs font-semibold">
-                {isVi ? "Văn bản thử nghiệm" : "Preview text"}
+                {t("voiceLab.previewTextLabel")}
                 <textarea
                   value={previewText}
                   onChange={(event) => setPreviewText(event.target.value)}
                   disabled={!profile}
-                  placeholder={profile ? (isVi ? "Nhập một đoạn văn bản ngắn để nghe thử…" : "Type a short preview…") : (isVi ? "Vui lòng tạo hồ sơ giọng trước" : "Create a voice profile first")}
+                  placeholder={profile ? t("voiceLab.previewTextPlaceholder") : t("voiceLab.createProfileToUnlockDesc")}
                   className="mt-2 min-h-20 w-full resize-y rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm outline-none focus:border-primary"
                 />
               </label>

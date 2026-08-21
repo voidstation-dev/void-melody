@@ -19,12 +19,11 @@ function formatReleaseDate(value: string, locale: string) {
 function DownloadProgress({
   downloadedBytes,
   totalBytes,
-  isVi,
 }: {
   downloadedBytes: number;
   totalBytes?: number;
-  isVi: boolean;
 }) {
+  const { t } = useTranslation();
   const hasTotal = typeof totalBytes === "number" && totalBytes > 0;
   const ratio = hasTotal ? Math.min(downloadedBytes / totalBytes, 1) : 0;
   const activeSegments = hasTotal ? Math.ceil(ratio * WAVE_HEIGHTS.length) : 0;
@@ -34,11 +33,11 @@ function DownloadProgress({
     <div className="rounded-xl border border-border bg-muted/45 p-4">
       <div
         role="progressbar"
-        aria-label={isVi ? "Đang tải bản cập nhật" : "Downloading update"}
+        aria-label={t("update.ariaDownloading")}
         aria-valuemin={hasTotal ? 0 : undefined}
         aria-valuemax={hasTotal ? totalBytes : undefined}
         aria-valuenow={hasTotal ? downloadedBytes : undefined}
-        aria-valuetext={hasTotal ? `${percentage}% ${isVi ? "đã tải" : "downloaded"}` : (isVi ? "Đang tải bản cập nhật" : "Downloading update")}
+        aria-valuetext={hasTotal ? `${percentage}% ${t("update.ariaDownloaded")}` : t("update.ariaDownloading")}
         className={`flex h-7 items-center gap-1 ${hasTotal ? "" : "motion-safe:animate-pulse"}`}
       >
         {WAVE_HEIGHTS.map((height, index) => (
@@ -53,7 +52,7 @@ function DownloadProgress({
         ))}
       </div>
       <p className="mt-2 text-xs font-semibold tabular-nums text-muted-foreground" aria-live="polite">
-        {hasTotal ? `${percentage}%` : (isVi ? "Đang tải bản cập nhật…" : "Downloading update…")}
+        {hasTotal ? `${percentage}%` : t("update.downloadingUpdate")}
       </p>
     </div>
   );
@@ -70,17 +69,17 @@ export function UpdateModal() {
     installAvailableUpdate,
     dismissUpdate,
   } = useUpdate();
-  const { t, locale, isVi } = useTranslation();
+  const { t, locale } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
   const primaryActionRef = useRef<HTMLButtonElement>(null);
   const isOpen = ["available", "downloading", "installing", "error"].includes(status);
   const canDismiss = status === "available" || status === "error";
 
   const title = (() => {
-    if (status === "downloading") return isVi ? "Đang tải bản cập nhật" : "Downloading update";
-    if (status === "installing") return isVi ? "Đang cài đặt cập nhật" : "Installing update";
-    if (status === "error") return isVi ? "Cập nhật gặp sự cố" : "Update could not finish";
-    return isVi ? "Đã có bản cập nhật mới" : "Update available";
+    if (status === "downloading") return t("update.statusDownloading");
+    if (status === "installing") return t("update.statusInstalling");
+    if (status === "error") return t("update.statusError");
+    return t("update.statusAvailable");
   })();
 
   useEffect(() => {
@@ -146,10 +145,10 @@ export function UpdateModal() {
               {title}
             </h2>
             <p id="update-dialog-description" className="mt-1 text-sm leading-6 text-muted-foreground">
-              {status === "available" && (isVi ? "Cài đặt bản cập nhật bất cứ lúc nào. Công việc tạo âm thanh hiện tại của bạn sẽ được giữ nguyên." : "Install the update when you’re ready. Your current audio work stays in place.")}
-              {status === "downloading" && (isVi ? "Vui lòng giữ cửa sổ này mở trong khi bản cập nhật đang được tải xuống." : "Keep this window open while the update downloads.")}
-              {status === "installing" && (isVi ? "VoidMelody sẽ đóng trong giây lát và tự khởi động lại khi cập nhật hoàn tất." : "VoidMelody will close briefly and reopen when the update is ready.")}
-              {status === "error" && (errorMessage ?? (isVi ? "Không thể hoàn tất cập nhật. Vui lòng thử lại." : "The update could not be completed. Try again."))}
+              {status === "available" && t("update.descAvailable")}
+              {status === "downloading" && t("update.descDownloading")}
+              {status === "installing" && t("update.descInstalling")}
+              {status === "error" && (errorMessage ?? t("update.descError"))}
             </p>
           </div>
         </div>
@@ -161,7 +160,7 @@ export function UpdateModal() {
             </p>
             {availableUpdate.date && (
               <p className="mt-1 text-xs text-muted-foreground">
-                {isVi ? `Phát hành ${formatReleaseDate(availableUpdate.date, locale)}` : `Released ${formatReleaseDate(availableUpdate.date, locale)}`}
+                {t("update.releasedDate", { date: formatReleaseDate(availableUpdate.date, locale) })}
               </p>
             )}
             {availableUpdate.notes && (
@@ -174,13 +173,13 @@ export function UpdateModal() {
 
         {status === "downloading" && (
           <div className="mt-6">
-            <DownloadProgress downloadedBytes={downloadedBytes} totalBytes={totalBytes} isVi={isVi} />
+            <DownloadProgress downloadedBytes={downloadedBytes} totalBytes={totalBytes} />
           </div>
         )}
 
         {status === "installing" && (
           <div className="mt-6 rounded-xl border border-border bg-muted/45 px-4 py-3 text-sm font-semibold" aria-live="polite">
-            {isVi ? "Đang cài đặt bản cập nhật…" : "Installing update…"}
+            {t("update.installingUpdate")}
           </div>
         )}
 
@@ -192,7 +191,7 @@ export function UpdateModal() {
                 onClick={() => void dismissUpdate()}
                 className="min-h-10 touch-manipulation rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold transition-colors motion-reduce:transition-none hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                {isVi ? "Để sau" : "Later"}
+                {t("update.later")}
               </button>
               <button
                 ref={primaryActionRef}
@@ -200,7 +199,7 @@ export function UpdateModal() {
                 onClick={() => void installAvailableUpdate()}
                 className="min-h-10 touch-manipulation rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors motion-reduce:transition-none hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                {isVi ? "Cập nhật ngay" : "Update now"}
+                {t("update.updateNow")}
               </button>
             </>
           )}
@@ -211,7 +210,7 @@ export function UpdateModal() {
                 onClick={() => void dismissUpdate()}
                 className="min-h-10 touch-manipulation rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold transition-colors motion-reduce:transition-none hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                {isVi ? "Đóng" : "Not now"}
+                {t("update.notNow")}
               </button>
               <button
                 ref={primaryActionRef}
@@ -219,7 +218,7 @@ export function UpdateModal() {
                 onClick={() => void checkForUpdates({ interactive: true })}
                 className="min-h-10 touch-manipulation rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors motion-reduce:transition-none hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                {isVi ? "Thử lại" : "Try again"}
+                {t("update.tryAgain")}
               </button>
             </>
           )}

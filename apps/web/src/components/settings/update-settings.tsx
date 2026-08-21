@@ -8,7 +8,7 @@ import { useTranslation } from "@/hooks/use-translation";
 export function UpdateSettings() {
   const { isDesktop } = useTauri();
   const { status, currentVersion, availableUpdate, checkForUpdates } = useUpdate();
-  const { t, isVi } = useTranslation();
+  const { t } = useTranslation();
   const isChecking = status === "checking";
   const isUpdating = status === "downloading" || status === "installing";
 
@@ -24,12 +24,12 @@ export function UpdateSettings() {
             <output aria-label="Current version">v{currentVersion}</output>
           </p>
           <p className="mt-2 text-sm text-muted-foreground" aria-live="polite">
-            {!isDesktop && (isVi ? "Tính năng cập nhật chỉ khả dụng trên ứng dụng Desktop." : "Updates are available in the desktop app.")}
-            {isDesktop && status === "up-to-date" && (isVi ? "Ứng dụng đang ở phiên bản mới nhất." : "You’re up to date.")}
+            {!isDesktop && t("settings.desktopOnlyNotice")}
+            {isDesktop && status === "up-to-date" && t("settings.upToDate")}
             {isDesktop && status === "available" && availableUpdate &&
-              (isVi ? `Phiên bản ${availableUpdate.version} đã sẵn sàng.` : `Version ${availableUpdate.version} is ready.`)}
-            {isDesktop && status === "error" && (isVi ? "Kiểm tra cập nhật gặp sự cố." : "The update check needs attention.")}
-            {isDesktop && status === "idle" && (isVi ? "Kiểm tra bất cứ lúc nào. Công việc tạo âm thanh của bạn sẽ không bị gián đoạn." : "Check when you’re ready. Your audio work stays open.")}
+              t("settings.updateAvailableReady", { version: availableUpdate.version })}
+            {isDesktop && status === "error" && t("settings.updateCheckError")}
+            {isDesktop && status === "idle" && t("settings.updateIdleNotice")}
           </p>
         </div>
 
@@ -38,19 +38,19 @@ export function UpdateSettings() {
           disabled={!isDesktop || isChecking || isUpdating}
           onClick={() => void checkForUpdates({ interactive: true })}
           className="inline-flex min-h-10 shrink-0 touch-manipulation items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors motion-reduce:transition-none hover:bg-muted disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          aria-label={!isDesktop ? "Desktop app only" : isChecking ? (isVi ? "Đang kiểm tra cập nhật" : "Checking for updates") : undefined}
+          aria-label={!isDesktop ? t("settings.desktopOnly") : isChecking ? t("settings.checkingUpdates") : undefined}
         >
           <RefreshCw
             aria-hidden="true"
             className={`h-4 w-4 ${isChecking ? "motion-safe:animate-spin" : ""}`}
           />
           {!isDesktop
-            ? (isVi ? "Chỉ dành cho Desktop" : "Desktop app only")
+            ? t("settings.desktopOnly")
             : isChecking
-              ? (isVi ? "Đang kiểm tra…" : "Checking…")
+              ? t("settings.checkingUpdates")
               : isUpdating
-                ? (isVi ? "Đang cập nhật…" : "Update in progress")
-                : (isVi ? "Kiểm tra cập nhật" : "Check for updates")}
+                ? t("settings.updateInProgress")
+                : t("settings.checkUpdatesBtn")}
         </button>
       </div>
     </section>

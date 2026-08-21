@@ -15,7 +15,7 @@ export function TextPreviewDialog({
   onClose,
   job,
 }: TextPreviewDialogProps) {
-  const { isVi } = useTranslation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (isOpen) {
@@ -63,10 +63,10 @@ export function TextPreviewDialog({
             </div>
             <div className="flex flex-col max-w-[400px]">
               <h3 className="text-sm font-bold text-foreground">
-                {isVi ? "Xem trước văn bản" : "Text Preview"}
+                {t("generate.textPreview")}
               </h3>
               <p className="text-[10px] font-medium text-muted-foreground truncate">
-                {job.sourceFileName ? `File: ${job.sourceFileName}` : (isVi ? "Văn bản nhập trực tiếp" : "Manual Input")}
+                {job.sourceFileName ? `File: ${job.sourceFileName}` : t("generate.manualInput")}
               </p>
             </div>
           </div>
@@ -74,10 +74,10 @@ export function TextPreviewDialog({
             <button
               onClick={handleDownloadText}
               className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              title={isVi ? "Tải file văn bản (.txt)" : "Download text file"}
+              title={t("generate.downloadText")}
             >
               <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{isVi ? "Lưu file TXT" : "Save TXT"}</span>
+              <span className="hidden sm:inline">{t("generate.saveTxt")}</span>
             </button>
             <div className="w-px h-4 bg-border mx-1" />
             <button 
@@ -94,8 +94,8 @@ export function TextPreviewDialog({
         </div>
         
         <div className="shrink-0 border-t border-border p-3 flex justify-between items-center text-xs text-muted-foreground bg-muted/20">
-          <span>{job.text.length.toLocaleString()} {isVi ? "ký tự" : "characters"}</span>
-          <span>{isVi ? "Giọng:" : "Voice:"} {job.voiceDisplayName}</span>
+          <span>{job.text.length.toLocaleString()} {t("generate.characters")}</span>
+          <span>{t("generate.voice")} {job.voiceDisplayName}</span>
         </div>
       </div>
     </div>

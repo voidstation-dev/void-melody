@@ -21,7 +21,7 @@ export function TextComposer({
   isValidDrag,
   dragProps,
 }: TextComposerProps) {
-  const { t, isVi } = useTranslation();
+  const { t } = useTranslation();
   const hasText = value.length > 0;
 
   return (
@@ -35,7 +35,7 @@ export function TextComposer({
     >
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
-          {isVi ? "Khu vực nhập văn bản (Playground)" : "Text to Speech Playground"}
+          {t("generate.playgroundHeading")}
         </h2>
         <span className="text-xs font-semibold text-muted-foreground/70">
           {t("generate.charCount", { count: value.length })} / {maxLength.toLocaleString()}
@@ -46,21 +46,10 @@ export function TextComposer({
         {/* Beautiful Placeholder - Only visible when empty */}
         {!hasText && (
           <div className="pointer-events-none absolute inset-0 text-base lg:text-lg font-normal leading-relaxed text-muted-foreground/35 p-1 select-none">
-            {isVi ? (
-              <>
-                Chào mừng đến với <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-lg inline-block font-bold">Melody</span>, studio tạo giọng nói thông minh.
-                <br />
-                <br />
-                Hãy dán văn bản của bạn vào đây, chọn giọng đọc ưng ý và bắt đầu tạo file âm thanh chất lượng cao.
-              </>
-            ) : (
-              <>
-                Welcome to <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-lg inline-block font-bold">Melody</span>, your premium voice synthesis studio.
-                <br />
-                <br />
-                Paste your script, select a voice, and let our AI breathe life into your words. Ready to create something amazing?
-              </>
-            )}
+            {t("generate.welcomeHeading")}
+            <br />
+            <br />
+            {t("generate.welcomeBody")}
           </div>
         )}
 
@@ -82,12 +71,12 @@ export function TextComposer({
             <FileText className="h-16 w-16 mb-4 animate-bounce" />
             <h3 className="text-2xl font-bold">
               {isValidDrag 
-                ? (isVi ? "Thả file TXT vào đây để nhập" : "Drop TXT file to import") 
-                : (isVi ? "Chỉ hỗ trợ file định dạng .txt" : "Only .txt files are supported")}
+                ? t("generate.dropTxtValid")
+                : t("generate.dropTxtInvalid")}
             </h3>
             {isValidDrag && (
               <p className="text-muted-foreground mt-2 text-center max-w-sm">
-                {isVi ? "Văn bản UTF-8 · Tối đa 2MB" : "UTF-8 plain text · up to 2MB"}
+                {t("generate.dropTxtNote")}
               </p>
             )}
           </div>

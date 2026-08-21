@@ -17,7 +17,7 @@ export function TextImportConflictDialog({
   onReplace,
   onAppend,
 }: TextImportConflictDialogProps) {
-  const { t, isVi } = useTranslation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (isOpen) {
@@ -55,11 +55,7 @@ export function TextImportConflictDialog({
                 {t("generate.importConflictTitle")}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                {isVi ? (
-                  <>Bạn đang nhập file <strong className="text-foreground">{fileName}</strong>, nhưng ô soạn thảo đã có văn bản. Bạn muốn xử lý như thế nào?</>
-                ) : (
-                  <>You are importing <strong className="text-foreground">{fileName}</strong>, but the text composer already has content. How would you like to proceed?</>
-                )}
+                {t("generate.importConflictMessage", { fileName })}
               </p>
             </div>
           </div>
@@ -78,7 +74,7 @@ export function TextImportConflictDialog({
           >
             <div className="flex items-center gap-3">
               <Plus className="h-5 w-5 opacity-80" />
-              <span>{isVi ? "Nối thêm vào cuối văn bản hiện tại" : "Append to current text"}</span>
+              <span>{t("generate.appendCurrent")}</span>
             </div>
           </button>
           
@@ -88,7 +84,7 @@ export function TextImportConflictDialog({
           >
             <div className="flex items-center gap-3">
               <FileSignature className="h-5 w-5 opacity-80" />
-              <span>{isVi ? "Thay thế toàn bộ văn bản hiện tại" : "Replace current text"}</span>
+              <span>{t("generate.replaceCurrent")}</span>
             </div>
           </button>
           

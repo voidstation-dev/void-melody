@@ -5,7 +5,7 @@ import { useTranslation } from "@/hooks/use-translation"
 
 export default function HistoryPage() {
   const { data, isLoading } = useHistory()
-  const { t, isVi } = useTranslation()
+  const { t } = useTranslation()
 
   const getStatusText = (status: string) => {
     switch (status) {
