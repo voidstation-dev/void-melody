@@ -7,10 +7,12 @@ src/vieneu_core/downloader.py
 src/vieneu_core/engine.py
 src/vieneu_core/errors.py
 src/vieneu_core/fixtures.py
+src/vieneu_core/voice_profiles.py
 tests/test_contracts.py
 tests/test_downloader.py
 tests/test_engine.py
 tests/test_isolation.py
+tests/test_voice_profiles.py
 vieneu_core.egg-info/PKG-INFO
 vieneu_core.egg-info/SOURCES.txt
 vieneu_core.egg-info/dependency_links.txt

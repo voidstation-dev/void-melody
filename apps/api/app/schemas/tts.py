@@ -15,6 +15,10 @@ class CreateTTSJobRequest(BaseModel):
     exportFormat: str | None = Field(default=None)
 
 
+class CreateTTSBatchJobsRequest(BaseModel):
+    items: list[CreateTTSJobRequest]
+
+
 class TTSPreviewRequest(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
     voiceType: str = Field(min_length=1, max_length=150)

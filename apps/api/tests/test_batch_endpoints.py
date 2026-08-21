@@ -1,12 +1,21 @@
 import pytest
+import pytest_asyncio
 import io
 from fastapi.testclient import TestClient
 from fastapi import UploadFile
 from app.main import app
+from app.database import Base, engine
 from app.api.v1.tts_batches import create_batch
 from app.models.custom_voice import CustomVoiceModel
 
 client = TestClient(app)
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def setup_test_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
 
 
 @pytest.mark.asyncio
@@ -175,3 +184,53 @@ async def test_download_batch_no_completed(monkeypatch, async_session):
     dl_resp = client.get(f"/api/v1/tts/batches/{batch_id}/download")
     assert dl_resp.status_code == 400
     assert dl_resp.json()["detail"] == "NO_COMPLETED_JOBS_IN_BATCH"
+
+
+@pytest.mark.asyncio
+async def test_create_batch_jobs_json_endpoint(monkeypatch, async_session, tmp_path):
+    from app.workers.queue_manager import queue_manager
+    from app.api.v1.tts_jobs import create_batch_jobs_endpoint
+    from app.schemas.tts import CreateTTSBatchJobsRequest, CreateTTSJobRequest
+    from unittest.mock import AsyncMock
+    enqueue_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(queue_manager, "enqueue", enqueue_mock)
+
+    reference = tmp_path / "custom-audio.wav"
+    reference.write_bytes(b"reference audio content")
+    voice = CustomVoiceModel(
+        display_name="Custom Story Voice",
+        reference_audio_path=str(reference),
+        transcript="sample transcript",
+        consent_given=True,
+        status="ready",
+    )
+    async_session.add(voice)
+    await async_session.commit()
+    await async_session.refresh(voice)
+
+    req = CreateTTSBatchJobsRequest(
+        items=[
+            CreateTTSJobRequest(
+                text="Đoạn văn bản thứ nhất.",
+                voiceType=voice.id,
+                rate=1.0,
+                sourceFileName="part1.txt",
+            ),
+            CreateTTSJobRequest(
+                text="Đoạn văn bản thứ hai.",
+                voiceType=voice.id,
+                rate=1.2,
+                sourceFileName="part2.txt",
+            ),
+        ]
+    )
+
+    data = await create_batch_jobs_endpoint(req=req, session=async_session)
+    assert data.batchId
+    assert len(data.jobs) == 2
+    assert data.jobs[0].voiceType == voice.id
+    assert data.jobs[0].voiceDisplayName == "Custom Story Voice"
+    assert data.jobs[1].rate == 1.2
+    assert enqueue_mock.await_count == 2
+
+

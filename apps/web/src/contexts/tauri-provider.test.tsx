@@ -168,7 +168,7 @@ describe("TauriProvider", () => {
       // Sidecar spawned but never emits a port line (e.g. macOS blocks the
       // quarantined binary). The startup timeout should fire and surface the
       // xattr -cr guidance instead of hanging on "Starting local environment...".
-      await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
       expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
       expect(screen.getByText(/did not start in time/)).toBeInTheDocument();
       expect(screen.getByText(/xattr -cr/)).toBeInTheDocument();

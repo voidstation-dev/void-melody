@@ -8,6 +8,7 @@ export type TTSJob = {
   voiceDisplayName: string
   resourceId: string | null
   rate: number
+  providerId?: string | null
   status: TTSJobStatus
   progress: number | null
   batchId: string | null

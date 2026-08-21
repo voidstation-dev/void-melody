@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useTauri } from "@/contexts/tauri-provider";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { useTranslation } from "@/hooks/use-translation";
+import { AUDIO_SPEED_OPTIONS } from "@/constants";
 import {
   DndContext,
   closestCenter,
@@ -119,6 +121,7 @@ export function BatchImportModal({
   files,
   onStartJobs,
 }: BatchImportModalProps) {
+  const { t } = useTranslation();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activePreviewId, setActivePreviewId] = useState<string | null>(null);
@@ -331,10 +334,10 @@ export function BatchImportModal({
         <div className="flex items-center justify-between p-6 border-b border-border/50 bg-muted/30 shrink-0">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl font-bold tracking-tight">
-              Batch Import Jobs
+              {t("generate.batchModalTitle")}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Select and review the text files you want to convert to speech.
+              {t("generate.batchModalDesc")}
             </p>
           </div>
           <button
@@ -362,8 +365,8 @@ export function BatchImportModal({
                   <Square className="w-4 h-4 text-muted-foreground" />
                 )}
                 {selectedIds.size === localFiles.length
-                  ? "Deselect All"
-                  : "Select All"}
+                  ? t("generate.batchDeselectAll")
+                  : t("generate.batchSelectAll")}
               </button>
               <div className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-md">
                 <span className="text-foreground">{selectedIds.size}</span> /{" "}
@@ -417,19 +420,19 @@ export function BatchImportModal({
                           {isEditing
                             ? draftText.length
                             : activeFile.characterCount.toLocaleString()}{" "}
-                          characters
+                          {t("generate.characters")}
                         </p>
                         <div className="flex items-center gap-2 border-l border-border/50 pl-4">
                            <div className="flex items-center gap-1.5 px-2 py-1 bg-orange-500/10 border border-orange-500/20 rounded-md text-orange-600 dark:text-orange-400">
                              <Zap className="w-3.5 h-3.5" />
-                             <span className="text-[10px] font-bold uppercase tracking-wider">Speed</span>
+                             <span className="text-[10px] font-bold uppercase tracking-wider">{t("generate.speed")}</span>
                            </div>
                            <select 
                              className="text-sm bg-muted/50 border border-border/50 rounded-md px-2 py-1 font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 hover:bg-muted transition-colors cursor-pointer"
                              value={activeFile.speed || 1.0}
                              onChange={(e) => updateFileSpeed(activeFile.id, parseFloat(e.target.value))}
                            >
-                             {[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(s => (
+                             {AUDIO_SPEED_OPTIONS.map((s) => (
                                <option key={s} value={s}>{s.toFixed(2)}x</option>
                              ))}
                            </select>
@@ -444,13 +447,13 @@ export function BatchImportModal({
                           onClick={cancelEdit}
                           className="text-xs font-medium px-3 py-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                         >
-                          Cancel
+                          {t("common.cancel")}
                         </button>
                         <button
                           onClick={saveEdit}
                           className="text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:brightness-110 transition-all shadow-sm"
                         >
-                          Save
+                          {t("common.save")}
                         </button>
                       </>
                     ) : (
@@ -459,7 +462,7 @@ export function BatchImportModal({
                         className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-muted hover:bg-muted/80 text-foreground transition-colors border border-border/50"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        Edit Text
+                        {t("generate.editText")}
                       </button>
                     )}
                   </div>
@@ -471,7 +474,7 @@ export function BatchImportModal({
                       value={draftText}
                       onChange={(e) => setDraftText(e.target.value)}
                       className="w-full h-full p-6 rounded-2xl bg-card border-2 border-primary/50 shadow-sm text-sm leading-relaxed text-foreground font-sans resize-none focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all custom-scrollbar"
-                      placeholder="Type or paste text here..."
+                      placeholder={t("generate.editPlaceholder")}
                       spellCheck={false}
                     />
                   ) : (
@@ -486,7 +489,7 @@ export function BatchImportModal({
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
                 <Eye className="w-12 h-12 mb-4 opacity-20" />
-                <p className="font-medium">Select a file to preview or edit</p>
+                <p className="font-medium">{t("generate.selectFilePreview")}</p>
               </div>
             )}
           </div>
@@ -495,11 +498,11 @@ export function BatchImportModal({
           <div className="shrink-0 p-6 border-t border-border/50 bg-muted/10">
             <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <FolderOutput className="w-4 h-4 text-primary" />
-              Auto-Export (Optional)
+              {t("generate.autoExport")}
             </h4>
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground w-16">Format:</span>
+                <span className="text-sm font-medium text-muted-foreground w-16">{t("generate.format")}</span>
                 <div className="flex bg-muted rounded-lg p-1">
                   <button
                     onClick={() => setExportFormat("mp3")}
@@ -524,26 +527,26 @@ export function BatchImportModal({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground w-16">Folder:</span>
+                <span className="text-sm font-medium text-muted-foreground w-16">{t("generate.folder")}</span>
                 {isDesktop ? (
                   <div className="flex-1 flex gap-2">
                     <input
                       type="text"
                       readOnly
                       value={exportPath || ""}
-                      placeholder="Select output directory..."
+                      placeholder={t("generate.folderPlaceholder")}
                       className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     />
                     <button
                       onClick={handleSelectFolder}
                       className="px-4 py-2 bg-secondary text-secondary-foreground rounded-xl text-sm font-bold hover:brightness-110 transition-all border border-border/50"
                     >
-                      Browse
+                      {t("generate.browse")}
                     </button>
                   </div>
                 ) : (
                   <span className="text-xs text-muted-foreground italic">
-                    Auto-export is only available in the desktop app.
+                    {t("generate.autoExportDesktopOnly")}
                   </span>
                 )}
               </div>
@@ -554,11 +557,7 @@ export function BatchImportModal({
         {/* Footer */}
         <div className="px-6 py-4 border-t border-border/50 bg-background flex items-center justify-between shrink-0">
           <div className="text-sm text-muted-foreground">
-            Ready to process{" "}
-            <span className="font-bold text-foreground">
-              {selectedIds.size}
-            </span>{" "}
-            file{selectedIds.size !== 1 ? "s" : ""}
+            {t("generate.readyToProcess", { count: selectedIds.size })}
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -566,7 +565,7 @@ export function BatchImportModal({
               disabled={isSubmitting}
               className="px-6 py-2.5 rounded-xl text-sm font-bold text-foreground hover:bg-muted transition-colors border border-transparent disabled:opacity-50"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               onClick={requestStart}
@@ -578,7 +577,7 @@ export function BatchImportModal({
               ) : (
                 <Play className="w-4 h-4" />
               )}
-              Start {selectedIds.size} Jobs
+              {t("generate.startJobsCount", { count: selectedIds.size })}
             </button>
           </div>
         </div>
@@ -588,15 +587,15 @@ export function BatchImportModal({
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-sm bg-card border border-border shadow-2xl rounded-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
               <div className="p-6">
-                <h3 className="text-lg font-bold mb-3 text-foreground">Unsaved Changes</h3>
+                <h3 className="text-lg font-bold mb-3 text-foreground">{t("generate.unsavedChangesTitle")}</h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  You have unsaved edits in the following file:
+                  {t("generate.unsavedChangesInFile")}
                 </p>
                 <div className="p-2 mb-3 bg-muted/50 rounded-lg border border-border/50 text-sm font-bold text-foreground truncate" title={activeFile?.fileName}>
                   {activeFile?.fileName}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Do you want to save them before continuing?
+                  {t("generate.unsavedChangesPrompt")}
                 </p>
               </div>
               <div className="flex items-center gap-2 p-4 border-t border-border/50 bg-muted/20">
@@ -604,13 +603,13 @@ export function BatchImportModal({
                   onClick={handleWarningDiscard}
                   className="flex-1 px-4 py-2 rounded-xl text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
-                  Go Back
+                  {t("generate.goBack")}
                 </button>
                 <button
                   onClick={handleWarningConfirm}
                   className="flex-1 px-4 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:brightness-110 transition-all shadow-sm"
                 >
-                  Save & Continue
+                  {t("generate.saveAndContinue")}
                 </button>
               </div>
             </div>

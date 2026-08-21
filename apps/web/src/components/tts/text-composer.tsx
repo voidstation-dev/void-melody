@@ -1,5 +1,6 @@
 "use client";
 import { FileText } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 type TextComposerProps = {
   value: string;
@@ -20,6 +21,7 @@ export function TextComposer({
   isValidDrag,
   dragProps,
 }: TextComposerProps) {
+  const { t } = useTranslation();
   const hasText = value.length > 0;
 
   return (
@@ -33,21 +35,21 @@ export function TextComposer({
     >
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
-          Text to Speech Playground
+          {t("generate.playgroundHeading")}
         </h2>
         <span className="text-xs font-semibold text-muted-foreground/70">
-          {value.length.toLocaleString()} / {maxLength.toLocaleString()} chars
+          {t("generate.charCount", { count: value.length })} / {maxLength.toLocaleString()}
         </span>
       </div>
 
       <div className="relative flex-1 min-h-0 w-full">
         {/* Beautiful Placeholder - Only visible when empty */}
         {!hasText && (
-          <div className="pointer-events-none absolute inset-0 text-base lg:text-lg font-normal leading-relaxed text-muted-foreground/30 p-1">
-            Welcome to <span className="bg-primary/20 text-primary px-2 py-0.5 rounded-lg inline-block font-bold">Melody</span>, your premium voice synthesis studio.
+          <div className="pointer-events-none absolute inset-0 text-base lg:text-lg font-normal leading-relaxed text-muted-foreground/35 p-1 select-none">
+            {t("generate.welcomeHeading")}
             <br />
             <br />
-            Paste your script, select a voice, and let our AI breathe life into your words. Ready to create something amazing?
+            {t("generate.welcomeBody")}
           </div>
         )}
 
@@ -68,11 +70,13 @@ export function TextComposer({
           <div className={`flex flex-col items-center justify-center p-8 rounded-2xl ${isValidDrag ? "text-primary" : "text-destructive"}`}>
             <FileText className="h-16 w-16 mb-4 animate-bounce" />
             <h3 className="text-2xl font-bold">
-              {isValidDrag ? "Drop TXT file to import" : "Only .txt files are supported"}
+              {isValidDrag 
+                ? t("generate.dropTxtValid")
+                : t("generate.dropTxtInvalid")}
             </h3>
             {isValidDrag && (
               <p className="text-muted-foreground mt-2 text-center max-w-sm">
-                UTF-8 plain text · up to 2MB
+                {t("generate.dropTxtNote")}
               </p>
             )}
           </div>

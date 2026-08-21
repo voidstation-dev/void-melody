@@ -1,8 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { TextComposer } from "./text-composer";
 import { VoiceSettingsPanel } from "./voice-settings-panel";
 import { useVoices } from "@/hooks/use-voices";
+import { useCustomVoices } from "@/hooks/use-custom-voices";
 import { useQueue } from "@/hooks/use-queue";
 import { useTextFileDrop } from "@/hooks/use-text-file-drop";
 import { TextImportConflictDialog } from "./text-import-conflict-dialog";
@@ -11,15 +13,26 @@ import { BatchImportModal } from "./batch-import-modal";
 import { ImportedTextFile, TextImportError } from "@/types/text-import";
 import { apiFetch } from "@/lib/api-client";
 import { getBatchLimitError } from "@/lib/batch-limits";
-import { TTSJob, BatchJobCreateResponse } from "@/types/tts-job";
-import { Sparkles, Loader2, Clipboard, FileUp, FolderOpen } from "lucide-react";
-import { useRef } from "react";
+import { BatchJobCreateResponse } from "@/types/tts-job";
+import { Loader2, Clipboard, FileUp, FolderOpen } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 export function TTSStudio() {
+  const { t } = useTranslation();
+  const searchParams = useSearchParams();
+  const voiceParam = searchParams.get("voice");
   const [text, setText] = useState("");
-  const [selectedVoice, setSelectedVoice] = useState("BV421_vivn_streaming");
+  const [prevVoiceParam, setPrevVoiceParam] = useState(voiceParam);
+  const [selectedVoice, setSelectedVoice] = useState(voiceParam || "BV421_vivn_streaming");
+
+  if (voiceParam !== prevVoiceParam) {
+    setPrevVoiceParam(voiceParam);
+    if (voiceParam) {
+      setSelectedVoice(voiceParam);
+    }
+  }
+
   const [rate, setRate] = useState(1.0);
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conflictDialog, setConflictDialog] = useState<{isOpen: boolean, file: ImportedTextFile | null}>({isOpen: false, file: null});
   
@@ -71,78 +84,60 @@ export function TTSStudio() {
     exportPath: string | null,
     exportFormat: "mp3" | "m4a"
   ) => {
-    if (selectedFiles.length === 0) return;
-    const limitError = getBatchLimitError(selectedFiles);
-    if (limitError === "BATCH_FILE_LIMIT_EXCEEDED") {
-      alert("A batch can contain at most 50 files.");
-      return;
-    }
-    if (limitError === "BATCH_TEXT_LIMIT_EXCEEDED") {
-      alert("A batch can contain at most 500,000 characters.");
-      return;
-    }
-
-    const createdJobs = [];
-    // Generate a single batchId for all files in this batch so they group together in the queue
-    const batchId = crypto.randomUUID();
-    
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      try {
-        const batchResponse = await apiFetch<BatchJobCreateResponse>("/api/v1/tts/jobs", {
-          method: "POST",
-          body: JSON.stringify({
-            text: file.text,
-            voiceType: selectedVoice,
-            rate: file.speed ?? rate,
-            sourceFileName: file.fileName,
-            sourceFileSize: file.sizeBytes,
-            batchId: batchId,
-            batchPosition: i,
-            exportPath: exportPath,
-            exportFormat: exportFormat,
-          }),
-        });
-        createdJobs.push(...batchResponse.jobs);
-      } catch (err) {
-        console.error(`Failed to create job for ${file.fileName}`, err);
+    setIsSubmitting(true);
+    try {
+      const batchLimitError = getBatchLimitError(selectedFiles);
+      if (batchLimitError) {
+        alert(batchLimitError);
+        return;
       }
-    }
-    
-    if (createdJobs.length > 0) {
-      addToQueue(createdJobs);
+
+      const items = selectedFiles.map((file) => ({
+        text: file.text,
+        voiceType: selectedVoice,
+        rate,
+        sourceFileName: file.fileName,
+        exportPath: exportPath || undefined,
+        exportFormat,
+      }));
+
+      const batchResponse = await apiFetch<BatchJobCreateResponse>(
+        "/api/v1/tts/jobs/batch",
+        {
+          method: "POST",
+          body: JSON.stringify({ items }),
+        }
+      );
+
+      addToQueue(batchResponse.jobs);
+      setBatchModalOpen(false);
+    } catch (err) {
+      console.error("Failed to create batch jobs: ", err);
+      alert(t("errors.generateFailed"));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const { data: voiceData } = useVoices("vi-VN");
-
-  useEffect(() => {
-    const savedText = localStorage.getItem("melody_text");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (savedText) setText(savedText);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("melody_text", text);
-  }, [text]);
+  const { data: voiceData } = useVoices();
+  const { data: customVoiceData } = useCustomVoices(undefined, 1, 100);
+  const currentVoiceObj = voiceData?.items?.find((v) => v.voiceType === selectedVoice);
 
   const handleGenerate = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || isSubmitting) return;
+
     setIsSubmitting(true);
     try {
-      const currentVoiceObj = voiceData?.items?.find(
-        (v) => v.voiceType === selectedVoice,
-      );
-      const batchResponse = await apiFetch<BatchJobCreateResponse>("/api/v1/tts/jobs", {
+      const response = await apiFetch<BatchJobCreateResponse>("/api/v1/tts/jobs", {
         method: "POST",
         body: JSON.stringify({
           text,
           voiceType: selectedVoice,
-          resourceId: currentVoiceObj?.resourceId || "",
+          resourceId: currentVoiceObj?.resourceId || undefined,
           rate,
         }),
       });
-      addToQueue(batchResponse.jobs);
+      addToQueue(response.jobs);
       setText("");
     } catch (err) {
       console.error("Job creation failed", err);
@@ -159,7 +154,7 @@ export function TTSStudio() {
       }
     } catch (err) {
       console.error("Failed to read clipboard contents: ", err);
-      alert("Please allow clipboard permissions or paste manually.");
+      alert(t("generate.clipboardError"));
     }
   };
 
@@ -178,7 +173,7 @@ export function TTSStudio() {
         file: {
           id: crypto.randomUUID(),
           text: jobText,
-          fileName: fileName || "Reparsed Text",
+          fileName: fileName || t("generate.reparsedText"),
           sizeBytes: jobText.length,
           mimeType: "text/plain",
           characterCount: jobText.length,
@@ -199,20 +194,20 @@ export function TTSStudio() {
               onClick={handlePaste}
               disabled={isSubmitting}
               className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-              title="Paste from clipboard"
+              title={t("generate.pasteTooltip")}
             >
               <Clipboard className="h-4 w-4" />
-              <span className="hidden sm:inline">Paste</span>
+              <span className="hidden sm:inline">{t("generate.paste")}</span>
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isSubmitting}
               className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-              title="Import text file"
+              title={t("generate.importFileTooltip")}
             >
               <FileUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Import TXT</span>
+              <span className="hidden sm:inline">{t("generate.importFile")}</span>
             </button>
             <input
               type="file"
@@ -226,10 +221,10 @@ export function TTSStudio() {
               onClick={() => folderInputRef.current?.click()}
               disabled={isSubmitting}
               className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-50"
-              title="Import folder of TXT files"
+              title={t("generate.importFolderTooltip")}
             >
               <FolderOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Import Folder</span>
+              <span className="hidden sm:inline">{t("generate.importFolder")}</span>
             </button>
             <input
               type="file"
@@ -246,10 +241,10 @@ export function TTSStudio() {
           <button
             onClick={handleGenerate}
             disabled={isSubmitting || !text}
-            className="flex items-center gap-2 rounded-xl bg-primary px-8 py-2.5 text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl bg-primary px-8 py-2.5 text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50 shadow-xs"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {isSubmitting ? "PROCESSING..." : "SEND"}
+            <span>{isSubmitting ? t("generate.generating") : t("generate.generateAudio")}</span>
           </button>
         </div>
         <TextComposer
@@ -285,6 +280,7 @@ export function TTSStudio() {
         <div className="shrink-0">
           <VoiceSettingsPanel
             voices={voiceData?.items ?? []}
+            customVoices={customVoiceData?.items ?? []}
             selectedVoice={selectedVoice}
             onSelectVoice={setSelectedVoice}
             rate={rate}

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { X, FileText, Download } from "lucide-react";
 import { TTSJob } from "@/types/tts-job";
 import { getFirstLine, slugify } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 type TextPreviewDialogProps = {
   isOpen: boolean;
@@ -14,6 +15,8 @@ export function TextPreviewDialog({
   onClose,
   job,
 }: TextPreviewDialogProps) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -40,7 +43,9 @@ export function TextPreviewDialog({
     a.href = url;
     a.download = `${suggestedName}.txt`;
     a.click();
-    URL.revokeObjectURL(url);
+    if (typeof URL.revokeObjectURL === "function") {
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -57,9 +62,11 @@ export function TextPreviewDialog({
               <FileText className="h-4 w-4" />
             </div>
             <div className="flex flex-col max-w-[400px]">
-              <h3 className="text-sm font-bold text-foreground">Text Preview</h3>
+              <h3 className="text-sm font-bold text-foreground">
+                {t("generate.textPreview")}
+              </h3>
               <p className="text-[10px] font-medium text-muted-foreground truncate">
-                {job.sourceFileName ? `File: ${job.sourceFileName}` : "Manual Input"}
+                {job.sourceFileName ? `File: ${job.sourceFileName}` : t("generate.manualInput")}
               </p>
             </div>
           </div>
@@ -67,10 +74,10 @@ export function TextPreviewDialog({
             <button
               onClick={handleDownloadText}
               className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              title="Download text file"
+              title={t("generate.downloadText")}
             >
               <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Save TXT</span>
+              <span className="hidden sm:inline">{t("generate.saveTxt")}</span>
             </button>
             <div className="w-px h-4 bg-border mx-1" />
             <button 
@@ -87,8 +94,8 @@ export function TextPreviewDialog({
         </div>
         
         <div className="shrink-0 border-t border-border p-3 flex justify-between items-center text-xs text-muted-foreground bg-muted/20">
-          <span>{job.text.length.toLocaleString()} characters</span>
-          <span>Voice: {job.voiceDisplayName}</span>
+          <span>{job.text.length.toLocaleString()} {t("generate.characters")}</span>
+          <span>{t("generate.voice")} {job.voiceDisplayName}</span>
         </div>
       </div>
     </div>

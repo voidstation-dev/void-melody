@@ -12,7 +12,7 @@ from vieneu_core.fixtures import FIXTURE_VOICES
 
 from app.database import AsyncSessionLocal
 from app.models.custom_voice import CustomVoiceModel
-from app.providers.base import ProviderResult, ProviderVoice
+from app.providers.base import ProviderResult, ProviderVoice, SynthesisOptions
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,7 @@ class VieneuProvider:
         resource_id: str | None,
         rate: float,
         style: str | None = None,
+        options: SynthesisOptions | None = None,
     ) -> ProviderResult:
         logger.info("VieneuProvider synthesizing %s", voice_type)
         engine = await self.manager.get_engine()
@@ -120,6 +121,7 @@ class VieneuProvider:
         resource_id: str | None,
         rate: float,
         style: str | None = None,
+        options: SynthesisOptions | None = None,
     ) -> AsyncGenerator[bytes, None]:
         engine = await self.manager.get_engine()
         ffmpeg_binary = settings.ffmpeg_binary_path

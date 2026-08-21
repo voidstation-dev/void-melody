@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { FileWarning, Plus, FileSignature, X } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 type TextImportConflictDialogProps = {
   isOpen: boolean;
@@ -16,6 +17,8 @@ export function TextImportConflictDialog({
   onReplace,
   onAppend,
 }: TextImportConflictDialogProps) {
+  const { t } = useTranslation();
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -44,13 +47,15 @@ export function TextImportConflictDialog({
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         <div className="mb-6 flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
               <FileWarning className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-foreground">Text already exists</h3>
+              <h3 className="text-lg font-bold text-foreground">
+                {t("generate.importConflictTitle")}
+              </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                You are importing <strong className="text-foreground">{fileName}</strong>, but the text composer already has content. How would you like to proceed?
+                {t("generate.importConflictMessage", { fileName })}
               </p>
             </div>
           </div>
@@ -69,7 +74,7 @@ export function TextImportConflictDialog({
           >
             <div className="flex items-center gap-3">
               <Plus className="h-5 w-5 opacity-80" />
-              <span>Append to current text</span>
+              <span>{t("generate.appendCurrent")}</span>
             </div>
           </button>
           
@@ -79,15 +84,15 @@ export function TextImportConflictDialog({
           >
             <div className="flex items-center gap-3">
               <FileSignature className="h-5 w-5 opacity-80" />
-              <span>Replace current text</span>
+              <span>{t("generate.replaceCurrent")}</span>
             </div>
           </button>
           
           <button
             onClick={onClose}
-            className="flex w-full items-center justify-center rounded-xl border border-border bg-transparent px-4 py-3.5 text-sm font-bold hover:bg-muted transition-colors mt-2"
+            className="flex w-full items-center justify-center rounded-xl border border-border bg-transparent px-4 py-3.5 text-sm font-bold hover:bg-muted transition-colors mt-2 text-muted-foreground hover:text-foreground"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </div>

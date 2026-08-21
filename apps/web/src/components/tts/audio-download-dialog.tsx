@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Download, X, FileAudio } from "lucide-react";
+import { Download, X, FileAudio, Folder, Plus, User, Gauge } from "lucide-react";
 import { getFirstLine, slugify } from "@/lib/utils";
 import { TTSJob } from "@/types/tts-job";
 import { useTauri } from "@/contexts/tauri-provider";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { downloadDir, join } from "@tauri-apps/api/path";
+import { useTranslation } from "@/hooks/use-translation";
 
 type AudioDownloadDialogProps = {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export function AudioDownloadDialog({
   format,
   onStartDownload,
 }: AudioDownloadDialogProps) {
+  const { t } = useTranslation();
   const [fileName, setFileName] = useState("");
   const { isDesktop } = useTauri();
   const [exportPath, setExportPath] = useState<string>("");
@@ -38,7 +40,7 @@ export function AudioDownloadDialog({
         directory: true,
         multiple: false,
         defaultPath: exportPath || undefined,
-        title: "Select Download Directory"
+        title: t("generate.saveLocation")
       });
       if (selected && typeof selected === "string") {
         setExportPath(selected);
@@ -50,7 +52,7 @@ export function AudioDownloadDialog({
 
   useEffect(() => {
     if (isOpen && job) {
-      const suggestedName = slugify(getFirstLine(job.text)) || `melody-${job.id}`;
+      const suggestedName = slugify(getFirstLine(job.text)) || `melody-${job.id.slice(0, 8)}`;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFileName(suggestedName);
     }
@@ -89,105 +91,166 @@ export function AudioDownloadDialog({
     }
   };
 
+  const appendToFileName = (suffix: string) => {
+    setFileName((prev) => {
+      const cleanPrev = prev.replace(/[-_]+$/, "");
+      const cleanSuffix = suffix.replace(/^[-_]+/, "");
+      return cleanPrev ? `${cleanPrev}-${cleanSuffix}` : cleanSuffix;
+    });
+  };
+
+  const isCustomVoice = job.providerId === "vieneu" || (job.voiceType && job.voiceType.startsWith("custom_"));
+
   return (
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <div className="mb-5 flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+      <div className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col gap-5">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/20 text-primary shadow-xs">
               <FileAudio className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-foreground">Download Audio</h3>
-              <p className="text-xs text-muted-foreground mt-0.5 text-orange-500/80">
-                You can close this popup during download
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-foreground">
+                  {t("generate.downloadAudio")}
+                </h3>
+                <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-primary/10 text-primary border border-primary/20 tracking-wider">
+                  {format}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("generate.downloadNotice")}
               </p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="mb-6 flex flex-col gap-4">
+        {/* Metadata summary pill bar */}
+        <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-muted/40 border border-border/50 text-xs">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <User className="h-3.5 w-3.5 text-primary" />
+            <span className="font-semibold text-foreground truncate max-w-[140px]">
+              {job.voiceDisplayName || job.voiceType}
+            </span>
+            {isCustomVoice && (
+              <span className="rounded-full bg-violet-500/15 px-1.5 py-0.2 text-[9px] font-bold text-violet-600 dark:text-violet-400">
+                Clone
+              </span>
+            )}
+          </div>
+          <div className="h-3 w-[1px] bg-border/80 mx-1" />
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Gauge className="h-3.5 w-3.5 text-primary" />
+            <span className="font-semibold text-foreground">
+              {job.rate ? `${job.rate.toFixed(1)}x` : "1.0x"}
+            </span>
+          </div>
+        </div>
+
+        {/* Form Inputs */}
+        <div className="flex flex-col gap-4">
+          {/* File Name */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-muted-foreground ml-1">File Name</label>
+            <div className="flex items-center justify-between px-0.5">
+              <label className="text-xs font-semibold text-foreground">
+                {t("generate.fileName")}
+              </label>
+              <span className="text-[11px] font-mono text-muted-foreground">
+                .{format}
+              </span>
+            </div>
+            
             <div className="relative flex items-center">
               <input
                 type="text"
                 value={fileName}
                 onChange={(e) => setFileName(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary pr-12"
+                className="w-full rounded-2xl border border-border bg-background px-4 py-2.5 text-sm font-medium outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/15 pr-14 shadow-2xs"
                 placeholder="audio-filename"
                 autoFocus
               />
-              <span className="absolute right-4 text-sm text-muted-foreground pointer-events-none">
+              <span className="absolute right-3.5 px-2 py-0.5 rounded-lg bg-muted text-[11px] font-mono font-bold text-muted-foreground pointer-events-none">
                 .{format}
               </span>
             </div>
-            {job && (
-              <div className="flex items-center gap-2 ml-1 mt-0.5">
-                <span className="text-[10px] text-muted-foreground">Append:</span>
-                <button
-                  onClick={() => setFileName(prev => `${prev}_${slugify(job.voiceDisplayName || job.voiceType)}`)}
-                  className="text-[10px] font-medium px-2 py-1 rounded-md bg-muted hover:bg-primary/10 hover:text-primary transition-colors border border-border/50"
-                >
-                  + Voice Name
-                </button>
-                <button
-                  onClick={() => setFileName(prev => `${prev}_${job.rate?.toFixed(1) || "1.0"}x`)}
-                  className="text-[10px] font-medium px-2 py-1 rounded-md bg-muted hover:bg-primary/10 hover:text-primary transition-colors border border-border/50"
-                >
-                  + Speed
-                </button>
-              </div>
-            )}
+
+            {/* Append Quick Tags */}
+            <div className="flex items-center gap-2 pt-0.5 px-0.5 flex-wrap">
+              <span className="text-[11px] font-medium text-muted-foreground">
+                {t("generate.appendLabel")}
+              </span>
+              <button
+                type="button"
+                onClick={() => appendToFileName(slugify(job.voiceDisplayName || job.voiceType))}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-primary/5 hover:bg-primary/15 text-primary border border-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Plus className="h-3 w-3" />
+                <span>{t("generate.voiceName")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => appendToFileName(`${job.rate?.toFixed(1) || "1.0"}x`)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-primary/5 hover:bg-primary/15 text-primary border border-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Plus className="h-3 w-3" />
+                <span>{t("generate.speed")}</span>
+              </button>
+            </div>
           </div>
 
+          {/* Destination Folder */}
           {isDesktop && (
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-muted-foreground ml-1">Location</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={exportPath || ""}
-                  className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none opacity-80"
-                />
+              <label className="text-xs font-semibold text-foreground px-0.5">
+                {t("generate.saveLocation")}
+              </label>
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-background p-1.5 pl-3 shadow-2xs">
+                <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="flex-1 text-xs text-muted-foreground truncate font-mono" title={exportPath}>
+                  {exportPath || t("generate.loadingDir")}
+                </span>
                 <button
+                  type="button"
                   onClick={handleSelectFolder}
-                  className="px-4 py-2.5 bg-secondary text-secondary-foreground rounded-xl text-sm font-bold hover:brightness-110 transition-all border border-border/50"
+                  className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-xl text-xs font-bold hover:bg-secondary/80 transition-all shrink-0"
                 >
-                  Change
+                  {t("generate.changeVoice")}
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex flex-col gap-2">
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/40">
           <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground rounded-xl transition-all"
+          >
+            {t("common.cancel")}
+          </button>
+
+          <button
+            type="button"
             onClick={handleDownload}
             disabled={!fileName.trim() || (isDesktop && !exportPath)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all shadow-xs hover:shadow-sm active:scale-[0.98]"
           >
-            <Download className="h-4 w-4" />
-            <span>Start Download</span>
-          </button>
-          
-          <button
-            onClick={onClose}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-muted/50 px-4 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
-          >
-            Cancel
+            <Download className="h-3.5 w-3.5" />
+            <span>{t("generate.startDownload")}</span>
           </button>
         </div>
       </div>
