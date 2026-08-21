@@ -39,7 +39,7 @@ class ModelManifest:
 
 # Pinned revisions (resolved 2026-08-05).
 VIENEU_V3_TURBO_REPO = "pnnbao-ump/VieNeu-TTS-v3-Turbo"
-VIENEU_V3_TURBO_REVISION = "75ff82a72f54d55ed389e1eeb12041d3c4bac7d4"
+VIENEU_V3_TURBO_REVISION = "2da0efab622a1722125991736524f080b751ef5b"
 MOSS_ONNX_REPO = "OpenMOSS-Team/MOSS-Audio-Tokenizer-Nano-ONNX"
 MOSS_ONNX_REVISION = "ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae"
 

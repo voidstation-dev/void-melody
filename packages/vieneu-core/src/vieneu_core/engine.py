@@ -63,15 +63,22 @@ def _artifact_roots(*environment_names: str) -> list[Path]:
     hf_home = os.environ.get("VIENEU_HF_HOME") or os.environ.get("HF_HOME")
     if hf_home:
         hub = Path(hf_home) / "hub"
-        roots.extend(
-            path
-            for pattern in (
-                "models--pnnbao-ump--VieNeu-TTS-v3-Turbo/snapshots/*",
-                "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano/snapshots/*",
-            )
-            for path in hub.glob(pattern)
-            if path.is_dir()
+    else:
+        try:
+            from huggingface_hub.constants import HF_HUB_CACHE
+            hub = Path(HF_HUB_CACHE)
+        except ImportError:
+            hub = Path.home() / ".cache" / "huggingface" / "hub"
+            
+    roots.extend(
+        path
+        for pattern in (
+            "models--pnnbao-ump--VieNeu-TTS-v3-Turbo/snapshots/*",
+            "models--OpenMOSS-Team--MOSS-Audio-Tokenizer-Nano-ONNX/snapshots/*",
         )
+        for path in hub.glob(pattern)
+        if path.is_dir()
+    )
     return roots
 
 
