@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: melody-api
-Version: 0.2.6
+Version: 0.3.0
 Summary: Melody API
 Requires-Python: >=3.10
 Requires-Dist: fastapi>=0.110.0
@@ -17,3 +17,5 @@ Requires-Dist: capcut-tts-api
 Requires-Dist: vieneu-core
 Requires-Dist: vieneu
 Requires-Dist: pyinstaller>=6.21.0
+Requires-Dist: torch>=2.13.0
+Requires-Dist: torchaudio>=2.11.0

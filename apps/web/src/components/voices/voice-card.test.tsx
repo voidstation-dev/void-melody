@@ -46,7 +46,7 @@ describe("VoiceCard", () => {
 
     expect(screen.getByText("Nhỏ Ngọt Ngào")).toBeInTheDocument()
     expect(screen.getByText(/Giọng đọc mẫu chuẩn studio/i)).toBeInTheDocument()
-    expect(screen.getByText("vi-VN")).toBeInTheDocument()
+    expect(screen.getByText(/vi-VN/)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /nghe thử nhỏ ngọt ngào/i })).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /dùng giọng/i })).toHaveAttribute("href", "/?voice=BV421_vivn_streaming")
   })

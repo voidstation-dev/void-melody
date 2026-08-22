@@ -6,6 +6,7 @@ export type Voice = {
   displayName: string
   resourceId: string
   capturedAt: string | null
+  providerId?: string | null
 }
 
 export type VoiceCapabilities = {

@@ -6,6 +6,7 @@ stub engine factory.
 """
 
 import asyncio
+import sys
 
 import pytest
 
@@ -93,3 +94,36 @@ async def test_model_manager_serializes_loads():
     # Only one load happened.
     assert order.count("start") == 1
     assert order.count("end") == 1
+
+
+@pytest.mark.asyncio
+async def test_default_factory_uses_bootstrapped_local_model_paths(monkeypatch, tmp_path):
+    calls = []
+
+    class FakeVieneu:
+        def __init__(self, **kwargs):
+            calls.append(kwargs)
+
+    fake_vieneu = type("M", (), {"Vieneu": FakeVieneu})
+    monkeypatch.setitem(sys.modules, "vieneu", fake_vieneu)
+    (tmp_path / "backbone").mkdir()
+    (tmp_path / "onnx_int8").mkdir()
+    (tmp_path / "codec").mkdir()
+    monkeypatch.setenv("VIENEU_V3_TURBO_MODEL_DIR", str(tmp_path / "backbone"))
+    monkeypatch.setenv("VIENEU_V3_TURBO_ONNX_DIR", str(tmp_path / "onnx_int8"))
+    monkeypatch.setenv("VIENEU_V3_TURBO_CODEC_DIR", str(tmp_path / "codec"))
+
+    manager = ModelManager()
+    await manager.get_engine()
+
+    assert calls == [
+        {
+            "mode": "v3turbo",
+            "backbone_repo": str(tmp_path / "backbone"),
+            "onnx_dir": str(tmp_path / "onnx_int8"),
+            "codec_dir": str(tmp_path / "codec"),
+            "device": "auto",
+            "backend": "auto",
+            "precision": "int8",
+        }
+    ]

@@ -18,6 +18,7 @@ from app.services.job_recovery import recover_jobs
 from app.services.logging_config import configure_logging
 from app.services.raw_response_storage import cleanup_stale_raw_responses
 from app.services.voice_artifact_cleanup import cleanup_orphan_voice_artifacts
+from app.services.vieneu_bootstrap import bootstrap_vieneu_runtime
 from app.models.custom_voice import CustomVoiceModel
 from app.workers.queue_manager import queue_manager
 
@@ -27,6 +28,13 @@ async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
     validate_runtime_security()
     await run_database_migrations()
+    if settings.voice_lab_enabled:
+        try:
+            await bootstrap_vieneu_runtime(settings.vieneu_hf_home)
+        except Exception:  # noqa: BLE001 - keep the API usable if the network is unavailable
+            logger.exception(
+                "VieNeu model bootstrap failed; voice cloning will remain unavailable"
+            )
     async with AsyncSessionLocal() as session:
         known_reference_paths = await session.scalars(
             select(CustomVoiceModel.reference_audio_path).where(

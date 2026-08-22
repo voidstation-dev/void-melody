@@ -37,6 +37,15 @@ class ModelManifest:
     files: tuple[ModelFile, ...] = field(default_factory=tuple)
 
 
+@dataclass(frozen=True)
+class VieneuModelArtifacts:
+    """Resolved local directories used by the VieNeu v3 Turbo engine."""
+
+    backbone_dir: Path
+    onnx_dir: Path
+    codec_dir: Path
+
+
 # Pinned revisions (resolved 2026-08-05).
 VIENEU_V3_TURBO_REPO = "pnnbao-ump/VieNeu-TTS-v3-Turbo"
 VIENEU_V3_TURBO_REVISION = "2da0efab622a1722125991736524f080b751ef5b"
@@ -45,25 +54,41 @@ MOSS_ONNX_REVISION = "ceff0d0749bfb3fa2d61149794ec6feef0d1e1ae"
 
 
 def default_manifests() -> list[ModelManifest]:
-    """Return the default pinned manifests for the VieNeu v3 Turbo CPU path.
-
-    File lists are intentionally empty here — at runtime Vieneu decides which
-    files it needs; the downloader fetches whatever is listed. When full
-    reproducibility is required (Phase 10/11), enumerate every file with its
-    SHA-256. For now the manifest pins the repo+revision so ``hf_hub_download``
-    with ``revision=<sha>`` is deterministic even without a file list.
-    """
+    """Return the pinned files required by the CPU voice-cloning path."""
 
     return [
         ModelManifest(
             repo_id=VIENEU_V3_TURBO_REPO,
             revision=VIENEU_V3_TURBO_REVISION,
-            files=(),
+            files=tuple(
+                ModelFile(filename=filename)
+                for filename in (
+                    "speaker_encoder.onnx",
+                    "denoiser.onnx",
+                    "onnx_int8/vieneu_prefill.onnx",
+                    "onnx_int8/vieneu_decode_step.onnx",
+                    "onnx_int8/vieneu_acoustic_cached.onnx",
+                    "onnx_int8/vieneu_backbone_shared.data",
+                    "onnx_int8/vieneu_v3_heads.npz",
+                    "onnx_int8/config.json",
+                    "onnx_int8/tokenizer.json",
+                )
+            ),
         ),
         ModelManifest(
             repo_id=MOSS_ONNX_REPO,
             revision=MOSS_ONNX_REVISION,
-            files=(),
+            files=tuple(
+                ModelFile(filename=filename)
+                for filename in (
+                    "moss_audio_tokenizer_encode.onnx",
+                    "moss_audio_tokenizer_encode.data",
+                    "moss_audio_tokenizer_decode_full.onnx",
+                    "moss_audio_tokenizer_decode_shared.data",
+                    "moss_audio_tokenizer_decode_step.onnx",
+                    "codec_browser_onnx_meta.json",
+                )
+            ),
         ),
     ]
 
@@ -123,6 +148,58 @@ class ModelDownloader:
             results.append(path)
         return results
 
+    async def download_snapshot(self, manifest: ModelManifest) -> Path:
+        """Resolve a complete pinned snapshot, using cache before the network."""
+
+        loop = asyncio.get_running_loop()
+        async with self._semaphore:
+            return await loop.run_in_executor(
+                None,
+                self._download_snapshot,
+                manifest,
+            )
+
+    def _download_snapshot(self, manifest: ModelManifest) -> Path:
+        from huggingface_hub import snapshot_download  # type: ignore
+
+        patterns = [entry.filename for entry in manifest.files]
+        kwargs = {
+            "repo_id": manifest.repo_id,
+            "revision": manifest.revision,
+            "allow_patterns": patterns,
+        }
+        if self._cache_dir is not None:
+            kwargs["cache_dir"] = str(self._cache_dir)
+
+        try:
+            local_snapshot = snapshot_download(
+                **kwargs,
+                local_files_only=True,
+            )
+            snapshot_path = Path(local_snapshot)
+            if _snapshot_complete(snapshot_path, manifest):
+                return snapshot_path
+        except Exception:
+            # A missing or partial local snapshot is repaired by the pinned
+            # network download below.
+            pass
+
+        try:
+            local_snapshot = snapshot_download(**kwargs, local_files_only=False)
+        except Exception as exc:
+            raise ModelLoadFailedError(
+                message=f"Failed to download model snapshot {manifest.repo_id}: {exc}",
+                retryable=True,
+            ) from exc
+
+        snapshot_path = Path(local_snapshot)
+        if not _snapshot_complete(snapshot_path, manifest):
+            raise ModelLoadFailedError(
+                message=f"Model snapshot {manifest.repo_id} is incomplete",
+                retryable=False,
+            )
+        return snapshot_path
+
     def _download_one(self, manifest: ModelManifest, entry: ModelFile) -> Path:
         from huggingface_hub import hf_hub_download  # type: ignore
 
@@ -147,3 +224,34 @@ class ModelDownloader:
                 retryable=False,
             )
         return local
+
+
+def _snapshot_complete(snapshot_path: Path, manifest: ModelManifest) -> bool:
+    """Check that every required snapshot file exists and is non-empty."""
+
+    return all(
+        (snapshot_path / entry.filename).is_file()
+        and (snapshot_path / entry.filename).stat().st_size > 0
+        for entry in manifest.files
+    )
+
+
+async def ensure_default_model_artifacts(hf_home: Path) -> VieneuModelArtifacts:
+    """Download the pinned v3 Turbo CPU snapshots and return their local paths.
+
+    The local-only attempt makes subsequent application starts fast and
+    offline-safe. A network request is made only when the pinned snapshot is
+    missing or incomplete.
+    """
+
+    home = Path(hf_home)
+    home.mkdir(parents=True, exist_ok=True)
+    downloader = ModelDownloader(cache_dir=home / "hub")
+    vieneu_manifest, codec_manifest = default_manifests()
+    backbone_dir = await downloader.download_snapshot(vieneu_manifest)
+    codec_dir = await downloader.download_snapshot(codec_manifest)
+    return VieneuModelArtifacts(
+        backbone_dir=backbone_dir,
+        onnx_dir=backbone_dir / "onnx_int8",
+        codec_dir=codec_dir,
+    )

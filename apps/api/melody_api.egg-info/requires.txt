@@ -12,3 +12,5 @@ capcut-tts-api
 vieneu-core
 vieneu
 pyinstaller>=6.21.0
+torch>=2.13.0
+torchaudio>=2.11.0

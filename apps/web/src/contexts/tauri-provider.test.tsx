@@ -26,18 +26,27 @@ vi.mock("@/lib/api-client", () => ({
 }));
 
 type OutputHandler = (line: string) => void;
+type ProcessEventHandler = (payload: unknown) => void;
 
 function makeSidecar() {
   const stdoutHandlers: OutputHandler[] = [];
   const stderrHandlers: OutputHandler[] = [];
+  const processEventHandlers: Record<"error" | "close", ProcessEventHandler[]> = {
+    error: [],
+    close: [],
+  };
   const child = { kill: vi.fn().mockResolvedValue(undefined) };
   const command = {
     stdout: { on: vi.fn((_event: string, handler: OutputHandler) => stdoutHandlers.push(handler)) },
     stderr: { on: vi.fn((_event: string, handler: OutputHandler) => stderrHandlers.push(handler)) },
+    on: vi.fn((event: "error" | "close", handler: ProcessEventHandler) => {
+      processEventHandlers[event].push(handler);
+      return command;
+    }),
     spawn: vi.fn().mockResolvedValue(child),
   };
 
-  return { child, command, stdoutHandlers, stderrHandlers };
+  return { child, command, stdoutHandlers, stderrHandlers, processEventHandlers };
 }
 
 function ContextProbe() {
@@ -111,6 +120,27 @@ describe("TauriProvider", () => {
     expect(bridge.setApiConnection).toHaveBeenCalledWith("http://127.0.0.1:43127", "random-token");
   });
 
+  it("recognizes a Uvicorn port split across output chunks", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    bridge.sidecar.mockReturnValue(sidecar.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    act(() => {
+      sidecar.stdoutHandlers[0]("Uvicorn running on http://127.0.0.1:");
+      sidecar.stdoutHandlers[0]("43128 (Press CTRL+C to quit)");
+    });
+
+    expect(await screen.findByText("desktop:ready")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith("http://127.0.0.1:43128/api/v1/health/live", { method: "GET" });
+  });
+
   it("awaits sidecar shutdown and can restart it with a fresh process", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const first = makeSidecar();
@@ -149,6 +179,24 @@ describe("TauriProvider", () => {
 
     expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
     expect(screen.getByText("Error: sidecar unavailable")).toBeInTheDocument();
+  });
+
+  it("surfaces a sidecar process error without waiting for the startup timeout", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    bridge.sidecar.mockReturnValue(sidecar.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    act(() => sidecar.processEventHandlers.error[0]("permission denied"));
+
+    expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+    expect(screen.getByText("Error: Sidecar process error: permission denied")).toBeInTheDocument();
   });
 
   it("surfaces a timeout error with the xattr workaround when the sidecar never prints a port", async () => {

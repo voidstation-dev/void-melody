@@ -43,6 +43,7 @@ function makeSidecar() {
   const command = {
     stdout: { on: vi.fn((_event: string, handler: OutputHandler) => stdoutHandlers.push(handler)) },
     stderr: { on: vi.fn() },
+    on: vi.fn(),
     spawn: vi.fn().mockResolvedValue(child),
   };
   return { child, command, stdoutHandlers };

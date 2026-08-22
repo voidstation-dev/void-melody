@@ -205,4 +205,23 @@ class ModelManager:
             os.environ.setdefault("HF_HOME", hf_home)
         from vieneu import Vieneu  # type: ignore
 
-        return Vieneu(mode="v3turbo", device="auto", backend="auto", precision="int8")
+        kwargs: dict[str, Any] = {
+            "mode": "v3turbo",
+            "device": "auto",
+            "backend": "auto",
+            "precision": "int8",
+        }
+        backbone_dir = os.environ.get("VIENEU_V3_TURBO_MODEL_DIR")
+        onnx_dir = os.environ.get("VIENEU_V3_TURBO_ONNX_DIR")
+        codec_dir = os.environ.get("VIENEU_V3_TURBO_CODEC_DIR")
+        if all(
+            value and Path(value).is_dir()
+            for value in (backbone_dir, onnx_dir, codec_dir)
+        ):
+            kwargs.update(
+                backbone_repo=backbone_dir,
+                onnx_dir=onnx_dir,
+                codec_dir=codec_dir,
+            )
+
+        return Vieneu(**kwargs)

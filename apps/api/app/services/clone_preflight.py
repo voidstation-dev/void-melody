@@ -46,7 +46,7 @@ async def preflight_clone_reference(reference_audio_path: Path) -> None:
     try:
         await asyncio.wait_for(
             preflight(reference_audio_path),
-            timeout=settings.tts_provider_timeout_seconds,
+            timeout=settings.vieneu_clone_timeout_seconds,
         )
     except ClonePreflightError:
         raise

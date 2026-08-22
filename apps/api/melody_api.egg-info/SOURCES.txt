@@ -16,6 +16,9 @@ tests/test_build_configuration.py
 tests/test_capcut_provider.py
 tests/test_chunk_executor.py
 tests/test_circuit_breaker.py
+tests/test_clone_orchestrator.py
+tests/test_clone_preflight.py
+tests/test_custom_voice_jobs.py
 tests/test_database_migrations.py
 tests/test_endpoints.py
 tests/test_job_creation_limits.py
@@ -24,6 +27,8 @@ tests/test_job_recovery.py
 tests/test_local_auth.py
 tests/test_logging_security.py
 tests/test_m4a_conversion.py
+tests/test_omnivoice_runtime.py
+tests/test_omnivoice_worker_unit.py
 tests/test_progress_reporter.py
 tests/test_provider_registry.py
 tests/test_queue_manager.py
@@ -33,5 +38,8 @@ tests/test_sqlite_concurrency.py
 tests/test_tts_worker.py
 tests/test_vieneu_chaos.py
 tests/test_vieneu_provider.py
+tests/test_voice_analysis.py
 tests/test_voice_catalog.py
 tests/test_voice_cloning.py
+tests/test_voice_library.py
+tests/test_voice_resolver.py

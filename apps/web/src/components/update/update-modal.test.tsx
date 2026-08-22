@@ -61,6 +61,7 @@ async function renderModal(update: ReturnType<typeof makeUpdate>) {
   const command = {
     stdout: { on: vi.fn((_event: string, handler: (line: string) => void) => stdoutHandlers.push(handler)) },
     stderr: { on: vi.fn() },
+    on: vi.fn(),
     spawn: vi.fn().mockResolvedValue(child),
   };
   bridge.sidecar.mockReturnValue(command);
