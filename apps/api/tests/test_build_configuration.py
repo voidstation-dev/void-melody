@@ -17,3 +17,10 @@ def test_pyinstaller_bundles_huggingface_for_startup_model_bootstrap():
     command = get_pyinstaller_command()
 
     assert "--hidden-import=huggingface_hub" in command
+
+
+def test_pyinstaller_includes_the_runpy_sidecar_application_module():
+    command = get_pyinstaller_command()
+
+    assert "sidecar_entrypoint.py" in command
+    assert "--hidden-import=app.main" in command

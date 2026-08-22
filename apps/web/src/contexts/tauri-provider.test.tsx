@@ -225,10 +225,12 @@ describe("TauriProvider", () => {
     expect(await screen.findByText("desktop:ready")).toBeInTheDocument();
   });
 
-  it("shows the existing startup error screen when the sidecar cannot spawn", async () => {
+  it("renders an opaque sidecar spawn rejection without its path or token", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const sidecar = makeSidecar();
-    sidecar.command.spawn.mockRejectedValue(new Error("sidecar unavailable"));
+    const rawRejection =
+      "sidecar unavailable at /Users/alice/.config/VoidMelody with MELODY_API_TOKEN=secret-token";
+    sidecar.command.spawn.mockRejectedValue(new Error(rawRejection));
     bridge.sidecar.mockReturnValue(sidecar.command);
 
     render(
@@ -238,15 +240,18 @@ describe("TauriProvider", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
-    expect(screen.getByText("Error: sidecar unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Sidecar failed to start")).toBeInTheDocument();
+    expect(screen.queryByText(/\/Users\/alice|MELODY_API_TOKEN|secret-token/)).not.toBeInTheDocument();
   });
 
-  it("surfaces a failed restart instead of leaving an unhandled rejection", async () => {
+  it("renders an opaque restart rejection without leaving an unhandled rejection", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const first = makeSidecar();
     const second = makeSidecar();
-    first.command.spawn.mockRejectedValue(new Error("initial sidecar unavailable"));
-    second.command.spawn.mockRejectedValue(new Error("restart sidecar unavailable"));
+    first.command.spawn.mockRejectedValue(new Error("initial sidecar unavailable at /tmp/secret-token"));
+    second.command.spawn.mockRejectedValue(
+      new Error("restart sidecar unavailable at /Users/alice/.cache with HF_TOKEN=secret-token"),
+    );
     bridge.sidecar.mockReturnValueOnce(first.command).mockReturnValueOnce(second.command);
 
     render(
@@ -255,10 +260,28 @@ describe("TauriProvider", () => {
       </TauriProvider>,
     );
 
-    expect(await screen.findByText("Error: initial sidecar unavailable")).toBeInTheDocument();
+    expect(await screen.findByText("Sidecar failed to start")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Restart API / Thử lại" }));
 
-    expect(await screen.findByText("Error: restart sidecar unavailable")).toBeInTheDocument();
+    await waitFor(() => expect(second.command.spawn).toHaveBeenCalledOnce());
+    expect(await screen.findByText("Sidecar failed to start")).toBeInTheDocument();
+    expect(screen.queryByText(/\/Users\/alice|HF_TOKEN|secret-token/)).not.toBeInTheDocument();
+  });
+
+  it("renders an opaque preflight invoke rejection safely", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    bridge.invoke.mockRejectedValue(
+      new Error("failed to invoke at /Users/alice/.config/VoidMelody with MELODY_API_TOKEN=secret-token"),
+    );
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    expect(await screen.findByText("Sidecar failed to start")).toBeInTheDocument();
+    expect(screen.queryByText(/\/Users\/alice|MELODY_API_TOKEN|secret-token/)).not.toBeInTheDocument();
   });
 
   it("surfaces a sidecar process error without waiting for the startup timeout", async () => {
@@ -276,7 +299,7 @@ describe("TauriProvider", () => {
     act(() => sidecar.processEventHandlers.error[0]("permission denied"));
 
     expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
-    expect(screen.getByText("Error: Sidecar process error")).toBeInTheDocument();
+    expect(screen.getByText("Sidecar process error")).toBeInTheDocument();
   });
 
   it("does not render or log raw sidecar output when startup exits", async () => {

@@ -36,6 +36,7 @@ def get_pyinstaller_command() -> list[str]:
         "melody-api",
         "--paths",
         ".",
+        "--hidden-import=app.main",
         "--hidden-import=aiosqlite",
         "--hidden-import=app.utils.audio_utils",
         "--hidden-import=vieneu_core",

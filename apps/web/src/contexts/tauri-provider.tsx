@@ -31,6 +31,28 @@ type TauriContextValue = {
 };
 
 const TauriContext = createContext<TauriContextValue | null>(null);
+const STARTUP_TIMEOUT_MESSAGE = "Local API did not start in time";
+const SIDECAR_PROCESS_ERROR_MESSAGE = "Sidecar process error";
+const GENERIC_STARTUP_ERROR_MESSAGE = "Sidecar failed to start";
+const SIDECAR_EXIT_MESSAGE = /^Sidecar exited before API became ready \((exit code|signal) (-?\d+)\)$/;
+
+function formatStartupError(reason: unknown) {
+  if (!(reason instanceof Error)) return GENERIC_STARTUP_ERROR_MESSAGE;
+
+  if (
+    reason.message === STARTUP_TIMEOUT_MESSAGE ||
+    reason.message === SIDECAR_PROCESS_ERROR_MESSAGE
+  ) {
+    return reason.message;
+  }
+
+  const exitMatch = reason.message.match(SIDECAR_EXIT_MESSAGE);
+  if (exitMatch && Number.isSafeInteger(Number(exitMatch[2]))) {
+    return `Sidecar exited before API became ready (${exitMatch[1]} ${Number(exitMatch[2])})`;
+  }
+
+  return GENERIC_STARTUP_ERROR_MESSAGE;
+}
 
 function hasTauriRuntime() {
   return (
@@ -141,7 +163,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         rejectReady?.(reason);
       };
       startupTimer = setTimeout(
-        () => rejectStartup(new Error("Local API did not start in time")),
+        () => rejectStartup(new Error(STARTUP_TIMEOUT_MESSAGE)),
         startupTimeoutMs,
       );
 
@@ -206,7 +228,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       sidecar.stdout.on("data", (line) => handleOutput(line, "STDOUT"));
       sidecar.stderr.on("data", (line) => handleOutput(line, "STDERR"));
       sidecar.on("error", () => {
-        rejectStartup(new Error("Sidecar process error"));
+        rejectStartup(new Error(SIDECAR_PROCESS_ERROR_MESSAGE));
       });
       sidecar.on("close", ({ code, signal }) => {
         const exitReason =
@@ -279,7 +301,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
   const handleRestart = useCallback(() => {
     void restartSidecar().catch((reason: unknown) => {
       console.error("Failed to restart Tauri sidecar");
-      if (mountedRef.current) setError(String(reason));
+      if (mountedRef.current) setError(formatStartupError(reason));
     });
   }, [restartSidecar]);
 
@@ -299,7 +321,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     void startSidecar().catch((reason: unknown) => {
       console.error("Failed to bootstrap Tauri sidecar");
       if (mountedRef.current) {
-        setError(String(reason));
+        setError(formatStartupError(reason));
       }
     });
 
@@ -317,7 +339,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
   );
 
   if (error) {
-    const isStartupTimeout = error.includes("did not start in time");
+    const isStartupTimeout = error === STARTUP_TIMEOUT_MESSAGE;
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 p-8 text-center text-destructive">
         <h2 className="text-xl font-bold">Failed to start local API</h2>
