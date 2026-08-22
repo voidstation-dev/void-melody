@@ -10,6 +10,7 @@ const bridge = vi.hoisted(() => ({
   resolveResource: vi.fn(),
   setApiConnection: vi.fn(),
   sidecar: vi.fn(),
+  invoke: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/path", () => ({
@@ -19,6 +20,10 @@ vi.mock("@tauri-apps/api/path", () => ({
 
 vi.mock("@tauri-apps/plugin-shell", () => ({
   Command: { sidecar: bridge.sidecar },
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: bridge.invoke,
 }));
 
 vi.mock("@/lib/api-client", () => ({
@@ -72,6 +77,17 @@ describe("TauriProvider", () => {
     bridge.resolveResource.mockImplementation(async (path: string) => `/resources/${path}`);
     bridge.setApiConnection.mockReset();
     bridge.sidecar.mockReset();
+    bridge.invoke.mockResolvedValue({
+      platform: "macos",
+      arch: "aarch64",
+      targetTriple: "aarch64-apple-darwin",
+      hostEnvironmentRequired: [],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg", present: true },
+        { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+      ],
+    });
     vi.stubGlobal("crypto", { randomUUID: vi.fn(() => "random-token") });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
   });
@@ -88,7 +104,50 @@ describe("TauriProvider", () => {
     );
 
     expect(await screen.findByText("browser:ready")).toBeInTheDocument();
+    expect(bridge.invoke).not.toHaveBeenCalled();
     expect(bridge.sidecar).not.toHaveBeenCalled();
+  });
+
+  it("does not spawn the sidecar when a bundled resource is missing", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    bridge.invoke.mockResolvedValue({
+      platform: "windows",
+      arch: "x86_64",
+      targetTriple: "x86_64-pc-windows-msvc",
+      hostEnvironmentRequired: [],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg.exe", present: false },
+        { name: "bin/melody-api-x86_64-pc-windows-msvc.exe", present: true },
+      ],
+    });
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Desktop runtime check failed" })).toBeInTheDocument();
+    expect(bridge.sidecar).not.toHaveBeenCalled();
+    expect(screen.getByText("bin/ffmpeg.exe")).toBeInTheDocument();
+    expect(screen.getByText("Windows x64")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Restart API / Thử lại" })).not.toBeInTheDocument();
+  });
+
+  it("does not spawn the sidecar when an injected environment value is missing", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    bridge.resolveResource.mockResolvedValue(" ");
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Desktop runtime check failed" })).toBeInTheDocument();
+    expect(bridge.sidecar).not.toHaveBeenCalled();
+    expect(screen.getByText("MELODY_CATALOG_PATH")).toBeInTheDocument();
   });
 
   it("preserves authenticated random-port bootstrap and reports desktop readiness", async () => {
@@ -103,6 +162,7 @@ describe("TauriProvider", () => {
     );
 
     await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    expect(bridge.invoke).toHaveBeenCalledWith("get_runtime_preflight");
     expect(bridge.sidecar).toHaveBeenCalledWith("bin/melody-api", [], {
       env: expect.objectContaining({
         API_HOST: "127.0.0.1",

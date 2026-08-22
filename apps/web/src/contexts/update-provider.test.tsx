@@ -9,6 +9,7 @@ const bridge = vi.hoisted(() => ({
   resolveResource: vi.fn(),
   setApiConnection: vi.fn(),
   sidecar: vi.fn(),
+  invoke: vi.fn(),
   check: vi.fn(),
   getVersion: vi.fn(),
   relaunch: vi.fn(),
@@ -21,6 +22,10 @@ vi.mock("@tauri-apps/api/path", () => ({
 }));
 
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: bridge.getVersion }));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: bridge.invoke,
+}));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({
   Command: { sidecar: bridge.sidecar },
@@ -135,6 +140,17 @@ describe("UpdateProvider checks", () => {
     bridge.resolveResource.mockImplementation(async (path: string) => `/resources/${path}`);
     bridge.setApiConnection.mockReset();
     bridge.sidecar.mockReset();
+    bridge.invoke.mockReset().mockResolvedValue({
+      platform: "macos",
+      arch: "aarch64",
+      targetTriple: "aarch64-apple-darwin",
+      hostEnvironmentRequired: [],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg", present: true },
+        { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+      ],
+    });
     bridge.check.mockReset();
     bridge.getVersion.mockReset().mockResolvedValue("0.2.0");
     bridge.relaunch.mockReset().mockResolvedValue(undefined);
@@ -436,6 +452,17 @@ describe("UpdateProvider installation", () => {
     bridge.resolveResource.mockImplementation(async (path: string) => `/resources/${path}`);
     bridge.setApiConnection.mockReset();
     bridge.sidecar.mockReset();
+    bridge.invoke.mockReset().mockResolvedValue({
+      platform: "macos",
+      arch: "aarch64",
+      targetTriple: "aarch64-apple-darwin",
+      hostEnvironmentRequired: [],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg", present: true },
+        { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+      ],
+    });
     bridge.check.mockReset();
     bridge.getVersion.mockReset().mockResolvedValue("0.2.0");
     bridge.relaunch.mockReset().mockResolvedValue(undefined);

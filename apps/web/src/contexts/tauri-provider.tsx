@@ -10,9 +10,18 @@ import {
   useState,
 } from "react";
 import { Command, type Child } from "@tauri-apps/plugin-shell";
+import { invoke } from "@tauri-apps/api/core";
 import { appDataDir, resolveResource } from "@tauri-apps/api/path";
 import { Loader2 } from "lucide-react";
 import { setApiConnection } from "@/lib/api-client";
+import {
+  buildSidecarEnvironment,
+  evaluateNativePreflight,
+  formatPreflightFailure,
+  type RuntimePreflight,
+  type RuntimePreflightFailure,
+  validateSidecarEnvironment,
+} from "@/lib/desktop-runtime-preflight";
 
 type TauriContextValue = {
   isDesktop: boolean;
@@ -33,6 +42,18 @@ function hasTauriRuntime() {
   );
 }
 
+function runtimePlatformLabel(failure: RuntimePreflightFailure) {
+  if (failure.platform === "macos" && failure.targetTriple.startsWith("aarch64-")) {
+    return "macOS ARM64";
+  }
+
+  if (failure.platform === "windows" && failure.targetTriple.startsWith("x86_64-")) {
+    return "Windows x64";
+  }
+
+  return null;
+}
+
 export function useTauri() {
   const context = useContext(TauriContext);
   if (!context) {
@@ -45,6 +66,8 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
   const [isDesktop, setIsDesktop] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preflightFailure, setPreflightFailure] =
+    useState<RuntimePreflightFailure | null>(null);
   const mountedRef = useRef(false);
   const sidecarProcessRef = useRef<Child | null>(null);
   const startPromiseRef = useRef<Promise<void> | null>(null);
@@ -55,27 +78,45 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     if (startPromiseRef.current) return startPromiseRef.current;
 
     const start = (async () => {
+      const runtimePreflight = await invoke<RuntimePreflight>(
+        "get_runtime_preflight",
+      );
+      const nativePreflight = evaluateNativePreflight(runtimePreflight);
+      if (!nativePreflight.ok) {
+        setPreflightFailure({
+          platform: runtimePreflight.platform,
+          targetTriple: runtimePreflight.targetTriple,
+          missingEnv: [],
+          missingResources: nativePreflight.missingResources,
+        });
+        return;
+      }
+
       const apiToken = crypto.randomUUID();
       const [dataDir, catalogPath] = await Promise.all([
         appDataDir(),
         resolveResource("bin/Voice.json"),
       ]);
+      const env = buildSidecarEnvironment({ apiToken, dataDir, catalogPath });
+      const environmentPreflight = validateSidecarEnvironment(env);
+      if (!environmentPreflight.ok) {
+        setPreflightFailure({
+          platform: runtimePreflight.platform,
+          targetTriple: runtimePreflight.targetTriple,
+          missingEnv: environmentPreflight.missing,
+          missingResources: [],
+        });
+        return;
+      }
 
-      console.log("Starting sidecar with:", { dataDir, catalogPath });
+      console.info("Starting sidecar runtime", {
+        platform: runtimePreflight.platform,
+        targetTriple: runtimePreflight.targetTriple,
+        environmentKeys: Object.keys(env),
+      });
 
       const sidecar = Command.sidecar("bin/melody-api", [], {
-        env: {
-          PYTHONUNBUFFERED: "1",
-          APP_ENV: "production",
-          API_HOST: "127.0.0.1",
-          API_PORT: "0",
-          MELODY_API_TOKEN: apiToken,
-          MELODY_DATA_DIR: dataDir,
-          MELODY_CATALOG_PATH: catalogPath,
-          TTS_APPLY_RATE_WITH_FFMPEG: "true",
-          TTS_QUEUE_CONCURRENCY: "1",
-          TTS_CHUNK_CONCURRENCY: "1",
-        },
+        env,
       });
 
       let resolveReady: (() => void) | undefined;
@@ -301,6 +342,41 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (preflightFailure) {
+    const platformLabel = runtimePlatformLabel(preflightFailure);
+    const diagnosticReport = formatPreflightFailure(preflightFailure);
+
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 p-8 text-center text-destructive">
+        <h2 className="text-xl font-bold">Desktop runtime check failed</h2>
+        {platformLabel && <p className="text-sm font-semibold text-foreground">{platformLabel}</p>}
+        {preflightFailure.missingEnv.length > 0 && (
+          <div className="max-w-md text-left text-sm">
+            <p className="font-semibold text-foreground">Thiếu environment do app inject</p>
+            <ul className="mt-1 list-disc pl-5 font-mono">
+              {preflightFailure.missingEnv.map((name) => <li key={name}>{name}</li>)}
+            </ul>
+          </div>
+        )}
+        {preflightFailure.missingResources.length > 0 && (
+          <div className="max-w-md text-left text-sm">
+            <p className="font-semibold text-foreground">Thiếu file trong installer</p>
+            <ul className="mt-1 list-disc pl-5 font-mono">
+              {preflightFailure.missingResources.map((name) => <li key={name}>{name}</li>)}
+            </ul>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => void navigator.clipboard?.writeText(diagnosticReport)}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+        >
+          Copy diagnostic report
+        </button>
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import manifest from "./desktop-runtime-manifest.json";
+import appMetadata from "../../package.json";
 
 export type DesktopTarget =
   | "aarch64-apple-darwin"
@@ -40,6 +41,13 @@ export type NativePreflightEvaluation = {
     | "unsupported-target"
     | "host-environment-required"
     | null;
+};
+
+export type RuntimePreflightFailure = {
+  platform: RuntimePreflight["platform"];
+  targetTriple: string;
+  missingEnv: string[];
+  missingResources: string[];
 };
 
 export const desktopRuntimeManifest = manifest;
@@ -145,20 +153,27 @@ export function validateSidecarEnvironment(
   };
 }
 
-export function formatPreflightFailure(report: PreflightReport): string {
-  const knownNames = new Set([
-    ...manifest.requiredSidecarEnv,
+export function formatPreflightFailure(
+  failure: RuntimePreflightFailure,
+): string {
+  const knownEnvironment = new Set(manifest.requiredSidecarEnv);
+  const knownResources = new Set([
     ...manifest.requiredResources,
+    ...Object.values(manifest.supportedTargets).flatMap((target) => [
+      target.ffmpeg,
+      target.sidecar,
+    ]),
   ]);
-  const safeMissing = report.missing.filter((name) => knownNames.has(name));
 
-  if (report.ok) {
-    return "Runtime preflight passed";
-  }
-
-  if (safeMissing.length === 0) {
-    return "Missing runtime configuration";
-  }
-
-  return `Missing runtime configuration: ${safeMissing.join(", ")}`;
+  return JSON.stringify({
+    appVersion: appMetadata.version,
+    platform: failure.platform,
+    targetTriple: failure.targetTriple,
+    missingEnvironment: failure.missingEnv.filter((name) =>
+      knownEnvironment.has(name),
+    ),
+    missingResources: failure.missingResources.filter((name) =>
+      knownResources.has(name),
+    ),
+  });
 }

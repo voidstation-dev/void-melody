@@ -181,20 +181,34 @@ describe("desktop runtime preflight", () => {
     expect(result.missing).toContain("MELODY_API_TOKEN");
   });
 
-  it("formats only missing variable names in a preflight failure", () => {
-    expect(formatPreflightFailure({
-      ok: false,
-      missing: ["MELODY_API_TOKEN", "MELODY_DATA_DIR"],
-    })).toBe("Missing runtime configuration: MELODY_API_TOKEN, MELODY_DATA_DIR");
+  it("formats a sanitized diagnostic report without runtime values or paths", () => {
+    const report = formatPreflightFailure({
+      platform: "windows",
+      targetTriple: "x86_64-pc-windows-msvc",
+      missingEnv: ["MELODY_CATALOG_PATH", "MELODY_API_TOKEN=secret"],
+      missingResources: ["bin/Voice.json", "/Users/test/private-file"],
+    });
+
+    expect(JSON.parse(report)).toEqual({
+      appVersion: "0.3.0",
+      platform: "windows",
+      targetTriple: "x86_64-pc-windows-msvc",
+      missingEnvironment: ["MELODY_CATALOG_PATH"],
+      missingResources: ["bin/Voice.json"],
+    });
+    expect(report).not.toContain("secret");
+    expect(report).not.toContain("/Users/test");
   });
 
   it("does not emit malformed value-bearing missing entries", () => {
     const message = formatPreflightFailure({
-      ok: false,
-      missing: ["MELODY_API_TOKEN=secret"],
+      platform: "macos",
+      targetTriple: "aarch64-apple-darwin",
+      missingEnv: ["MELODY_API_TOKEN=secret"],
+      missingResources: ["/Applications/VoidMelody.app/Contents/Resources/bin/Voice.json"],
     });
 
     expect(message).not.toContain("MELODY_API_TOKEN=secret");
-    expect(message).toBe("Missing runtime configuration");
+    expect(message).not.toContain("/Applications/VoidMelody.app");
   });
 });
