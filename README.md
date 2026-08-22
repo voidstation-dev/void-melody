@@ -88,7 +88,7 @@ The API sidecar input is generated at `apps/web/src-tauri/bin/melody-api-<target
 
 ## Installed desktop app and first launch
 
-The signed installer package is self-contained: it bundles the API sidecar, FFmpeg, the `Voice.json` catalog, and the desktop runtime manifest for its native target. End users do **not** need to install Python, Node.js, pnpm, Rust, or FFmpeg, and do not need to create a `.env` file or set shell, user, or system environment variables. The prerequisites above apply only to development builds from this repository.
+The installer package is self-contained: it bundles the API sidecar, FFmpeg, the `Voice.json` catalog, and the desktop runtime manifest for its native target. End users do **not** need to install Python, Node.js, pnpm, Rust, or FFmpeg, and do not need to create a `.env` file or set shell, user, or system environment variables. The prerequisites above apply only to development builds from this repository.
 
 On the first launch, VoidMelody can download the VieNeu model artifacts that are not already present. They are stored in the app data directory, not inside the installed `.app` bundle or installer directory. Keep the app online until that first model download finishes; later launches reuse the local cache.
 
