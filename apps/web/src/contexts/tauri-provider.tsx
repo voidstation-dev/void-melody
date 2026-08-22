@@ -97,9 +97,35 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
   const mountedRef = useRef(false);
   const sidecarProcessRef = useRef<Child | null>(null);
   const intentionalShutdownProcessesRef = useRef(new WeakSet<Child>());
+  const pluginKillFailedProcessesRef = useRef(new WeakSet<Child>());
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const shutdownPromiseRef = useRef<Promise<void> | null>(null);
   const restartPromiseRef = useRef<Promise<void> | null>(null);
+
+  const stopSidecarProcess = useCallback(async (process: Child) => {
+    intentionalShutdownProcessesRef.current.add(process);
+
+    if (!pluginKillFailedProcessesRef.current.has(process)) {
+      try {
+        await process.kill();
+      } catch {
+        pluginKillFailedProcessesRef.current.add(process);
+      }
+    }
+
+    if (pluginKillFailedProcessesRef.current.has(process)) {
+      try {
+        await invoke("terminate_sidecar_pid", { pid: process.pid });
+      } catch {
+        intentionalShutdownProcessesRef.current.delete(process);
+        throw new Error(SIDECAR_SHUTDOWN_ERROR_MESSAGE);
+      }
+    }
+
+    if (sidecarProcessRef.current === process) {
+      sidecarProcessRef.current = null;
+    }
+  }, []);
 
   const startSidecar = useCallback(() => {
     if (startPromiseRef.current) return startPromiseRef.current;
@@ -239,6 +265,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         }
         if (process) {
           intentionalShutdownProcessesRef.current.delete(process);
+          pluginKillFailedProcessesRef.current.delete(process);
         }
       };
 
@@ -294,7 +321,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       if (!mountedRef.current) {
         clearTimeout(startupTimer);
         try {
-          await process.kill();
+          await stopSidecarProcess(process);
         } catch {
           // ignore
         }
@@ -308,7 +335,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       startPromiseRef.current = null;
     });
     return startPromiseRef.current;
-  }, []);
+  }, [stopSidecarProcess]);
 
   const shutdownSidecar = useCallback(async () => {
     if (!hasTauriRuntime()) return;
@@ -317,23 +344,14 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     const process = sidecarProcessRef.current;
     const shutdown = (async () => {
       if (process) {
-        intentionalShutdownProcessesRef.current.add(process);
-        try {
-          await process.kill();
-        } catch {
-          intentionalShutdownProcessesRef.current.delete(process);
-          throw new Error(SIDECAR_SHUTDOWN_ERROR_MESSAGE);
-        }
-        if (sidecarProcessRef.current === process) {
-          sidecarProcessRef.current = null;
-        }
+        await stopSidecarProcess(process);
       }
     })();
     shutdownPromiseRef.current = shutdown.finally(() => {
       shutdownPromiseRef.current = null;
     });
     return shutdownPromiseRef.current;
-  }, []);
+  }, [stopSidecarProcess]);
 
   const restartSidecar = useCallback(async () => {
     if (!hasTauriRuntime()) return;

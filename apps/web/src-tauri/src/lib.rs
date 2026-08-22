@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
@@ -97,6 +98,52 @@ fn runtime_resource_path(
     }
 }
 
+fn validate_sidecar_pid(pid: u32) -> Result<NonZeroU32, ()> {
+    let pid = NonZeroU32::new(pid).ok_or(())?;
+
+    #[cfg(unix)]
+    if pid.get() > i32::MAX as u32 {
+        return Err(());
+    }
+
+    Ok(pid)
+}
+
+fn terminate_sidecar_process(pid: NonZeroU32) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        if unsafe { libc::kill(pid.get() as libc::pid_t, libc::SIGTERM) } == 0 {
+            return Ok(());
+        }
+        return Err(std::io::Error::last_os_error());
+    }
+
+    #[cfg(windows)]
+    {
+        let pid = pid.get().to_string();
+        let status = std::process::Command::new("taskkill.exe")
+            .args(["/PID", &pid, "/T", "/F"])
+            .status()?;
+        if status.success() {
+            return Ok(());
+        }
+        return Err(std::io::Error::other("taskkill failed"));
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = pid;
+        Err(std::io::Error::other("unsupported platform"))
+    }
+}
+
+#[tauri::command]
+fn terminate_sidecar_pid(pid: u32) -> Result<(), String> {
+    let pid =
+        validate_sidecar_pid(pid).map_err(|_| "Unable to stop sidecar process".to_string())?;
+    terminate_sidecar_process(pid).map_err(|_| "Unable to stop sidecar process".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -162,6 +209,15 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn sidecar_pid_must_be_non_zero() {
+        assert!(validate_sidecar_pid(0).is_err());
+        assert_eq!(validate_sidecar_pid(42).unwrap().get(), 42);
+
+        #[cfg(unix)]
+        assert!(validate_sidecar_pid(u32::MAX).is_err());
     }
 }
 
@@ -251,7 +307,10 @@ pub fn run() {
         })
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
-        .invoke_handler(tauri::generate_handler![get_runtime_preflight])
+        .invoke_handler(tauri::generate_handler![
+            get_runtime_preflight,
+            terminate_sidecar_pid
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

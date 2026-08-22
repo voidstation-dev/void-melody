@@ -40,7 +40,7 @@ function makeSidecar() {
     error: [],
     close: [],
   };
-  const child = { kill: vi.fn().mockResolvedValue(undefined) };
+  const child = { pid: 41_004, kill: vi.fn().mockResolvedValue(undefined) };
   const command = {
     stdout: { on: vi.fn((_event: string, handler: OutputHandler) => stdoutHandlers.push(handler)) },
     stderr: { on: vi.fn((_event: string, handler: OutputHandler) => stderrHandlers.push(handler)) },
@@ -225,38 +225,84 @@ describe("TauriProvider", () => {
     expect(await screen.findByText("desktop:ready")).toBeInTheDocument();
   });
 
-  it("keeps the child available for retry when shutdown kill fails", async () => {
+  it("falls back to native PID termination before restarting after plugin kill fails", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
-    const sidecar = makeSidecar();
-    sidecar.child.kill
-      .mockRejectedValueOnce(new Error("failed to kill /tmp/sidecar with MELODY_API_TOKEN=secret-token"))
-      .mockResolvedValueOnce(undefined);
-    bridge.sidecar.mockReturnValue(sidecar.command);
-    let shutdownSidecar!: () => Promise<void>;
-
-    function ShutdownProbe() {
-      const { shutdownSidecar: shutdown } = useTauri();
-      React.useEffect(() => {
-        shutdownSidecar = shutdown;
-      }, [shutdown]);
-      return <output>ready</output>;
-    }
+    const first = makeSidecar();
+    const second = makeSidecar();
+    first.child.kill.mockRejectedValue(
+      new Error("failed to kill /tmp/sidecar with MELODY_API_TOKEN=secret-token"),
+    );
+    bridge.sidecar.mockReturnValueOnce(first.command).mockReturnValueOnce(second.command);
 
     render(
       <TauriProvider>
-        <ShutdownProbe />
+        <ContextProbe />
       </TauriProvider>,
     );
 
-    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
-    act(() => sidecar.stdoutHandlers[0]("Listening on 127.0.0.1:41004"));
-    await screen.findByText("ready");
-    await waitFor(() => expect(shutdownSidecar).toBeTypeOf("function"));
+    await waitFor(() => expect(first.command.spawn).toHaveBeenCalledOnce());
+    act(() => first.stdoutHandlers[0]("Listening on 127.0.0.1:41004"));
+    await screen.findByText("desktop:ready");
 
-    await expect(shutdownSidecar()).rejects.toThrow("Sidecar failed to stop");
-    await shutdownSidecar();
+    act(() => first.processEventHandlers.error[0]("sidecar failure"));
+    await screen.findByRole("button", { name: "Restart API / Thử lại" });
+    fireEvent.click(screen.getByRole("button", { name: "Restart API / Thử lại" }));
 
-    expect(sidecar.child.kill).toHaveBeenCalledTimes(2);
+    await waitFor(() =>
+      expect(bridge.invoke).toHaveBeenCalledWith("terminate_sidecar_pid", {
+        pid: first.child.pid,
+      }),
+    );
+    await waitFor(() => expect(second.command.spawn).toHaveBeenCalledOnce());
+
+    expect(first.child.kill).toHaveBeenCalledOnce();
+  });
+
+  it("does not restart when plugin and native PID termination both fail", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const first = makeSidecar();
+    const replacement = makeSidecar();
+    first.child.kill.mockRejectedValue(
+      new Error("failed to kill /tmp/sidecar with MELODY_API_TOKEN=secret-token"),
+    );
+    bridge.invoke
+      .mockResolvedValueOnce({
+        platform: "macos",
+        arch: "aarch64",
+        targetTriple: "aarch64-apple-darwin",
+        hostEnvironmentRequired: [],
+        resources: [
+          { name: "bin/Voice.json", present: true },
+          { name: "bin/ffmpeg", present: true },
+          { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+        ],
+      })
+      .mockRejectedValueOnce(
+        new Error("failed to kill /tmp/sidecar with MELODY_API_TOKEN=secret-token"),
+      );
+    bridge.sidecar.mockReturnValueOnce(first.command).mockReturnValueOnce(replacement.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(first.command.spawn).toHaveBeenCalledOnce());
+    act(() => first.stdoutHandlers[0]("Listening on 127.0.0.1:41004"));
+    await screen.findByText("desktop:ready");
+
+    act(() => first.processEventHandlers.error[0]("sidecar failure"));
+    await screen.findByRole("button", { name: "Restart API / Thử lại" });
+    fireEvent.click(screen.getByRole("button", { name: "Restart API / Thử lại" }));
+
+    expect(await screen.findByText("Sidecar failed to stop")).toBeInTheDocument();
+    expect(replacement.command.spawn).not.toHaveBeenCalled();
+    expect(screen.queryByText(/\/tmp\/sidecar|MELODY_API_TOKEN|secret-token/)).not.toBeInTheDocument();
+
+    expect(bridge.invoke).toHaveBeenCalledWith("terminate_sidecar_pid", {
+      pid: first.child.pid,
+    });
   });
 
   it("does not report the close from an intentional shutdown as a crash", async () => {
