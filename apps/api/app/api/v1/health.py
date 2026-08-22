@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import AsyncSessionLocal
+from app.services.runtime_diagnostics import build_runtime_report
 from app.services.voice_catalog import voice_catalog
 from app.workers.queue_manager import queue_manager
 
@@ -27,6 +28,11 @@ async def health_check():
 @router.get("/health/live")
 async def liveness_check():
     return _liveness_payload()
+
+
+@router.get("/health/runtime")
+async def runtime_health_check():
+    return build_runtime_report()
 
 
 async def _database_ready() -> bool:
