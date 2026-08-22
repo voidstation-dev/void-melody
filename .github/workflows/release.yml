@@ -75,6 +75,9 @@ jobs:
       - name: Set up desktop dependencies
         run: pnpm setup:desktop
 
+      - name: Verify target-specific desktop bundle inputs
+        run: pnpm verify:desktop-bundle -- --target ${{ matrix.target }}
+
       - name: Run API tests
         run: pnpm test:api
 
