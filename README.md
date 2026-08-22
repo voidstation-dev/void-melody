@@ -86,6 +86,16 @@ Build artifacts are written below `apps/web/src-tauri/target/release/bundle/`:
 
 The API sidecar input is generated at `apps/web/src-tauri/bin/melody-api-<target-triple>` (with `.exe` on Windows). These generated files are ignored by Git.
 
+## Installed desktop app and first launch
+
+The signed installer package is self-contained: it bundles the API sidecar, FFmpeg, the `Voice.json` catalog, and the desktop runtime manifest for its native target. End users do **not** need to install Python, Node.js, pnpm, Rust, or FFmpeg, and do not need to create a `.env` file or set shell, user, or system environment variables. The prerequisites above apply only to development builds from this repository.
+
+On the first launch, VoidMelody can download the VieNeu model artifacts that are not already present. They are stored in the app data directory, not inside the installed `.app` bundle or installer directory. Keep the app online until that first model download finishes; later launches reuse the local cache.
+
+Before starting the local API, the app checks its native platform and the bundled runtime files. A failure screen distinguishes an app-injected environment value from a missing installer resource. Use **Copy diagnostic report** and send only that sanitized report to support. Do not send a `.env` file, token, private/signing key, absolute-path details, or a full environment-variable dump.
+
+Apple Developer ID notarization and Windows Authenticode code signing are release-policy work separate from this runtime packaging. Until the relevant certificates are configured, Gatekeeper or SmartScreen warnings may occur; they do not mean that an environment variable is missing.
+
 ## Release and update workflow
 
 ### One-time release signing setup
