@@ -225,6 +225,63 @@ describe("TauriProvider", () => {
     expect(await screen.findByText("desktop:ready")).toBeInTheDocument();
   });
 
+  it("keeps the child available for retry when shutdown kill fails", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    sidecar.child.kill
+      .mockRejectedValueOnce(new Error("failed to kill /tmp/sidecar with MELODY_API_TOKEN=secret-token"))
+      .mockResolvedValueOnce(undefined);
+    bridge.sidecar.mockReturnValue(sidecar.command);
+    let shutdownSidecar!: () => Promise<void>;
+
+    function ShutdownProbe() {
+      const { shutdownSidecar: shutdown } = useTauri();
+      React.useEffect(() => {
+        shutdownSidecar = shutdown;
+      }, [shutdown]);
+      return <output>ready</output>;
+    }
+
+    render(
+      <TauriProvider>
+        <ShutdownProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    act(() => sidecar.stdoutHandlers[0]("Listening on 127.0.0.1:41004"));
+    await screen.findByText("ready");
+    await waitFor(() => expect(shutdownSidecar).toBeTypeOf("function"));
+
+    await expect(shutdownSidecar()).rejects.toThrow("Sidecar failed to stop");
+    await shutdownSidecar();
+
+    expect(sidecar.child.kill).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not report the close from an intentional shutdown as a crash", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    bridge.sidecar.mockReturnValue(sidecar.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    act(() => sidecar.stdoutHandlers[0]("Listening on 127.0.0.1:41005"));
+    await screen.findByText("desktop:ready");
+
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    await waitFor(() => expect(sidecar.child.kill).toHaveBeenCalledOnce());
+    act(() => sidecar.processEventHandlers.close[0]({ code: 0, signal: null }));
+
+    expect(screen.queryByRole("heading", { name: "Failed to start local API" })).not.toBeInTheDocument();
+    expect(screen.getByText("desktop:ready")).toBeInTheDocument();
+  });
+
   it("renders an opaque sidecar spawn rejection without its path or token", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const sidecar = makeSidecar();
@@ -242,6 +299,31 @@ describe("TauriProvider", () => {
     expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
     expect(screen.getByText("Sidecar failed to start")).toBeInTheDocument();
     expect(screen.queryByText(/\/Users\/alice|MELODY_API_TOKEN|secret-token/)).not.toBeInTheDocument();
+  });
+
+  it("clears startup cleanup when sidecar spawn rejects", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    sidecar.command.spawn.mockRejectedValue(new Error("sidecar unavailable"));
+    bridge.sidecar.mockReturnValue(sidecar.command);
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      render(
+        <TauriProvider>
+          <ContextProbe />
+        </TauriProvider>,
+      );
+
+      expect(await screen.findByText("Sidecar failed to start")).toBeInTheDocument();
+      expect(vi.getTimerCount()).toBe(0);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("renders an opaque restart rejection without leaving an unhandled rejection", async () => {
@@ -300,6 +382,55 @@ describe("TauriProvider", () => {
 
     expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
     expect(screen.getByText("Sidecar process error")).toBeInTheDocument();
+  });
+
+  it("leaves ready state and renders a safe error when the running sidecar closes", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    bridge.sidecar.mockReturnValue(sidecar.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    act(() => sidecar.stdoutHandlers[0]("Listening on 127.0.0.1:41003"));
+    await screen.findByText("desktop:ready");
+
+    act(() => sidecar.processEventHandlers.close[0]({ code: 9, signal: null }));
+
+    expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+    expect(screen.getByText("Sidecar exited unexpectedly")).toBeInTheDocument();
+    expect(screen.queryByText("desktop:ready")).not.toBeInTheDocument();
+  });
+
+  it("leaves ready state and renders a safe error when the running sidecar errors", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    const replacement = makeSidecar();
+    bridge.sidecar.mockReturnValueOnce(sidecar.command).mockReturnValueOnce(replacement.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    act(() => sidecar.stdoutHandlers[0]("Listening on 127.0.0.1:41006"));
+    await screen.findByText("desktop:ready");
+
+    act(() => sidecar.processEventHandlers.error[0]("MELODY_API_TOKEN=secret-token"));
+
+    expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+    expect(screen.getByText("Sidecar process error")).toBeInTheDocument();
+    expect(screen.queryByText(/MELODY_API_TOKEN|secret-token/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Restart API / Thử lại" }));
+    await waitFor(() => expect(sidecar.child.kill).toHaveBeenCalledOnce());
+    await waitFor(() => expect(replacement.command.spawn).toHaveBeenCalledOnce());
   });
 
   it("does not render or log raw sidecar output when startup exits", async () => {

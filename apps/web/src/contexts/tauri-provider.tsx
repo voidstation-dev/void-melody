@@ -33,6 +33,8 @@ type TauriContextValue = {
 const TauriContext = createContext<TauriContextValue | null>(null);
 const STARTUP_TIMEOUT_MESSAGE = "Local API did not start in time";
 const SIDECAR_PROCESS_ERROR_MESSAGE = "Sidecar process error";
+const SIDECAR_UNEXPECTED_EXIT_MESSAGE = "Sidecar exited unexpectedly";
+const SIDECAR_SHUTDOWN_ERROR_MESSAGE = "Sidecar failed to stop";
 const GENERIC_STARTUP_ERROR_MESSAGE = "Sidecar failed to start";
 const SIDECAR_EXIT_MESSAGE = /^Sidecar exited before API became ready \((exit code|signal) (-?\d+)\)$/;
 
@@ -41,7 +43,9 @@ function formatStartupError(reason: unknown) {
 
   if (
     reason.message === STARTUP_TIMEOUT_MESSAGE ||
-    reason.message === SIDECAR_PROCESS_ERROR_MESSAGE
+    reason.message === SIDECAR_PROCESS_ERROR_MESSAGE ||
+    reason.message === SIDECAR_UNEXPECTED_EXIT_MESSAGE ||
+    reason.message === SIDECAR_SHUTDOWN_ERROR_MESSAGE
   ) {
     return reason.message;
   }
@@ -92,6 +96,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     useState<RuntimePreflightFailure | null>(null);
   const mountedRef = useRef(false);
   const sidecarProcessRef = useRef<Child | null>(null);
+  const intentionalShutdownProcessesRef = useRef(new WeakSet<Child>());
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const shutdownPromiseRef = useRef<Promise<void> | null>(null);
   const restartPromiseRef = useRef<Promise<void> | null>(null);
@@ -145,10 +150,13 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       let rejectReady: ((reason: Error) => void) | undefined;
       let didResolve = false;
       let didReject = false;
+      let didReportRuntimeFailure = false;
+      let process: Child | null = null;
       const readyPromise = new Promise<void>((resolve, reject) => {
         resolveReady = resolve;
         rejectReady = reject;
       });
+      void readyPromise.catch(() => undefined);
 
       // If the sidecar never prints a port (e.g. macOS Gatekeeper quarantines
       // the bundled binary and blocks its launch silently), the ready promise
@@ -157,7 +165,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       const startupTimeoutMs = 30_000;
       let startupTimer: ReturnType<typeof setTimeout>;
       const rejectStartup = (reason: Error) => {
-        if (didResolve || didReject || !mountedRef.current) return;
+        if (didResolve || didReject) return;
         didReject = true;
         clearTimeout(startupTimer);
         rejectReady?.(reason);
@@ -225,24 +233,64 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
+      const clearSidecarProcess = () => {
+        if (process && sidecarProcessRef.current === process) {
+          sidecarProcessRef.current = null;
+        }
+        if (process) {
+          intentionalShutdownProcessesRef.current.delete(process);
+        }
+      };
+
+      const reportSidecarFailure = (reason: Error) => {
+        if (didResolve) {
+          if (
+            didReportRuntimeFailure ||
+            !mountedRef.current ||
+            (process && intentionalShutdownProcessesRef.current.has(process))
+          ) {
+            return;
+          }
+          didReportRuntimeFailure = true;
+          setIsReady(false);
+          setError(formatStartupError(reason));
+          return;
+        }
+
+        rejectStartup(reason);
+      };
+
       sidecar.stdout.on("data", (line) => handleOutput(line, "STDOUT"));
       sidecar.stderr.on("data", (line) => handleOutput(line, "STDERR"));
       sidecar.on("error", () => {
-        rejectStartup(new Error(SIDECAR_PROCESS_ERROR_MESSAGE));
+        reportSidecarFailure(new Error(SIDECAR_PROCESS_ERROR_MESSAGE));
       });
       sidecar.on("close", ({ code, signal }) => {
+        if (process && intentionalShutdownProcessesRef.current.has(process)) {
+          clearSidecarProcess();
+          return;
+        }
+        clearSidecarProcess();
         const exitReason =
           code !== null && code !== undefined
             ? `exit code ${code}`
             : signal !== null && signal !== undefined
               ? `signal ${signal}`
               : "unknown reason";
-        rejectStartup(
-          new Error(`Sidecar exited before API became ready (${exitReason})`),
+        reportSidecarFailure(
+          didResolve
+            ? new Error(SIDECAR_UNEXPECTED_EXIT_MESSAGE)
+            : new Error(`Sidecar exited before API became ready (${exitReason})`),
         );
       });
 
-      const process = await sidecar.spawn();
+      try {
+        process = await sidecar.spawn();
+      } catch (reason) {
+        const spawnError = reason instanceof Error ? reason : new Error(GENERIC_STARTUP_ERROR_MESSAGE);
+        rejectStartup(spawnError);
+        throw spawnError;
+      }
       if (!mountedRef.current) {
         clearTimeout(startupTimer);
         try {
@@ -267,13 +315,17 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     if (shutdownPromiseRef.current) return shutdownPromiseRef.current;
 
     const process = sidecarProcessRef.current;
-    sidecarProcessRef.current = null;
     const shutdown = (async () => {
       if (process) {
+        intentionalShutdownProcessesRef.current.add(process);
         try {
           await process.kill();
         } catch {
-          // ignore
+          intentionalShutdownProcessesRef.current.delete(process);
+          throw new Error(SIDECAR_SHUTDOWN_ERROR_MESSAGE);
+        }
+        if (sidecarProcessRef.current === process) {
+          sidecarProcessRef.current = null;
         }
       }
     })();
@@ -327,11 +379,9 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mountedRef.current = false;
-      const process = sidecarProcessRef.current;
-      sidecarProcessRef.current = null;
-      if (process) void process.kill();
+      void shutdownSidecar().catch(() => undefined);
     };
-  }, [startSidecar]);
+  }, [shutdownSidecar, startSidecar]);
 
   const contextValue = useMemo(
     () => ({ isDesktop, isReady, shutdownSidecar, restartSidecar }),
