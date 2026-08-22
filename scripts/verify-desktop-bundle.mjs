@@ -11,11 +11,13 @@ const TARGET_INPUTS = {
   "aarch64-apple-darwin": [
     "bin/melody-api-aarch64-apple-darwin",
     "bin/ffmpeg",
+    "bin/ffmpeg-aarch64-apple-darwin",
     "bin/Voice.json",
   ],
   "x86_64-pc-windows-msvc": [
     "bin/melody-api-x86_64-pc-windows-msvc.exe",
     "bin/ffmpeg.exe",
+    "bin/ffmpeg-x86_64-pc-windows-msvc.exe",
     "bin/Voice.json",
   ],
 };

@@ -98,6 +98,22 @@ describe("desktop bundle verifier", () => {
     expect(result.missing).toContain("bin/ffmpeg");
   });
 
+  it.each([
+    ["aarch64-apple-darwin", "bin/ffmpeg-aarch64-apple-darwin"],
+    ["x86_64-pc-windows-msvc", "bin/ffmpeg-x86_64-pc-windows-msvc.exe"],
+  ])("requires a non-empty target-suffixed FFmpeg input for %s", (target, targetFfmpeg) => {
+    const result = verifyDesktopBundle({
+      rootDir: "/fixture",
+      target,
+      exists: () => true,
+      size: (relativePath) => (relativePath === targetFfmpeg ? 0 : 1),
+      readFile: readFixtureFile,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.missing).toContain(targetFfmpeg);
+  });
+
   it("requires a schema v1 manifest entry for the selected target", () => {
     const result = verifyDesktopBundle({
       rootDir: "/fixture",
@@ -176,6 +192,7 @@ describe("desktop bundle verifier", () => {
     try {
       writeFixtureFile(rootDir, "apps/web/src-tauri/bin/melody-api-aarch64-apple-darwin");
       writeFixtureFile(rootDir, "apps/web/src-tauri/bin/ffmpeg");
+      writeFixtureFile(rootDir, "apps/web/src-tauri/bin/ffmpeg-aarch64-apple-darwin");
       writeFixtureFile(rootDir, "apps/web/src-tauri/bin/Voice.json", "[]");
       writeFixtureFile(rootDir, "apps/web/src/lib/desktop-runtime-manifest.json", manifest);
       writeFixtureFile(rootDir, "apps/web/src-tauri/tauri.conf.json", tauriConfig);
