@@ -1,8 +1,13 @@
+import json
 import os
 import platform
 import shutil
 import subprocess
 import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def get_target_triple():
@@ -58,6 +63,33 @@ def get_pyinstaller_command() -> list[str]:
     ]
 
 
+def get_source_revision() -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=PROJECT_ROOT,
+            text=True,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+def write_sidecar_manifest(destination: str, target_triple: str) -> None:
+    manifest_path = Path(f"{destination}.manifest.json")
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source_revision": get_source_revision(),
+                "target_triple": target_triple,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def main():
     target_triple = get_target_triple()
     print(f"Detected target triple: {target_triple}")
@@ -79,6 +111,7 @@ def main():
 
     print(f"Copying {src_bin} to {dest_bin}")
     shutil.copy2(src_bin, dest_bin)
+    write_sidecar_manifest(dest_bin, target_triple)
     
     # Also copy Voice.json if present
     voice_json_src = "../../vendor/capcut-tts-api/Voice.json"

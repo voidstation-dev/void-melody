@@ -109,6 +109,16 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         STDERR: "",
       };
 
+      const recentSidecarOutput = () =>
+        (["STDERR", "STDOUT"] as const)
+          .map((source) => {
+            const output = outputBuffers[source].trim();
+            return output ? `${source}: ${output}` : "";
+          })
+          .filter(Boolean)
+          .join("\n")
+          .slice(-2_000);
+
       const probeHealth = async (url: string) => {
         for (let attempt = 0; attempt < 15; attempt++) {
           try {
@@ -166,7 +176,12 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       sidecar.stdout.on("data", (line) => handleOutput(line, "STDOUT"));
       sidecar.stderr.on("data", (line) => handleOutput(line, "STDERR"));
       sidecar.on("error", (reason) => {
-        rejectStartup(new Error(`Sidecar process error: ${String(reason)}`));
+        const output = recentSidecarOutput();
+        rejectStartup(
+          new Error(
+            `Sidecar process error: ${String(reason)}${output ? `\n${output}` : ""}`,
+          ),
+        );
       });
       sidecar.on("close", ({ code, signal }) => {
         const exitReason =
@@ -175,8 +190,11 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
             : signal !== null && signal !== undefined
               ? `signal ${signal}`
               : "unknown reason";
+        const output = recentSidecarOutput();
         rejectStartup(
-          new Error(`Sidecar exited before API became ready (${exitReason})`),
+          new Error(
+            `Sidecar exited before API became ready (${exitReason})${output ? `\n${output}` : ""}`,
+          ),
         );
       });
 
@@ -236,6 +254,13 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     return restartPromiseRef.current;
   }, [shutdownSidecar, startSidecar]);
 
+  const handleRestart = useCallback(() => {
+    void restartSidecar().catch((reason: unknown) => {
+      console.error("Failed to restart Tauri sidecar", reason);
+      if (mountedRef.current) setError(String(reason));
+    });
+  }, [restartSidecar]);
+
   useEffect(() => {
     mountedRef.current = true;
     const desktop = hasTauriRuntime();
@@ -277,7 +302,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         <p className="font-mono text-sm">{error}</p>
         <button
           type="button"
-          onClick={() => void restartSidecar()}
+          onClick={handleRestart}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
         >
           Restart API / Thử lại
