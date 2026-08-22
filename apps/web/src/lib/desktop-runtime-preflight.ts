@@ -124,6 +124,8 @@ export function buildSidecarEnvironment({
   dataDir,
   catalogPath,
 }: SidecarEnvironmentInput): SidecarEnvironment {
+  const modelCacheDir = `${dataDir}/models`;
+
   return {
     PYTHONUNBUFFERED: "1",
     APP_ENV: "production",
@@ -132,6 +134,8 @@ export function buildSidecarEnvironment({
     MELODY_API_TOKEN: apiToken,
     MELODY_DATA_DIR: dataDir,
     MELODY_CATALOG_PATH: catalogPath,
+    VIENEU_HF_HOME: modelCacheDir,
+    HF_HOME: modelCacheDir,
     TTS_APPLY_RATE_WITH_FFMPEG: "true",
     TTS_QUEUE_CONCURRENCY: "1",
     TTS_CHUNK_CONCURRENCY: "1",

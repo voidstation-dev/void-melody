@@ -59,7 +59,7 @@ def get_pyinstaller_command() -> list[str]:
         "--noconfirm",
         "--distpath",
         "./dist",
-        "app/main.py",
+        "sidecar_entrypoint.py",
     ]
 
 

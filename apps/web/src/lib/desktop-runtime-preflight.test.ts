@@ -157,6 +157,8 @@ describe("desktop runtime preflight", () => {
       MELODY_API_TOKEN: "runtime-token",
       MELODY_DATA_DIR: "/Users/test/Library/Application Support/VoidMelody",
       MELODY_CATALOG_PATH: "/Applications/VoidMelody.app/Contents/Resources/bin/Voice.json",
+      VIENEU_HF_HOME: "/Users/test/Library/Application Support/VoidMelody/models",
+      HF_HOME: "/Users/test/Library/Application Support/VoidMelody/models",
       TTS_APPLY_RATE_WITH_FFMPEG: "true",
       TTS_QUEUE_CONCURRENCY: "1",
       TTS_CHUNK_CONCURRENCY: "1",

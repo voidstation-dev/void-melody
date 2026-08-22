@@ -276,28 +276,40 @@ describe("TauriProvider", () => {
     act(() => sidecar.processEventHandlers.error[0]("permission denied"));
 
     expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
-    expect(screen.getByText("Error: Sidecar process error: permission denied")).toBeInTheDocument();
+    expect(screen.getByText("Error: Sidecar process error")).toBeInTheDocument();
   });
 
-  it("includes recent sidecar output when startup exits with a code", async () => {
+  it("does not render or log raw sidecar output when startup exits", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const sidecar = makeSidecar();
     bridge.sidecar.mockReturnValue(sidecar.command);
+    const rawOutput =
+      "HF_TOKEN=hf_example-token /Users/alice/Library/Application Support/VoidMelody/models";
+    const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    render(
-      <TauriProvider>
-        <ContextProbe />
-      </TauriProvider>,
-    );
+    try {
+      render(
+        <TauriProvider>
+          <ContextProbe />
+        </TauriProvider>,
+      );
 
-    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
-    act(() => {
-      sidecar.stderrHandlers[0]("RuntimeError: TRIAL_STATE_CORRUPTED");
-      sidecar.processEventHandlers.close[0]({ code: 3, signal: null });
-    });
+      await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+      act(() => {
+        sidecar.stderrHandlers[0](rawOutput);
+        sidecar.processEventHandlers.close[0]({ code: 3, signal: null });
+      });
 
-    expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
-    expect(screen.getByText(/TRIAL_STATE_CORRUPTED/)).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+      expect(screen.getByText(/exit code 3/)).toBeInTheDocument();
+      expect(screen.queryByText(/HF_TOKEN=|\/Users\/alice/)).not.toBeInTheDocument();
+      expect(consoleLog).not.toHaveBeenCalledWith("[API STDERR]:", rawOutput);
+      expect(consoleError.mock.calls.flat().join(" ")).not.toContain(rawOutput);
+    } finally {
+      consoleLog.mockRestore();
+      consoleError.mockRestore();
+    }
   });
 
   it("surfaces a timeout error with the xattr workaround when the sidecar never prints a port", async () => {

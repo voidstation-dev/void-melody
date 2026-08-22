@@ -145,20 +145,10 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         startupTimeoutMs,
       );
 
-      const outputBuffers: Record<"STDOUT" | "STDERR", string> = {
+      const portDetectionBuffers: Record<"STDOUT" | "STDERR", string> = {
         STDOUT: "",
         STDERR: "",
       };
-
-      const recentSidecarOutput = () =>
-        (["STDERR", "STDOUT"] as const)
-          .map((source) => {
-            const output = outputBuffers[source].trim();
-            return output ? `${source}: ${output}` : "";
-          })
-          .filter(Boolean)
-          .join("\n")
-          .slice(-2_000);
 
       const probeHealth = async (url: string) => {
         for (let attempt = 0; attempt < 15; attempt++) {
@@ -185,13 +175,12 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       };
 
       const handleOutput = (line: string, source: "STDOUT" | "STDERR") => {
-        console.log(`[API ${source}]:`, line);
         if (didResolve || didReject || !mountedRef.current) return;
-        const normalizedLine = `${outputBuffers[source]}${line}`.replace(
+        const normalizedLine = `${portDetectionBuffers[source]}${line}`.replace(
           /\u001b\[[0-?]*[ -/]*[@-~]/g,
           "",
         );
-        outputBuffers[source] = normalizedLine.slice(-1024);
+        portDetectionBuffers[source] = normalizedLine.slice(-1024);
         // Ignore HTTP access log lines like `INFO: 127.0.0.1:55140 - "GET ..."`
         if (
           /-\s+"[A-Z]+\s+/.test(normalizedLine) ||
@@ -216,13 +205,8 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
       sidecar.stdout.on("data", (line) => handleOutput(line, "STDOUT"));
       sidecar.stderr.on("data", (line) => handleOutput(line, "STDERR"));
-      sidecar.on("error", (reason) => {
-        const output = recentSidecarOutput();
-        rejectStartup(
-          new Error(
-            `Sidecar process error: ${String(reason)}${output ? `\n${output}` : ""}`,
-          ),
-        );
+      sidecar.on("error", () => {
+        rejectStartup(new Error("Sidecar process error"));
       });
       sidecar.on("close", ({ code, signal }) => {
         const exitReason =
@@ -231,11 +215,8 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
             : signal !== null && signal !== undefined
               ? `signal ${signal}`
               : "unknown reason";
-        const output = recentSidecarOutput();
         rejectStartup(
-          new Error(
-            `Sidecar exited before API became ready (${exitReason})${output ? `\n${output}` : ""}`,
-          ),
+          new Error(`Sidecar exited before API became ready (${exitReason})`),
         );
       });
 
@@ -297,7 +278,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
   const handleRestart = useCallback(() => {
     void restartSidecar().catch((reason: unknown) => {
-      console.error("Failed to restart Tauri sidecar", reason);
+      console.error("Failed to restart Tauri sidecar");
       if (mountedRef.current) setError(String(reason));
     });
   }, [restartSidecar]);
@@ -316,7 +297,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     }
 
     void startSidecar().catch((reason: unknown) => {
-      console.error("Failed to bootstrap Tauri sidecar", reason);
+      console.error("Failed to bootstrap Tauri sidecar");
       if (mountedRef.current) {
         setError(String(reason));
       }
