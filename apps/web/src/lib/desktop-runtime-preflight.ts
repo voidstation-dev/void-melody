@@ -21,7 +21,91 @@ export type PreflightReport = {
   missing: string[];
 };
 
+export type RuntimePreflight = {
+  platform: "macos" | "windows" | "unsupported";
+  arch: string;
+  targetTriple: string;
+  resources: Array<{
+    name: string;
+    present: boolean;
+  }>;
+  hostEnvironmentRequired: string[];
+};
+
+export type NativePreflightEvaluation = {
+  ok: boolean;
+  missingResources: string[];
+  unsupportedReason:
+    | "unsupported-platform"
+    | "unsupported-target"
+    | "host-environment-required"
+    | null;
+};
+
 export const desktopRuntimeManifest = manifest;
+
+function isDesktopTarget(targetTriple: string): targetTriple is DesktopTarget {
+  return targetTriple in manifest.supportedTargets;
+}
+
+export function evaluateNativePreflight(
+  report: RuntimePreflight,
+): NativePreflightEvaluation {
+  if (report.platform !== "macos" && report.platform !== "windows") {
+    return {
+      ok: false,
+      missingResources: [],
+      unsupportedReason: "unsupported-platform",
+    };
+  }
+
+  if (!isDesktopTarget(report.targetTriple)) {
+    return {
+      ok: false,
+      missingResources: [],
+      unsupportedReason: "unsupported-target",
+    };
+  }
+
+  const target = manifest.supportedTargets[report.targetTriple];
+  if (target.platform !== report.platform) {
+    return {
+      ok: false,
+      missingResources: [],
+      unsupportedReason: "unsupported-target",
+    };
+  }
+
+  if (
+    report.hostEnvironmentRequired.length !== manifest.hostEnvironmentRequired.length
+    || report.hostEnvironmentRequired.some(
+      (name, index) => name !== manifest.hostEnvironmentRequired[index],
+    )
+  ) {
+    return {
+      ok: false,
+      missingResources: [],
+      unsupportedReason: "host-environment-required",
+    };
+  }
+
+  const requiredResources = [
+    ...manifest.requiredResources,
+    target.ffmpeg,
+    target.sidecar,
+  ];
+  const missingResources = requiredResources.filter((name) =>
+    !report.resources.some(
+      (resource) => resource.name === name && resource.present,
+    ),
+  );
+
+  return {
+    ok: missingResources.length === 0,
+    missingResources,
+    unsupportedReason: null,
+  };
+}
 
 export function buildSidecarEnvironment({
   apiToken,

@@ -1,11 +1,107 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSidecarEnvironment,
+  evaluateNativePreflight,
   formatPreflightFailure,
   validateSidecarEnvironment,
 } from "./desktop-runtime-preflight";
 
 describe("desktop runtime preflight", () => {
+  it("rejects a Windows report when the target-specific sidecar is absent", () => {
+    const result = evaluateNativePreflight({
+      platform: "windows",
+      arch: "x86_64",
+      targetTriple: "x86_64-pc-windows-msvc",
+      hostEnvironmentRequired: [],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg.exe", present: true },
+        { name: "bin/melody-api-x86_64-pc-windows-msvc.exe", present: false },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.missingResources).toEqual([
+      "bin/melody-api-x86_64-pc-windows-msvc.exe",
+    ]);
+  });
+
+  it("rejects reports from an unsupported platform", () => {
+    const result = evaluateNativePreflight({
+      platform: "unsupported",
+      arch: "x86_64",
+      targetTriple: "unsupported",
+      hostEnvironmentRequired: [],
+      resources: [],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      missingResources: [],
+      unsupportedReason: "unsupported-platform",
+    });
+  });
+
+  it("rejects a target triple that does not match the reported platform", () => {
+    const result = evaluateNativePreflight({
+      platform: "windows",
+      arch: "x86_64",
+      targetTriple: "aarch64-apple-darwin",
+      hostEnvironmentRequired: [],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg", present: true },
+        { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+      ],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      missingResources: [],
+      unsupportedReason: "unsupported-target",
+    });
+  });
+
+  it("rejects reports that require host environment configuration", () => {
+    const result = evaluateNativePreflight({
+      platform: "macos",
+      arch: "aarch64",
+      targetTriple: "aarch64-apple-darwin",
+      hostEnvironmentRequired: ["PATH"],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg", present: true },
+        { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+      ],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      missingResources: [],
+      unsupportedReason: "host-environment-required",
+    });
+  });
+
+  it("accepts a complete macOS report with no host dependencies", () => {
+    const result = evaluateNativePreflight({
+      platform: "macos",
+      arch: "aarch64",
+      targetTriple: "aarch64-apple-darwin",
+      hostEnvironmentRequired: [],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg", present: true },
+        { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+      ],
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      missingResources: [],
+      unsupportedReason: null,
+    });
+  });
+
   it("builds all required sidecar variables without persisting the token", () => {
     const env = buildSidecarEnvironment({
       apiToken: "runtime-token",
