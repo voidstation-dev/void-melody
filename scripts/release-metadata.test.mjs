@@ -183,3 +183,26 @@ test('release workflow installs Rust before metadata validation on two serialize
     ['aarch64-apple-darwin', 'x86_64-pc-windows-msvc'],
   );
 });
+
+test('release workflow checks out the validated tag ref and verifies locally produced release assets', () => {
+  const workflow = readFileSync(releaseWorkflow, 'utf8');
+  assert.match(
+    workflow,
+    /ref:\s+\${{ github\.event_name == 'workflow_dispatch' && format\('refs\/tags\/\{0\}', inputs\.tag\) \|\| github\.ref }}/,
+  );
+  assert.match(
+    workflow,
+    /RELEASE_TAG:\s+\${{ github\.event_name == 'workflow_dispatch' && inputs\.tag \|\| github\.ref_name }}/,
+  );
+  assert.ok(
+    workflow.indexOf('- name: Verify checkout matches release tag') > workflow.indexOf('- name: Validate release metadata'),
+  );
+  assert.ok(
+    workflow.indexOf('- name: Verify generated macOS release assets') > workflow.indexOf('- name: Build Tauri app'),
+  );
+  assert.ok(
+    workflow.indexOf('- name: Verify generated Windows release assets') > workflow.indexOf('- name: Build Tauri app'),
+  );
+  assert.match(workflow, /node scripts\/verify-release-assets\.mjs --target \$\{\{ matrix\.target \}\} --windows-updater nsis/);
+  assert.doesNotMatch(workflow, /if \[ -n "\$\{\{ github\.event\.inputs\.tag \}\}" \]/);
+});

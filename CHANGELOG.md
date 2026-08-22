@@ -14,12 +14,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Full localization (i18n) support with structured dictionary schema for Vietnamese and English.
 - Enhanced Audio Download Dialog with hyphen-separated tag append and right-aligned compact actions.
 - Resilient sidecar process supervision and safe background task termination capabilities in Tauri.
+- Target-aware desktop runtime preflight with sanitized diagnostics for the bundled sidecar, static FFmpeg, voice catalog, and runtime manifest.
+- Self-contained macOS ARM64 and Windows x64 desktop runtime inputs, including a portable static FFmpeg binary so installed apps and bundled desktop builds do not depend on system FFmpeg.
+- Hardened release pipeline that validates release metadata, builds only the checked-out release tag, requires updater signing, and verifies signed target-specific updater artifacts before the draft release proceeds.
 
 ### Fixed
 
 - Fixed transparent download format dropdown menu overlap in Job Queue cards.
 - Fixed ONNX runtime error message overflow with clean text wrapping and scrollbox.
 - Fixed orphaned sidecar processes locking binary during app restarts.
+- Restricted the packaged sidecar startup environment to the explicit runtime contract and added release preflight coverage for target-specific desktop bundle inputs.
 
 ## [0.2.6] - 2026-08-05
 

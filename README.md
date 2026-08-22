@@ -28,9 +28,9 @@ The supported desktop targets are macOS ARM64 (Apple Silicon) and Windows x64.
 | JavaScript package manager | `corepack prepare pnpm@10.11.0 --activate` | `corepack prepare pnpm@10.11.0 --activate` |
 | Python tooling | Python 3.9+ and [uv](https://docs.astral.sh/uv/) | Python 3.9+ and [uv](https://docs.astral.sh/uv/) |
 | Tauri build tooling | Rust stable and Xcode Command Line Tools (`xcode-select --install`) | Rust stable with the MSVC toolchain and Visual Studio 2022 Build Tools (Desktop development with C++, MSVC v143, and a Windows SDK) |
-| Runtime tools | `ffmpeg` on `PATH` (for example, `brew install ffmpeg`) | `ffmpeg` on `PATH` (for example, `winget install Gyan.FFmpeg`) and Microsoft Edge WebView2 Runtime |
+| Runtime tools | None | Microsoft Edge WebView2 Runtime |
 
-After installing FFmpeg on Windows, open a new terminal so its `PATH` change is available. The scripts below are identical in PowerShell, Command Prompt, macOS Terminal, and CI; do not use `source`, shell activation commands, or platform-specific path separators.
+`pnpm setup:desktop` downloads a portable static FFmpeg binary and bundles it with the sidecar, so a system FFmpeg installation is not required for desktop development builds, release bundles, or installed apps. If you run the API directly with `pnpm dev:api`, install FFmpeg on `PATH` (for example, `brew install ffmpeg` on macOS or `winget install Gyan.FFmpeg` on Windows) for audio processing. The scripts below are identical in PowerShell, Command Prompt, macOS Terminal, and CI; do not use `source`, shell activation commands, or platform-specific path separators.
 
 ## Fresh clone, setup, and run
 
@@ -125,7 +125,7 @@ The release workflow receives these secrets only in the Tauri build step. `GITHU
 
 ### On-demand release builds
 
-The release workflow also exposes a `workflow_dispatch` trigger for running the pipeline without a tag push. Provide the exact `vX.Y.Z` tag to build (it must equal the version in `tauri.conf.json`, `Cargo.toml`, and `apps/web/package.json`). This is useful for re-running a failed release build or rebuilding the artifact set after adding the updater signing secret. The workflow still creates (or updates) a draft release for that tag.
+The release workflow also exposes a `workflow_dispatch` trigger for running the pipeline without a tag push. Provide the exact `vX.Y.Z` tag to build (it must equal the version in `tauri.conf.json`, `Cargo.toml`, and `apps/web/package.json`). The workflow checks out that exact tag ref and confirms the checked-out commit matches it before building. This is useful for re-running a failed release build or rebuilding the artifact set after adding the updater signing secret. The workflow still creates (or updates) a draft release for that tag.
 
 ### Updater smoke tests and rollback
 
@@ -152,14 +152,14 @@ The setup command applies `patches/capcut-tts-api-succeed-status.patch` so CapCu
 
 ### FFmpeg cannot be found
 
-Install FFmpeg and confirm the executable is visible in a new terminal:
+This is only needed when running the API directly with `pnpm dev:api`; desktop setup and installed builds bundle portable FFmpeg. Install FFmpeg and confirm the executable is visible in a new terminal:
 
 ```bash
 ffmpeg -version
 pnpm setup:desktop
 ```
 
-On macOS, `brew install ffmpeg` is the usual installation method. On Windows, `winget install Gyan.FFmpeg` is one option. The setup workflow copies the discovered binary into the desktop bundle inputs.
+On macOS, `brew install ffmpeg` is the usual installation method. On Windows, `winget install Gyan.FFmpeg` is one option. Desktop setup downloads its own portable binary into the desktop bundle inputs instead of using this system installation.
 
 ### Windows build fails because WebView2 or MSVC is missing
 
