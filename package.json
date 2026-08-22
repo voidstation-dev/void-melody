@@ -17,6 +17,7 @@
     "dev:desktop": "pnpm sync:desktop-binaries && pnpm --dir apps/web tauri dev",
     "lint:web": "pnpm --dir apps/web lint",
     "test:web": "pnpm --dir apps/web test",
+    "test:desktop-runtime": "node --test scripts/sync-tauri-dev-binaries.test.mjs",
     "test:release-metadata": "node --test scripts/release-metadata.test.mjs",
     "test:api": "cd apps/api && uv run python -m pytest"
   },

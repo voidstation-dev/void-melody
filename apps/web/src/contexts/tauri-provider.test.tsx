@@ -241,6 +241,26 @@ describe("TauriProvider", () => {
     expect(screen.getByText("Error: sidecar unavailable")).toBeInTheDocument();
   });
 
+  it("surfaces a failed restart instead of leaving an unhandled rejection", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const first = makeSidecar();
+    const second = makeSidecar();
+    first.command.spawn.mockRejectedValue(new Error("initial sidecar unavailable"));
+    second.command.spawn.mockRejectedValue(new Error("restart sidecar unavailable"));
+    bridge.sidecar.mockReturnValueOnce(first.command).mockReturnValueOnce(second.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    expect(await screen.findByText("Error: initial sidecar unavailable")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Restart API / Thử lại" }));
+
+    expect(await screen.findByText("Error: restart sidecar unavailable")).toBeInTheDocument();
+  });
+
   it("surfaces a sidecar process error without waiting for the startup timeout", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const sidecar = makeSidecar();
@@ -257,6 +277,27 @@ describe("TauriProvider", () => {
 
     expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
     expect(screen.getByText("Error: Sidecar process error: permission denied")).toBeInTheDocument();
+  });
+
+  it("includes recent sidecar output when startup exits with a code", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    bridge.sidecar.mockReturnValue(sidecar.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    act(() => {
+      sidecar.stderrHandlers[0]("RuntimeError: TRIAL_STATE_CORRUPTED");
+      sidecar.processEventHandlers.close[0]({ code: 3, signal: null });
+    });
+
+    expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+    expect(screen.getByText(/TRIAL_STATE_CORRUPTED/)).toBeInTheDocument();
   });
 
   it("surfaces a timeout error with the xattr workaround when the sidecar never prints a port", async () => {
