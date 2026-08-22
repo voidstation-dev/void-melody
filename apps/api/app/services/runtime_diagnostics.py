@@ -25,8 +25,8 @@ def _port_is_valid(value: object) -> bool:
 
 def _data_directory_ready() -> bool:
     try:
-        settings.audio_storage_dir.parent.mkdir(parents=True, exist_ok=True)
-        return settings.audio_storage_dir.parent.is_dir()
+        data_dir = settings.audio_storage_dir.parent
+        return data_dir.is_dir() and os.access(data_dir, os.W_OK | os.X_OK)
     except OSError:
         return False
 

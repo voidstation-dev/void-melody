@@ -38,3 +38,23 @@ async def test_runtime_health_is_public_in_production_and_never_returns_token(
     assert response.status_code == 200
     assert response.json()["checks"]["MELODY_API_TOKEN"] is True
     assert token not in response.text
+
+
+@pytest.mark.asyncio
+async def test_runtime_health_reports_missing_data_directory_without_creating_it(
+    monkeypatch,
+    tmp_path,
+):
+    data_dir = tmp_path / "missing-data"
+    monkeypatch.setattr(settings, "audio_storage_dir", data_dir / "audio")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/api/v1/health/runtime")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "degraded"
+    assert response.json()["checks"]["MELODY_DATA_DIR"] is False
+    assert not data_dir.exists()
