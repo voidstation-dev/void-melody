@@ -68,7 +68,11 @@ export function evaluateNativePreflight(
   }
 
   const target = manifest.supportedTargets[report.targetTriple];
-  if (target.platform !== report.platform) {
+  const targetArchitecture = report.targetTriple.split("-", 1)[0];
+  if (
+    target.platform !== report.platform
+    || report.arch !== targetArchitecture
+  ) {
     return {
       ok: false,
       missingResources: [],

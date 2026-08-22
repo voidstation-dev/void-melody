@@ -62,6 +62,46 @@ describe("desktop runtime preflight", () => {
     });
   });
 
+  it("rejects a macOS target reported with a non-native architecture", () => {
+    const result = evaluateNativePreflight({
+      platform: "macos",
+      arch: "x86_64",
+      targetTriple: "aarch64-apple-darwin",
+      hostEnvironmentRequired: [],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg", present: true },
+        { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+      ],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      missingResources: [],
+      unsupportedReason: "unsupported-target",
+    });
+  });
+
+  it("rejects a Windows target reported with a non-native architecture", () => {
+    const result = evaluateNativePreflight({
+      platform: "windows",
+      arch: "aarch64",
+      targetTriple: "x86_64-pc-windows-msvc",
+      hostEnvironmentRequired: [],
+      resources: [
+        { name: "bin/Voice.json", present: true },
+        { name: "bin/ffmpeg.exe", present: true },
+        { name: "bin/melody-api-x86_64-pc-windows-msvc.exe", present: true },
+      ],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      missingResources: [],
+      unsupportedReason: "unsupported-target",
+    });
+  });
+
   it("rejects reports that require host environment configuration", () => {
     const result = evaluateNativePreflight({
       platform: "macos",
