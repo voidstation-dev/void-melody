@@ -24,14 +24,51 @@ RUNTIME_ENVIRONMENT_NAMES = frozenset(
     }
 )
 
+PYINSTALLER_RUNTIME_ENVIRONMENT_NAMES = frozenset(
+    {
+        # PyInstaller uses this to make a one-file child a fresh application
+        # instance instead of reusing the current extraction directory.
+        "PYINSTALLER_RESET_ENVIRONMENT",
+    }
+)
+
+OS_RUNTIME_ENVIRONMENT_NAMES = frozenset(
+    {
+        # Needed to locate executables and create temporary files on macOS and
+        # Windows. HOME and USERPROFILE are used by their respective platforms.
+        "PATH",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        # Windows requires its system directory for process startup. COMSPEC
+        # and PATHEXT keep command and executable resolution intact.
+        "SYSTEMROOT",
+        "WINDIR",
+        "COMSPEC",
+        "PATHEXT",
+    }
+)
+
+
+def _is_preserved_environment_name(name: str) -> bool:
+    normalized_name = name.upper()
+    return (
+        name in RUNTIME_ENVIRONMENT_NAMES
+        or normalized_name.startswith("_PYI_")
+        or normalized_name in PYINSTALLER_RUNTIME_ENVIRONMENT_NAMES
+        or normalized_name in OS_RUNTIME_ENVIRONMENT_NAMES
+    )
+
 
 def isolate_sidecar_environment(environ: Mapping[str, str]) -> dict[str, str]:
-    """Return only values intentionally injected by the desktop runtime."""
+    """Return the desktop contract and safe PyInstaller/OS runtime state."""
 
     return {
-        name: environ[name]
-        for name in RUNTIME_ENVIRONMENT_NAMES
-        if name in environ
+        name: value
+        for name, value in environ.items()
+        if _is_preserved_environment_name(name)
     }
 
 
