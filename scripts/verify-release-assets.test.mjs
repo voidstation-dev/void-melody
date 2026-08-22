@@ -16,9 +16,9 @@ function createFixture(target) {
   return { root, bundleDirectory };
 }
 
-function createFile(path) {
+function createFile(path, contents = 'fixture') {
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, 'fixture');
+  writeFileSync(path, contents);
 }
 
 function runVerifier(root, target, windowsUpdater) {
@@ -97,6 +97,38 @@ test('rejects an updater archive without its matching signature', () => {
     const result = runVerifier(root, 'x86_64-pc-windows-msvc', 'nsis');
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /matching updater signature/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects a zero-byte updater archive even when its matching signature exists', () => {
+  const { root, bundleDirectory } = createFixture('aarch64-apple-darwin');
+  try {
+    createFile(join(bundleDirectory, 'dmg', 'VoidMelody_0.3.0_aarch64.dmg'));
+    const updaterArchive = join(bundleDirectory, 'macos', 'VoidMelody.app.tar.gz');
+    createFile(updaterArchive, '');
+    createFile(`${updaterArchive}.sig`);
+
+    const result = runVerifier(root, 'aarch64-apple-darwin');
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Required release asset is empty/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('rejects a zero-byte updater signature', () => {
+  const { root, bundleDirectory } = createFixture('x86_64-pc-windows-msvc');
+  try {
+    createFile(join(bundleDirectory, 'nsis', 'VoidMelody_0.3.0_x64-setup.exe'));
+    const updaterArchive = join(bundleDirectory, 'nsis', 'VoidMelody_0.3.0_x64-setup.nsis.zip');
+    createFile(updaterArchive);
+    createFile(`${updaterArchive}.sig`, '');
+
+    const result = runVerifier(root, 'x86_64-pc-windows-msvc', 'nsis');
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Required release asset is empty/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

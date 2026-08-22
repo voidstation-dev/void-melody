@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 
 function fail(message) {
@@ -35,10 +35,19 @@ function filesBelow(directory) {
   return files;
 }
 
+function requireNonEmptyFile(path) {
+  if (statSync(path).size === 0) {
+    fail(`Required release asset is empty: ${path}`);
+  }
+}
+
 function requireMatchingSignature(archive, files) {
-  if (!files.includes(`${archive}.sig`)) {
+  requireNonEmptyFile(archive);
+  const signature = `${archive}.sig`;
+  if (!files.includes(signature)) {
     fail(`Missing matching updater signature for ${archive}`);
   }
+  requireNonEmptyFile(signature);
 }
 
 function pathBelow(bundleDirectory, path) {
@@ -48,6 +57,7 @@ function pathBelow(bundleDirectory, path) {
 function verifyMacos(bundleDirectory, files) {
   const dmgFiles = files.filter((path) => pathBelow(bundleDirectory, path).startsWith('dmg/') && path.endsWith('.dmg'));
   if (dmgFiles.length === 0) fail(`Missing macOS DMG below ${join(bundleDirectory, 'dmg')}`);
+  for (const dmg of dmgFiles) requireNonEmptyFile(dmg);
 
   const updaterArchives = files.filter((path) => {
     const pathFromBundle = pathBelow(bundleDirectory, path);
@@ -65,6 +75,7 @@ function verifyWindows(bundleDirectory, files, windowsUpdater) {
     return pathFromBundle.startsWith('nsis/') && basename(path).endsWith('-setup.exe');
   });
   if (!nsisInstaller) fail(`Missing Windows NSIS setup executable below ${join(bundleDirectory, 'nsis')}`);
+  requireNonEmptyFile(nsisInstaller);
 
   const updaterType = windowsUpdater ?? 'nsis';
   const updaterArchives = files.filter((path) => {

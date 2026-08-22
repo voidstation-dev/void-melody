@@ -184,7 +184,7 @@ test('release workflow installs Rust before metadata validation on two serialize
   );
 });
 
-test('release workflow checks out the validated tag ref and verifies locally produced release assets', () => {
+test('release workflow runs signed asset preflight before the draft release action', () => {
   const workflow = readFileSync(releaseWorkflow, 'utf8');
   assert.match(
     workflow,
@@ -197,12 +197,19 @@ test('release workflow checks out the validated tag ref and verifies locally pro
   assert.ok(
     workflow.indexOf('- name: Verify checkout matches release tag') > workflow.indexOf('- name: Validate release metadata'),
   );
-  assert.ok(
-    workflow.indexOf('- name: Verify generated macOS release assets') > workflow.indexOf('- name: Build Tauri app'),
-  );
-  assert.ok(
-    workflow.indexOf('- name: Verify generated Windows release assets') > workflow.indexOf('- name: Build Tauri app'),
-  );
-  assert.match(workflow, /node scripts\/verify-release-assets\.mjs --target \$\{\{ matrix\.target \}\} --windows-updater nsis/);
+  const buildAction = workflow.indexOf('- name: Build Tauri app');
+  const signingKey = workflow.indexOf('- name: Require updater signing private key');
+  const releaseAssetTests = workflow.indexOf('- name: Run release asset verification tests');
+  const macosPreflight = workflow.indexOf('- name: Preflight signed macOS release bundle');
+  const windowsPreflight = workflow.indexOf('- name: Preflight signed Windows release bundle');
+  assert.ok(releaseAssetTests > signingKey);
+  assert.ok(macosPreflight > signingKey && macosPreflight < buildAction);
+  assert.ok(windowsPreflight > signingKey && windowsPreflight < buildAction);
+  assert.ok(workflow.indexOf('- name: Verify generated macOS release assets') > buildAction);
+  assert.ok(workflow.indexOf('- name: Verify generated Windows release assets') > buildAction);
+  assert.match(workflow, /^\s+fail-fast:\s+true\s*$/m);
+  assert.match(workflow, /pnpm --dir apps\/web tauri build --target aarch64-apple-darwin/);
+  assert.match(workflow, /pnpm --dir apps\/web tauri build --target x86_64-pc-windows-msvc/);
+  assert.match(workflow, /node scripts\/verify-release-assets\.mjs --target x86_64-pc-windows-msvc --windows-updater nsis/);
   assert.doesNotMatch(workflow, /if \[ -n "\$\{\{ github\.event\.inputs\.tag \}\}" \]/);
 });
