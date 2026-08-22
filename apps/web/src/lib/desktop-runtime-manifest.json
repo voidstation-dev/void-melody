@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "supportedTargets": {
+    "aarch64-apple-darwin": {
+      "platform": "macos",
+      "sidecar": "bin/melody-api-aarch64-apple-darwin",
+      "ffmpeg": "bin/ffmpeg",
+      "installerExtensions": [".dmg", ".app.tar.gz", ".app.tar.gz.sig"]
+    },
+    "x86_64-pc-windows-msvc": {
+      "platform": "windows",
+      "sidecar": "bin/melody-api-x86_64-pc-windows-msvc.exe",
+      "ffmpeg": "bin/ffmpeg.exe",
+      "installerExtensions": ["-setup.exe", ".msi", ".nsis.zip", ".nsis.zip.sig"]
+    }
+  },
+  "requiredSidecarEnv": [
+    "PYTHONUNBUFFERED",
+    "APP_ENV",
+    "API_HOST",
+    "API_PORT",
+    "MELODY_API_TOKEN",
+    "MELODY_DATA_DIR",
+    "MELODY_CATALOG_PATH",
+    "TTS_APPLY_RATE_WITH_FFMPEG",
+    "TTS_QUEUE_CONCURRENCY",
+    "TTS_CHUNK_CONCURRENCY"
+  ],
+  "requiredResources": ["bin/Voice.json"],
+  "hostEnvironmentRequired": [],
+  "optionalBuildEnvironment": [
+    "NEXT_PUBLIC_API_BASE_URL",
+    "NEXT_PUBLIC_AUTH_API_URL",
+    "FFMPEG_BINARY_PATH",
+    "HF_TOKEN"
+  ]
+}
