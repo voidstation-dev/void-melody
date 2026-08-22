@@ -3,6 +3,7 @@
 import { Loader2, Pause, Play, RefreshCcw } from "lucide-react"
 import { useVoicePreview } from "@/hooks/use-voice-preview"
 import { useTranslation } from "@/hooks/use-translation"
+import { useTrialStatus } from "@/contexts/trial-context"
 
 type VoicePreviewButtonProps = {
   voiceId: string
@@ -17,6 +18,8 @@ type VoicePreviewButtonProps = {
 export function VoicePreviewButton({ voiceId, sampleText, label: voiceLabel = voiceId, onPlayStart, variant = "preset", compact = false, className = "" }: VoicePreviewButtonProps) {
   const { t } = useTranslation()
   const preview = useVoicePreview(voiceId)
+  const trial = useTrialStatus()
+  const synthesisLocked = !trial.status.can_synthesize
   const actionLabel = preview.isPlaying ? t("voices.playingBtn") : t("voices.previewBtn")
   const tone = compact
     ? preview.isPlaying
@@ -37,8 +40,16 @@ export function VoicePreviewButton({ voiceId, sampleText, label: voiceLabel = vo
     <div className={`flex min-w-0 flex-col items-start gap-1 ${className}`}>
       <button
         type="button"
-        onClick={() => { onPlayStart?.(voiceId); void preview.play(sampleText) }}
+        onClick={() => {
+          if (synthesisLocked) {
+            trial.openExpiredDialog()
+            return
+          }
+          onPlayStart?.(voiceId)
+          void preview.play(sampleText)
+        }}
         disabled={preview.isLoading}
+        title={synthesisLocked ? "Thời gian dùng thử đã kết thúc" : undefined}
         className={buttonClassName}
         aria-label={`${actionLabel} ${voiceLabel}`}
         aria-pressed={preview.isPlaying}

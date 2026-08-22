@@ -5,10 +5,20 @@ import { LicenseSettings } from "@/components/settings/license-settings"
 import { useTheme } from "next-themes"
 import { useTranslation } from "@/hooks/use-translation"
 import { Locale } from "@/locales"
+import { useTrialStatus } from "@/contexts/trial-context"
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const { t, locale, setLocale } = useTranslation()
+  const trial = useTrialStatus()
+  const expiresLabel = trial.status.expires_at
+    ? new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(trial.status.expires_at * 1000))
+    : "—"
+  const remainingLabel = trial.status.remaining_seconds > 86400
+    ? `${Math.ceil(trial.status.remaining_seconds / 86400)} ngày`
+    : trial.status.remaining_seconds > 0
+      ? `${Math.ceil(trial.status.remaining_seconds / 3600)} giờ`
+      : "đã hết hạn"
 
   return (
     <PageContainer>
@@ -21,6 +31,21 @@ export default function SettingsPage() {
         <div className="max-w-2xl space-y-4">
           {/* License & Activation Section */}
           <LicenseSettings />
+
+          <section aria-labelledby="trial-heading" className={`rounded-2xl border p-6 shadow-sm ${trial.status.can_synthesize ? "border-border bg-card" : "border-red-200 bg-red-50/60"}`}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="trial-heading" className="font-bold text-base text-foreground">Thời gian dùng thử</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {trial.status.override ? "Chế độ phát triển — trial gate đang tắt." : trial.status.can_synthesize ? `Còn ${remainingLabel} sử dụng.` : "Đã hết thời gian tạo audio mới. Audio cũ vẫn có thể phát và tải xuống."}
+                </p>
+              </div>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${trial.status.can_synthesize ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                {trial.status.status}
+              </span>
+            </div>
+            <p className="mt-4 text-xs font-semibold text-muted-foreground">Hết hạn: <span className="text-foreground">{expiresLabel}</span></p>
+          </section>
 
           {/* Language Selection Section */}
           <section aria-labelledby="language-heading" className="rounded-2xl border border-border bg-card p-6 shadow-sm">

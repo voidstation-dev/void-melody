@@ -8,6 +8,7 @@ import { QueueProvider } from "@/contexts/queue-context"
 import { I18nProvider } from "@/contexts/i18n-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { AuthGuard } from "@/components/auth/auth-guard"
+import { TrialProvider } from "@/contexts/trial-context"
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
@@ -27,14 +28,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <I18nProvider>
               <AuthProvider>
                 <TauriProvider>
-                  <UpdateProvider>
-                    <AuthGuard>
-                      <QueueProvider>
-                        {children}
-                      </QueueProvider>
-                    </AuthGuard>
-                    <UpdateModal />
-                  </UpdateProvider>
+                  <TrialProvider>
+                    <UpdateProvider>
+                      <AuthGuard>
+                        <QueueProvider>
+                          {children}
+                        </QueueProvider>
+                      </AuthGuard>
+                      <UpdateModal />
+                    </UpdateProvider>
+                  </TrialProvider>
                 </TauriProvider>
               </AuthProvider>
             </I18nProvider>

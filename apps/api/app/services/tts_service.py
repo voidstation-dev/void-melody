@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.tts_job import TTSJobModel, utc_now
+from app.services.trial_service import require_synthesis
 
 
 def compute_text_hash(text: str) -> str:
@@ -130,6 +131,7 @@ async def create_tts_job(
     export_path: str | None = None,
     export_format: str | None = None,
 ) -> TTSJobModel:
+    require_synthesis()
     job = _build_tts_job(
         text=text,
         voice_type=voice_type,
@@ -180,6 +182,7 @@ async def create_tts_job_with_batch_limits(
     export_path: str | None = None,
     export_format: str | None = None,
 ) -> TTSJobModel:
+    require_synthesis()
     try:
         # SQLite has no row-level locks. BEGIN IMMEDIATE serializes the
         # aggregate capacity check and insert without blocking queue readers.

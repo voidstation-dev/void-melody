@@ -19,6 +19,7 @@ from app.services.voice_catalog import voice_catalog
 from app.services.voice_resolver import VoiceResolutionError, resolve_voice
 from app.utils.text_utils import slugify_vietnamese
 from app.workers.queue_manager import queue_manager
+from app.services.trial_service import require_synthesis
 
 router = APIRouter()
 
@@ -30,6 +31,7 @@ async def create_batch(
     style: str | None = Form(None),
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ):
+    require_synthesis()
     content = await file.read()
     items = parse_batch_file(file.filename, content)
     

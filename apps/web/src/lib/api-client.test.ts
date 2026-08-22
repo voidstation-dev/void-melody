@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   apiFetch,
   apiFetchBlob,
+  onTrialBlocked,
   setApiConnection,
 } from "./api-client"
 
@@ -62,5 +63,19 @@ describe("authenticated API client", () => {
 
     expect(fetchMock.mock.calls[0][1].headers).not.toHaveProperty("Content-Type")
     expect(fetchMock.mock.calls[0][1].body).toBe(body)
+  })
+
+  it("notifies the trial context when the backend rejects new compute", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: "TRIAL_EXPIRED", detail: { code: "TRIAL_EXPIRED" } }), { status: 403 }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const listener = vi.fn()
+    const unsubscribe = onTrialBlocked(listener)
+
+    await expect(apiFetch("/api/v1/tts/jobs", { method: "POST", body: "{}" })).rejects.toThrow()
+
+    expect(listener).toHaveBeenCalledOnce()
+    unsubscribe()
   })
 })

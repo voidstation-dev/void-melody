@@ -77,3 +77,13 @@ class BatchStatusResponse(BaseModel):
     pendingJobs: int
     progress: float
     jobs: list[TTSJobResponse]
+
+
+class TrialStatusResponse(BaseModel):
+    status: str
+    can_synthesize: bool
+    first_run_at: int | None = None
+    expires_at: int | None = None
+    remaining_seconds: int
+    warning_level: str
+    override: str | None = None

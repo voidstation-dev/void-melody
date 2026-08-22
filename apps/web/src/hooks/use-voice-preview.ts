@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { apiFetchBlob } from "@/lib/api-client"
+import { useTrialStatus } from "@/contexts/trial-context"
 
 type PreviewStatus = "idle" | "loading" | "playing" | "error"
 
@@ -66,6 +67,7 @@ function createAudio(url: string, voiceId: string) {
 }
 
 export function useVoicePreview(voiceId?: string) {
+  const trial = useTrialStatus()
   const [, setVersion] = useState(0)
   const forceUpdate = useCallback(() => setVersion((version) => version + 1), [])
 
@@ -81,6 +83,11 @@ export function useVoicePreview(voiceId?: string) {
 
   const play = useCallback(async (sampleText: string) => {
     if (!voiceId) return
+    if (!trial.status.can_synthesize) {
+      trial.openExpiredDialog()
+      setSnapshot({ voiceId, status: "error", error: "TRIAL_EXPIRED" })
+      return
+    }
 
     if (snapshot.voiceId === voiceId && snapshot.status === "playing") {
       activeAudio?.pause()
@@ -122,7 +129,7 @@ export function useVoicePreview(voiceId?: string) {
         })
       }
     }
-  }, [voiceId])
+  }, [trial, voiceId])
 
   const retry = useCallback((sampleText: string) => {
     if (voiceId) {

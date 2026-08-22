@@ -42,6 +42,7 @@ from app.services.voice_analysis import (
 )
 from app.services.clone_orchestrator import CloneOrchestrationError, CloneOrchestrator
 from app.services.clone_preflight import preflight_clone_reference
+from app.services.trial_service import require_synthesis
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -177,6 +178,7 @@ async def clone_voice(
     selected_end_seconds: float | None = Form(default=None),
     session: AsyncSession = Depends(get_async_session)  # noqa: B008
 ):
+    require_synthesis()
     if not settings.voice_lab_enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="VOICE_LAB_DISABLED")
     if not consent_given:

@@ -84,6 +84,7 @@ POST_BASELINE_COLUMNS = {
     "request_metadata",
     "export_path",
     "export_format",
+    "trial_authorized_at",
 }
 POST_BASELINE_CUSTOM_VOICE_COLUMNS = {
     "source_duration_seconds",

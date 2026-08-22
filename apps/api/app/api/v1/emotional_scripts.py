@@ -47,6 +47,7 @@ from app.services.script_store import (
 )
 from app.services.vieneu_delivery_resolver import resolve_vieneu_delivery
 from app.services.voice_resolver import VoiceResolutionError, resolve_voice
+from app.services.trial_service import require_synthesis
 from app.workers.script_render_queue import script_render_queue
 
 router = APIRouter()
@@ -185,6 +186,7 @@ async def create_script_render(
     request: RenderCreateRequest,
     session: AsyncSession = Depends(get_async_session),
 ) -> RenderResponse:
+    require_synthesis()
     if request.output_format not in {"mp3", "wav"}:
         raise HTTPException(status_code=422, detail={"code": "INVALID_OUTPUT_FORMAT", "message": "Only MP3 and WAV are supported."})
     try:
@@ -307,6 +309,7 @@ async def retry_script_render(
     request: RetryRenderRequest,
     session: AsyncSession = Depends(get_async_session),
 ) -> RenderResponse:
+    require_synthesis()
     render = await session.get(ScriptRenderModel, render_id)
     if render is None:
         raise HTTPException(status_code=404, detail={"code": "RENDER_NOT_FOUND", "message": "Script render not found."})
@@ -365,6 +368,7 @@ async def export_script_render(
 
 @router.post("/scripts/{script_id}/lines/{line_id}/preview", response_model=PreviewResponse)
 async def preview_script_line(script_id: str, line_id: str, session: AsyncSession = Depends(get_async_session)) -> PreviewResponse:
+    require_synthesis()
     script = await get_script(session, script_id)
     document = document_from_row(script)
     line = next((item for item in document.lines if item.id == line_id), None)

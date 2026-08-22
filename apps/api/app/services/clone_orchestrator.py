@@ -14,6 +14,7 @@ from vieneu_core import VoiceProfileRequest, create_reference_profile
 
 from app.models.custom_voice import CustomVoiceModel
 from app.services.clone_preflight import ClonePreflightError, preflight_clone_reference
+from app.services.trial_service import require_synthesis
 
 _clone_lock = asyncio.Semaphore(1)
 
@@ -51,6 +52,7 @@ class CloneOrchestrator:
         progress: Callable[[str], None] | None = None,
         is_cancelled: Callable[[], bool] | None = None,
     ) -> CustomVoiceModel:
+        require_synthesis()
         def stage(name: str) -> None:
             if progress:
                 progress(name)

@@ -21,6 +21,7 @@ import { apiFetch, apiFetchBlob } from "@/lib/api-client"
 import type { Voice } from "@/types/voice"
 import type { RenderSegment, ScriptDocument, ScriptParseResponse, ScriptRender } from "@/types/emotional-script"
 import { countDeliveryTags } from "./emotional-script-utils"
+import { useTrialStatus } from "@/contexts/trial-context"
 
 const tagOptions = [
   { label: "Cười", value: "[cười]", kind: "native" },
@@ -67,6 +68,8 @@ export function EmotionalScriptPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { data: presetVoices } = useVoices("vi-VN", undefined, "vieneu")
   const { data: customVoices } = useCustomVoices(undefined, 1, 100)
+  const trial = useTrialStatus()
+  const synthesisLocked = !trial.status.can_synthesize
 
   const voices = useMemo(() => {
     const presets = (presetVoices?.items ?? []).filter((voice) => voice.providerId === "vieneu" || !voice.providerId)
@@ -174,6 +177,10 @@ export function EmotionalScriptPage() {
 
   const handleGenerate = async () => {
     if (!text.trim() || !activeVoiceId || isBusy) return
+    if (synthesisLocked) {
+      trial.openExpiredDialog()
+      return
+    }
     setIsBusy(true)
     setNotice(null)
     try {
@@ -214,6 +221,10 @@ export function EmotionalScriptPage() {
 
   const handleRetry = async (scope = "failed") => {
     if (!render) return
+    if (synthesisLocked) {
+      trial.openExpiredDialog()
+      return
+    }
     try {
       const next = await apiFetch<ScriptRender>(`/api/v1/script-renders/${render.id}/retry`, {
         method: "POST",
@@ -367,7 +378,7 @@ export function EmotionalScriptPage() {
             </div>
             <div className="mt-5 grid gap-2">
               <button type="button" onClick={() => setReviewOpen((value) => !value)} className="flex items-center justify-center gap-2 rounded-xl border border-background/20 px-4 py-3 text-xs font-black transition hover:bg-background/10"><span>{reviewOpen ? "Đóng review" : "Review script"}</span><ArrowRight className="h-3.5 w-3.5" /></button>
-              <button type="button" onClick={handleGenerate} disabled={isBusy || !text.trim() || !activeVoiceId} className="flex items-center justify-center gap-2 rounded-xl bg-background px-4 py-3 text-xs font-black text-foreground transition hover:bg-background/90 disabled:cursor-not-allowed disabled:opacity-40">
+              <button type="button" onClick={handleGenerate} disabled={isBusy || !text.trim() || !activeVoiceId || synthesisLocked} title={synthesisLocked ? "Thời gian dùng thử đã kết thúc" : undefined} className="flex items-center justify-center gap-2 rounded-xl bg-background px-4 py-3 text-xs font-black text-foreground transition hover:bg-background/90 disabled:cursor-not-allowed disabled:opacity-40">
                 {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {isBusy ? "Đang chuẩn bị…" : "Tạo audio"}
               </button>
             </div>
@@ -380,7 +391,7 @@ export function EmotionalScriptPage() {
             <div className="mt-4 space-y-1.5">{render.segments.slice(0, 5).map((segment) => <div key={segment.id} className="flex items-center justify-between gap-2 text-[11px]"><span className="truncate text-muted-foreground">{segment.line_id}</span><span className="font-bold">{segmentLabel(segment)}</span></div>)}</div>
             <div className="mt-4 flex flex-wrap gap-2">
               {(render.status === "rendering" || render.status === "queued" || render.status === "planning") && <button type="button" onClick={handleCancel} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[11px] font-bold"><Pause className="h-3.5 w-3.5" /> Hủy</button>}
-              {(render.status === "failed" || render.status === "partial_failed" || render.status === "cancelled") && <button type="button" onClick={() => handleRetry("failed")} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[11px] font-bold"><RotateCcw className="h-3.5 w-3.5" /> Thử lại lỗi</button>}
+              {(render.status === "failed" || render.status === "partial_failed" || render.status === "cancelled") && <button type="button" onClick={() => handleRetry("failed")} disabled={synthesisLocked} title={synthesisLocked ? "Thời gian dùng thử đã kết thúc" : undefined} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-50"><RotateCcw className="h-3.5 w-3.5" /> Thử lại lỗi</button>}
               {render.status === "completed" && render.output_url && (
                 audioBlobUrl ? (
                   <div className="w-full space-y-2">

@@ -73,3 +73,6 @@ class TTSJobModel(Base):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    trial_authorized_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=True
+    )

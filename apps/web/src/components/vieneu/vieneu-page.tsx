@@ -23,6 +23,7 @@ import { useCustomVoice } from "@/hooks/use-custom-voice";
 import { apiFetch } from "@/lib/api-client";
 import { BatchJobCreateResponse } from "@/types/tts-job";
 import { useTranslation } from "@/hooks/use-translation";
+import { useTrialStatus } from "@/contexts/trial-context";
 import {
   ACCEPTED_AUDIO_MIME_TYPES,
   ACCEPTED_AUDIO_EXTENSIONS,
@@ -124,6 +125,8 @@ export function VieneuPage({
   const sourceAudioRef = useRef<HTMLAudioElement>(null);
   const capabilities = useVoiceCapabilities();
   const { analysis: analysisMutation, clone: cloneMutation } = useVoiceLab();
+  const trial = useTrialStatus();
+  const synthesisLocked = !trial.status.can_synthesize;
   const runtime = capabilities.data;
   const analysis = analysisMutation.data;
   const selectedProfile = useCustomVoice(initialVoiceId);
@@ -212,6 +215,10 @@ export function VieneuPage({
 
   const generatePreview = async () => {
     if (!profile || !previewText.trim()) return;
+    if (synthesisLocked) {
+      trial.openExpiredDialog();
+      return;
+    }
     setPreviewError(null);
     try {
       const response = await apiFetch<BatchJobCreateResponse>(
@@ -553,6 +560,7 @@ export function VieneuPage({
                 <button
                   type="button"
                   onClick={() =>
+                    !synthesisLocked &&
                     file &&
                     cloneAnalysis &&
                     cloneMutation.mutate({
@@ -568,8 +576,10 @@ export function VieneuPage({
                     !cloneAnalysis ||
                     !voiceName.trim() ||
                     !consent ||
-                    cloneMutation.isPending
+                    cloneMutation.isPending ||
+                    synthesisLocked
                   }
+                  title={synthesisLocked ? "Thời gian dùng thử đã kết thúc" : undefined}
                   className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-opacity disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
                 >
                   <UserRoundPlus className="h-4 w-4" />
@@ -776,6 +786,7 @@ export function VieneuPage({
                 disabled={
                   !profile ||
                   !previewText.trim() ||
+                  synthesisLocked ||
                   previewJob?.status === "queued" ||
                   previewJob?.status === "processing"
                 }

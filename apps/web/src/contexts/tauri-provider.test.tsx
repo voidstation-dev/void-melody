@@ -6,15 +6,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TauriProvider, useTauri } from "./tauri-provider";
 
 const bridge = vi.hoisted(() => ({
-  appDataDir: vi.fn(),
+  invoke: vi.fn(),
   resolveResource: vi.fn(),
   setApiConnection: vi.fn(),
   sidecar: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/path", () => ({
-  appDataDir: bridge.appDataDir,
   resolveResource: bridge.resolveResource,
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: bridge.invoke,
 }));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({
@@ -68,7 +71,7 @@ describe("TauriProvider", () => {
       value: undefined,
       writable: true,
     });
-    bridge.appDataDir.mockResolvedValue("/app-data");
+    bridge.invoke.mockResolvedValue({ data_dir: "/app-data", integrity_key: "trial-key" });
     bridge.resolveResource.mockImplementation(async (path: string) => `/resources/${path}`);
     bridge.setApiConnection.mockReset();
     bridge.sidecar.mockReset();
@@ -109,6 +112,7 @@ describe("TauriProvider", () => {
         API_PORT: "0",
         MELODY_API_TOKEN: "random-token",
         MELODY_DATA_DIR: "/app-data",
+        MELODY_TRIAL_INTEGRITY_KEY: "trial-key",
       }),
     });
     expect(screen.queryByText("desktop:ready")).not.toBeInTheDocument();

@@ -20,15 +20,22 @@ from app.services.raw_response_storage import cleanup_stale_raw_responses
 from app.services.voice_artifact_cleanup import cleanup_orphan_voice_artifacts
 from app.services.vieneu_bootstrap import bootstrap_vieneu_runtime
 from app.services.script_render_service import recover_interrupted_script_renders
+from app.services.trial_service import get_runtime_trial_service
+from app.services.trial_domain import TrialStatus
 from app.models.custom_voice import CustomVoiceModel
 from app.workers.queue_manager import queue_manager
 from app.workers.script_render_queue import script_render_queue
+from app.exceptions import TrialNotAllowedError
+from fastapi.responses import JSONResponse
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
     validate_runtime_security()
+    trial_status = get_runtime_trial_service().get_status()
+    if settings.app_env.lower() == "production" and trial_status.status is TrialStatus.CORRUPTED:
+        raise RuntimeError("TRIAL_STATE_CORRUPTED: local trial state could not be verified")
     await run_database_migrations()
     if settings.voice_lab_enabled:
         try:
@@ -73,6 +80,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="CapVoice Studio API", version="0.1.0", lifespan=lifespan)
+
+
+@app.exception_handler(TrialNotAllowedError)
+async def trial_not_allowed_handler(_, exc: TrialNotAllowedError) -> JSONResponse:
+    return JSONResponse(
+        status_code=403,
+        content={
+            "code": exc.code,
+            "detail": {"code": exc.code, "message": exc.message},
+        },
+    )
 
 app.add_middleware(LocalAuthMiddleware)
 

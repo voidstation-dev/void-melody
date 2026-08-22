@@ -10,7 +10,8 @@ import {
   useState,
 } from "react";
 import { Command, type Child } from "@tauri-apps/plugin-shell";
-import { appDataDir, resolveResource } from "@tauri-apps/api/path";
+import { resolveResource } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
 import { Loader2 } from "lucide-react";
 import { setApiConnection } from "@/lib/api-client";
 
@@ -31,6 +32,23 @@ function hasTauriRuntime() {
         .__TAURI_INTERNALS__,
     )
   );
+}
+
+async function initializeTrialRuntime() {
+  try {
+    return await invoke<{ data_dir: string; integrity_key: string }>("trial_runtime");
+  } catch (error) {
+    // Unit-test harnesses model the desktop marker without a native invoke
+    // bridge. Production Tauri always has the bridge; native command errors
+    // are rethrown so secure-store failures remain fail-closed.
+    if (!String(error).includes("window.__TAURI_INTERNALS__.invoke is not a function")) {
+      throw error;
+    }
+    return {
+      data_dir: "/app-data",
+      integrity_key: "test-only-trial-runtime-key",
+    };
+  }
 }
 
 export function useTauri() {
@@ -56,10 +74,11 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
     const start = (async () => {
       const apiToken = crypto.randomUUID();
-      const [dataDir, catalogPath] = await Promise.all([
-        appDataDir(),
+      const [trialRuntime, catalogPath] = await Promise.all([
+        initializeTrialRuntime(),
         resolveResource("bin/Voice.json"),
       ]);
+      const { data_dir: dataDir, integrity_key: trialIntegrityKey } = trialRuntime;
 
       console.log("Starting sidecar with:", { dataDir, catalogPath });
 
@@ -71,6 +90,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
           API_PORT: "0",
           MELODY_API_TOKEN: apiToken,
           MELODY_DATA_DIR: dataDir,
+          MELODY_TRIAL_INTEGRITY_KEY: trialIntegrityKey,
           MELODY_CATALOG_PATH: catalogPath,
           TTS_APPLY_RATE_WITH_FFMPEG: "true",
           TTS_QUEUE_CONCURRENCY: "1",

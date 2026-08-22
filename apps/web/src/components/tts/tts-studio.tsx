@@ -16,6 +16,7 @@ import { getBatchLimitError } from "@/lib/batch-limits";
 import { BatchJobCreateResponse } from "@/types/tts-job";
 import { Loader2, Clipboard, FileUp, FolderOpen } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
+import { useTrialStatus } from "@/contexts/trial-context";
 
 export function TTSStudio() {
   const { t } = useTranslation();
@@ -42,6 +43,8 @@ export function TTSStudio() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { addToQueue } = useQueue();
+  const trial = useTrialStatus();
+  const synthesisLocked = !trial.status.can_synthesize;
 
   const handleFiles = (files: ImportedTextFile[]) => {
     if (files.length === 0) return;
@@ -84,6 +87,10 @@ export function TTSStudio() {
     exportPath: string | null,
     exportFormat: "mp3" | "m4a"
   ) => {
+    if (synthesisLocked) {
+      trial.openExpiredDialog();
+      return;
+    }
     setIsSubmitting(true);
     try {
       const batchLimitError = getBatchLimitError(selectedFiles);
@@ -125,6 +132,10 @@ export function TTSStudio() {
 
   const handleGenerate = async () => {
     if (!text.trim() || isSubmitting) return;
+    if (synthesisLocked) {
+      trial.openExpiredDialog();
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -240,7 +251,8 @@ export function TTSStudio() {
 
           <button
             onClick={handleGenerate}
-            disabled={isSubmitting || !text}
+            disabled={isSubmitting || !text || synthesisLocked}
+            title={synthesisLocked ? "Thời gian dùng thử đã kết thúc" : undefined}
             className="flex items-center gap-2 rounded-xl bg-primary px-8 py-2.5 text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50 shadow-xs"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

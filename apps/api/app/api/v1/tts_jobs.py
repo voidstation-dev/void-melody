@@ -24,6 +24,7 @@ from app.services.tts_service import (
 )
 from app.services.voice_catalog import voice_catalog
 from app.services.voice_resolver import VoiceResolutionError, resolve_voice
+from app.services.trial_service import require_synthesis
 from app.utils.text_utils import slugify_vietnamese
 
 router = APIRouter()
@@ -77,6 +78,7 @@ async def create_job_endpoint(
     req: CreateTTSJobRequest,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008,
 ):
+    require_synthesis()
     if len(req.text) > settings.tts_max_text_chars:
         raise HTTPException(status_code=422, detail="TEXT_TOO_LONG")
 
@@ -132,6 +134,7 @@ async def create_batch_jobs_endpoint(
     req: CreateTTSBatchJobsRequest,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008,
 ):
+    require_synthesis()
     if not req.items:
         raise HTTPException(status_code=400, detail="No items provided in batch request")
 
@@ -378,6 +381,7 @@ async def retry_job_endpoint(
     job_id: str,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ):
+    require_synthesis()
     job = await get_job_by_id(session, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="JOB_NOT_FOUND")
@@ -426,6 +430,7 @@ async def preview_tts_endpoint(
     req: TTSPreviewRequest,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ):
+    require_synthesis()
     if len(req.text) > 1000:
         raise HTTPException(status_code=422, detail="Text too long for preview")
 

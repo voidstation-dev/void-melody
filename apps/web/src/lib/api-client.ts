@@ -1,5 +1,16 @@
 export let API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
 let API_TOKEN: string | null = null
+const trialBlockedListeners = new Set<() => void>()
+
+export function onTrialBlocked(listener: () => void): () => void {
+  trialBlockedListeners.add(listener)
+  return () => trialBlockedListeners.delete(listener)
+}
+
+function notifyTrialBlocked(code: unknown) {
+  if (typeof code !== "string" || !code.startsWith("TRIAL_")) return
+  trialBlockedListeners.forEach((listener) => listener())
+}
 
 export function setApiBaseUrl(url: string) {
   API_BASE_URL = url
@@ -39,6 +50,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     const detail = body?.detail
+    notifyTrialBlocked(body?.code ?? detail?.code)
     throw new ApiError(detail ?? "Request failed", response.status, body?.code ?? detail?.code)
   }
   if (response.status === 204) return undefined as T
@@ -53,6 +65,7 @@ export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Bl
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
   if (!response.ok) {
     const body = await response.json().catch(() => null)
+    notifyTrialBlocked(body?.code ?? body?.detail?.code)
     throw new ApiError(
       body?.detail ?? "Request failed",
       response.status,
