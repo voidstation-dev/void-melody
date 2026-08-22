@@ -114,3 +114,23 @@ def test_main_isolates_before_dynamically_loading_app_main(monkeypatch):
             },
         )
     ]
+
+
+def test_main_fails_closed_when_packaged_process_isolation_fails(monkeypatch):
+    loaded_modules = []
+
+    monkeypatch.setattr(sidecar_entrypoint, "_isolate_packaged_process_tree", lambda: False)
+    monkeypatch.setattr(
+        sidecar_entrypoint.runpy,
+        "run_module",
+        lambda *args, **kwargs: loaded_modules.append((args, kwargs)),
+    )
+
+    try:
+        sidecar_entrypoint.main()
+    except RuntimeError as error:
+        assert str(error) == "Unable to isolate packaged sidecar process tree"
+    else:
+        raise AssertionError("packaged sidecar should fail closed")
+
+    assert loaded_modules == []

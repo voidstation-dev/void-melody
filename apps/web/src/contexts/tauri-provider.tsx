@@ -30,6 +30,11 @@ type TauriContextValue = {
   restartSidecar: () => Promise<void>;
 };
 
+type ManagedSidecarProcess = {
+  child: Child;
+  startTime: string;
+};
+
 const TauriContext = createContext<TauriContextValue | null>(null);
 const STARTUP_TIMEOUT_MESSAGE = "Local API did not start in time";
 const SIDECAR_PROCESS_ERROR_MESSAGE = "Sidecar process error";
@@ -95,34 +100,30 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
   const [preflightFailure, setPreflightFailure] =
     useState<RuntimePreflightFailure | null>(null);
   const mountedRef = useRef(false);
-  const sidecarProcessRef = useRef<Child | null>(null);
+  const sidecarProcessRef = useRef<ManagedSidecarProcess | null>(null);
   const intentionalShutdownProcessesRef = useRef(new WeakSet<Child>());
-  const pluginKillFailedProcessesRef = useRef(new WeakSet<Child>());
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const shutdownPromiseRef = useRef<Promise<void> | null>(null);
   const restartPromiseRef = useRef<Promise<void> | null>(null);
 
-  const stopSidecarProcess = useCallback(async (process: Child) => {
+  const stopSidecarProcess = useCallback(async (managedProcess: ManagedSidecarProcess) => {
+    const process = managedProcess.child;
     intentionalShutdownProcessesRef.current.add(process);
 
-    if (!pluginKillFailedProcessesRef.current.has(process)) {
-      try {
-        await process.kill();
-      } catch {
-        pluginKillFailedProcessesRef.current.add(process);
-      }
+    try {
+      // The native command validates the executable identity and terminates
+      // the full process tree. Calling Child.kill() first would make the
+      // parent disappear before the native cleanup can reach its children.
+      await invoke("terminate_sidecar_pid", {
+        pid: process.pid,
+        startTime: managedProcess.startTime,
+      });
+    } catch {
+      intentionalShutdownProcessesRef.current.delete(process);
+      throw new Error(SIDECAR_SHUTDOWN_ERROR_MESSAGE);
     }
 
-    if (pluginKillFailedProcessesRef.current.has(process)) {
-      try {
-        await invoke("terminate_sidecar_pid", { pid: process.pid });
-      } catch {
-        intentionalShutdownProcessesRef.current.delete(process);
-        throw new Error(SIDECAR_SHUTDOWN_ERROR_MESSAGE);
-      }
-    }
-
-    if (sidecarProcessRef.current === process) {
+    if (sidecarProcessRef.current?.child === process) {
       sidecarProcessRef.current = null;
     }
   }, []);
@@ -260,12 +261,11 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       };
 
       const clearSidecarProcess = () => {
-        if (process && sidecarProcessRef.current === process) {
+        if (process && sidecarProcessRef.current?.child === process) {
           sidecarProcessRef.current = null;
         }
         if (process) {
           intentionalShutdownProcessesRef.current.delete(process);
-          pluginKillFailedProcessesRef.current.delete(process);
         }
       };
 
@@ -318,16 +318,30 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         rejectStartup(spawnError);
         throw spawnError;
       }
+      let sidecarStartTime: string;
+      try {
+        sidecarStartTime = await invoke<string>("get_sidecar_process_identity", {
+          pid: process.pid,
+        });
+      } catch (reason) {
+        const identityError =
+          reason instanceof Error ? reason : new Error(GENERIC_STARTUP_ERROR_MESSAGE);
+        // Do not terminate an unverified PID. Native cleanup requires the
+        // immutable process identity captured below; Child.kill() and a fresh
+        // PID lookup can target an unrelated recycled process.
+        rejectStartup(identityError);
+        throw identityError;
+      }
       if (!mountedRef.current) {
         clearTimeout(startupTimer);
         try {
-          await stopSidecarProcess(process);
+          await stopSidecarProcess({ child: process, startTime: sidecarStartTime });
         } catch {
           // ignore
         }
         throw new Error("Sidecar provider unmounted during startup");
       }
-      sidecarProcessRef.current = process;
+      sidecarProcessRef.current = { child: process, startTime: sidecarStartTime };
 
       return readyPromise;
     })();

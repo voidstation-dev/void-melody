@@ -44,7 +44,7 @@ type OutputHandler = (line: string) => void;
 
 function makeSidecar() {
   const stdoutHandlers: OutputHandler[] = [];
-  const child = { kill: vi.fn().mockResolvedValue(undefined) };
+  const child = { pid: 41_004, kill: vi.fn().mockResolvedValue(undefined) };
   const command = {
     stdout: { on: vi.fn((_event: string, handler: OutputHandler) => stdoutHandlers.push(handler)) },
     stderr: { on: vi.fn() },
@@ -140,16 +140,19 @@ describe("UpdateProvider checks", () => {
     bridge.resolveResource.mockImplementation(async (path: string) => `/resources/${path}`);
     bridge.setApiConnection.mockReset();
     bridge.sidecar.mockReset();
-    bridge.invoke.mockReset().mockResolvedValue({
-      platform: "macos",
-      arch: "aarch64",
-      targetTriple: "aarch64-apple-darwin",
-      hostEnvironmentRequired: [],
-      resources: [
-        { name: "bin/Voice.json", present: true },
-        { name: "bin/ffmpeg", present: true },
-        { name: "bin/melody-api-aarch64-apple-darwin", present: true },
-      ],
+    bridge.invoke.mockReset().mockImplementation(async (command: string) => {
+      if (command === "get_sidecar_process_identity") return "1700000000000000";
+      return {
+        platform: "macos",
+        arch: "aarch64",
+        targetTriple: "aarch64-apple-darwin",
+        hostEnvironmentRequired: [],
+        resources: [
+          { name: "bin/Voice.json", present: true },
+          { name: "bin/ffmpeg", present: true },
+          { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+        ],
+      };
     });
     bridge.check.mockReset();
     bridge.getVersion.mockReset().mockResolvedValue("0.2.0");
@@ -555,8 +558,23 @@ describe("UpdateProvider installation", () => {
       order.push("relaunch");
     });
     const sidecar = await renderHarness();
-    sidecar.child.kill.mockImplementation(async () => {
-      order.push("shutdown");
+    bridge.invoke.mockImplementation(async (command: string) => {
+      if (command === "terminate_sidecar_pid") {
+        order.push("shutdown");
+        return;
+      }
+      if (command === "get_sidecar_process_identity") return "1700000000000000";
+      return {
+        platform: "macos",
+        arch: "aarch64",
+        targetTriple: "aarch64-apple-darwin",
+        hostEnvironmentRequired: [],
+        resources: [
+          { name: "bin/Voice.json", present: true },
+          { name: "bin/ffmpeg", present: true },
+          { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+        ],
+      };
     });
     await screen.findByText("available");
 

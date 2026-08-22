@@ -77,16 +77,19 @@ describe("TauriProvider", () => {
     bridge.resolveResource.mockImplementation(async (path: string) => `/resources/${path}`);
     bridge.setApiConnection.mockReset();
     bridge.sidecar.mockReset();
-    bridge.invoke.mockResolvedValue({
-      platform: "macos",
-      arch: "aarch64",
-      targetTriple: "aarch64-apple-darwin",
-      hostEnvironmentRequired: [],
-      resources: [
-        { name: "bin/Voice.json", present: true },
-        { name: "bin/ffmpeg", present: true },
-        { name: "bin/melody-api-aarch64-apple-darwin", present: true },
-      ],
+    bridge.invoke.mockImplementation(async (command: string) => {
+      if (command === "get_sidecar_process_identity") return "1700000000000000";
+      return {
+        platform: "macos",
+        arch: "aarch64",
+        targetTriple: "aarch64-apple-darwin",
+        hostEnvironmentRequired: [],
+        resources: [
+          { name: "bin/Voice.json", present: true },
+          { name: "bin/ffmpeg", present: true },
+          { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+        ],
+      };
     });
     vi.stubGlobal("crypto", { randomUUID: vi.fn(() => "random-token") });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
@@ -217,7 +220,12 @@ describe("TauriProvider", () => {
     await screen.findByText("desktop:ready");
 
     fireEvent.click(screen.getByRole("button", { name: "Stop" }));
-    await waitFor(() => expect(first.child.kill).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(bridge.invoke).toHaveBeenCalledWith("terminate_sidecar_pid", {
+        pid: first.child.pid,
+        startTime: "1700000000000000",
+      }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Restart" }));
 
     await waitFor(() => expect(second.command.spawn).toHaveBeenCalledOnce());
@@ -225,13 +233,10 @@ describe("TauriProvider", () => {
     expect(await screen.findByText("desktop:ready")).toBeInTheDocument();
   });
 
-  it("falls back to native PID termination before restarting after plugin kill fails", async () => {
+  it("uses native PID termination to clean up the sidecar tree before restarting", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const first = makeSidecar();
     const second = makeSidecar();
-    first.child.kill.mockRejectedValue(
-      new Error("failed to kill /tmp/sidecar with MELODY_API_TOKEN=secret-token"),
-    );
     bridge.sidecar.mockReturnValueOnce(first.command).mockReturnValueOnce(second.command);
 
     render(
@@ -251,20 +256,18 @@ describe("TauriProvider", () => {
     await waitFor(() =>
       expect(bridge.invoke).toHaveBeenCalledWith("terminate_sidecar_pid", {
         pid: first.child.pid,
+        startTime: "1700000000000000",
       }),
     );
     await waitFor(() => expect(second.command.spawn).toHaveBeenCalledOnce());
 
-    expect(first.child.kill).toHaveBeenCalledOnce();
+    expect(first.child.kill).not.toHaveBeenCalled();
   });
 
-  it("does not restart when plugin and native PID termination both fail", async () => {
+  it("does not restart when native PID termination fails", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const first = makeSidecar();
     const replacement = makeSidecar();
-    first.child.kill.mockRejectedValue(
-      new Error("failed to kill /tmp/sidecar with MELODY_API_TOKEN=secret-token"),
-    );
     bridge.invoke
       .mockResolvedValueOnce({
         platform: "macos",
@@ -277,9 +280,8 @@ describe("TauriProvider", () => {
           { name: "bin/melody-api-aarch64-apple-darwin", present: true },
         ],
       })
-      .mockRejectedValueOnce(
-        new Error("failed to kill /tmp/sidecar with MELODY_API_TOKEN=secret-token"),
-      );
+      .mockResolvedValueOnce("1700000000000000")
+      .mockRejectedValueOnce(new Error("sidecar executable mismatch"));
     bridge.sidecar.mockReturnValueOnce(first.command).mockReturnValueOnce(replacement.command);
 
     render(
@@ -302,7 +304,9 @@ describe("TauriProvider", () => {
 
     expect(bridge.invoke).toHaveBeenCalledWith("terminate_sidecar_pid", {
       pid: first.child.pid,
+      startTime: "1700000000000000",
     });
+    expect(first.child.kill).not.toHaveBeenCalled();
   });
 
   it("does not report the close from an intentional shutdown as a crash", async () => {
@@ -321,7 +325,12 @@ describe("TauriProvider", () => {
     await screen.findByText("desktop:ready");
 
     fireEvent.click(screen.getByRole("button", { name: "Stop" }));
-    await waitFor(() => expect(sidecar.child.kill).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(bridge.invoke).toHaveBeenCalledWith("terminate_sidecar_pid", {
+        pid: sidecar.child.pid,
+        startTime: "1700000000000000",
+      }),
+    );
     act(() => sidecar.processEventHandlers.close[0]({ code: 0, signal: null }));
 
     expect(screen.queryByRole("heading", { name: "Failed to start local API" })).not.toBeInTheDocument();
@@ -345,6 +354,37 @@ describe("TauriProvider", () => {
     expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
     expect(screen.getByText("Sidecar failed to start")).toBeInTheDocument();
     expect(screen.queryByText(/\/Users\/alice|MELODY_API_TOKEN|secret-token/)).not.toBeInTheDocument();
+  });
+
+  it("does not kill an unverified PID when native identity lookup fails", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    bridge.invoke
+      .mockResolvedValueOnce({
+        platform: "macos",
+        arch: "aarch64",
+        targetTriple: "aarch64-apple-darwin",
+        hostEnvironmentRequired: [],
+        resources: [
+          { name: "bin/Voice.json", present: true },
+          { name: "bin/ffmpeg", present: true },
+          { name: "bin/melody-api-aarch64-apple-darwin", present: true },
+        ],
+      })
+      .mockRejectedValueOnce(new Error("identity unavailable at /tmp/secret-token"));
+    bridge.invoke.mockClear();
+    bridge.sidecar.mockReturnValue(sidecar.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    expect(await screen.findByText("Sidecar failed to start")).toBeInTheDocument();
+    expect(sidecar.child.kill).not.toHaveBeenCalled();
+    expect(bridge.invoke).not.toHaveBeenCalledWith("terminate_sidecar_pid", expect.anything());
+    expect(screen.queryByText(/\/tmp\/secret-token/)).not.toBeInTheDocument();
   });
 
   it("clears startup cleanup when sidecar spawn rejects", async () => {
@@ -475,7 +515,12 @@ describe("TauriProvider", () => {
     expect(screen.queryByText(/MELODY_API_TOKEN|secret-token/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Restart API / Thử lại" }));
-    await waitFor(() => expect(sidecar.child.kill).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(bridge.invoke).toHaveBeenCalledWith("terminate_sidecar_pid", {
+        pid: sidecar.child.pid,
+        startTime: "1700000000000000",
+      }),
+    );
     await waitFor(() => expect(replacement.command.spawn).toHaveBeenCalledOnce());
   });
 
