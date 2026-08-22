@@ -55,28 +55,24 @@ describe("VieneuPage", () => {
 
     expect(screen.getByRole("heading", { name: "Voice Lab" })).toBeInTheDocument();
     expect(screen.getByText(/clone ready/i)).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /preset voices/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /clone voice/i })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /preset voices/i })).not.toBeInTheDocument();
   });
 
-  it("shows the preset-voices section by default", () => {
+  it("keeps the Voice Lab focused on voice cloning by default", () => {
     renderVieneu();
-    expect(screen.getByRole("heading", { name: /preset voices/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /upload reference audio/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /preset voices/i })).not.toBeInTheDocument();
   });
 
-  it("switches to the cloning workspace and keeps Create Voice gated", () => {
+  it("keeps Create Voice gated until a reference is ready", () => {
     renderVieneu();
-    const cloningToggle = screen.getByRole("tab", { name: /clone voice/i });
-    fireEvent.click(cloningToggle);
     expect(screen.getByRole("heading", { name: /upload reference audio/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /preview & output/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /create voice/i })).toBeDisabled();
-    expect(cloningToggle).toHaveAttribute("aria-selected", "true");
   });
 
   it("renders a selected audio file without calling a backend", () => {
     renderVieneu();
-    fireEvent.click(screen.getByRole("tab", { name: /clone voice/i }));
     const input = screen.getByLabelText(/voice sample file/i) as HTMLInputElement;
     const file = new File([new Uint8Array([1, 2, 3])], "sample.wav", { type: "audio/wav" });
     fireEvent.change(input, { target: { files: [file] } });

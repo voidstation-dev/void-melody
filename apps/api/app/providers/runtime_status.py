@@ -45,12 +45,19 @@ def get_provider_runtime_status(provider_id: str) -> ProviderRuntimeStatus:
 
             probe = probe_runtime()
             caps = capabilities_for_runtime(probe)
-            is_ready = bool(caps.engine_available)
+            is_ready = bool(caps.runtime_available)
+            model_installed = all(
+                (
+                    caps.speaker_encoder_artifact_available,
+                    caps.denoiser_artifact_available,
+                    caps.codec_encoder_artifact_available,
+                )
+            )
             return ProviderRuntimeStatus(
                 provider_id=VIENEU,
                 installed=True,
                 available=is_ready,
-                model_installed=bool(probe.speaker_encoder_artifact_available),
+                model_installed=model_installed,
                 model_loaded=False,
                 status="ready" if is_ready else "broken",
                 reason_code=None if is_ready else "VIENEU_RUNTIME_UNAVAILABLE",

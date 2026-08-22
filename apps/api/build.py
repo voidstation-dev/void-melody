@@ -1,7 +1,9 @@
+import filecmp
 import os
 import platform
 import shutil
 import subprocess
+import sys
 
 
 def get_target_triple():
@@ -23,7 +25,9 @@ def get_target_triple():
 
 def get_pyinstaller_command() -> list[str]:
     return [
-        "pyinstaller",
+        sys.executable,
+        "-m",
+        "PyInstaller",
         "--name",
         "melody-api",
         "--paths",
@@ -37,6 +41,7 @@ def get_pyinstaller_command() -> list[str]:
         "--hidden-import=librosa",
         "--hidden-import=soundfile",
         "--hidden-import=onnxruntime",
+        "--hidden-import=huggingface_hub",
         "--collect-all=sea_g2p",
         "--collect-all=vieneu",
         "--collect-all=vieneu_utils",
@@ -88,8 +93,16 @@ def main():
         ffmpeg_dest = f"{dest_dir}/ffmpeg"
         if platform.system().lower() == "windows":
             ffmpeg_dest += ".exe"
-        print(f"Copying {ffmpeg_src} to {ffmpeg_dest}")
-        shutil.copy2(ffmpeg_src, ffmpeg_dest)
+        ffmpeg_is_current = os.path.exists(ffmpeg_dest) and filecmp.cmp(
+            ffmpeg_src,
+            ffmpeg_dest,
+            shallow=False,
+        )
+        if ffmpeg_is_current:
+            print(f"FFmpeg already up to date at {ffmpeg_dest}")
+        else:
+            print(f"Copying {ffmpeg_src} to {ffmpeg_dest}")
+            shutil.copy2(ffmpeg_src, ffmpeg_dest)
 
     print("Done!")
 

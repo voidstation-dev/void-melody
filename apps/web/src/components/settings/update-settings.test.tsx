@@ -47,6 +47,7 @@ async function renderSettings(desktop: boolean) {
   const command = {
     stdout: { on: vi.fn((_event: string, handler: (line: string) => void) => stdoutHandlers.push(handler)) },
     stderr: { on: vi.fn() },
+    on: vi.fn(),
     spawn: vi.fn().mockResolvedValue({ kill: vi.fn().mockResolvedValue(undefined) }),
   };
   bridge.sidecar.mockReturnValue(command);

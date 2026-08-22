@@ -81,6 +81,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       let resolveReady: (() => void) | undefined;
       let rejectReady: ((reason: Error) => void) | undefined;
       let didResolve = false;
+      let didReject = false;
       const readyPromise = new Promise<void>((resolve, reject) => {
         resolveReady = resolve;
         rejectReady = reject;
@@ -91,10 +92,22 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       // would never settle and the UI would hang on "Starting local
       // environment..." forever. Time out so the user gets actionable guidance.
       const startupTimeoutMs = 30_000;
-      const startupTimer = setTimeout(() => {
-        if (didResolve || !mountedRef.current) return;
-        rejectReady?.(new Error("Local API did not start in time"));
-      }, startupTimeoutMs);
+      let startupTimer: ReturnType<typeof setTimeout>;
+      const rejectStartup = (reason: Error) => {
+        if (didResolve || didReject || !mountedRef.current) return;
+        didReject = true;
+        clearTimeout(startupTimer);
+        rejectReady?.(reason);
+      };
+      startupTimer = setTimeout(
+        () => rejectStartup(new Error("Local API did not start in time")),
+        startupTimeoutMs,
+      );
+
+      const outputBuffers: Record<"STDOUT" | "STDERR", string> = {
+        STDOUT: "",
+        STDERR: "",
+      };
 
       const probeHealth = async (url: string) => {
         for (let attempt = 0; attempt < 15; attempt++) {
@@ -102,7 +115,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
             const response = await fetch(`${url}/api/v1/health/live`, {
               method: "GET",
             });
-            if (response.ok && mountedRef.current && !didResolve) {
+            if (response.ok && mountedRef.current && !didResolve && !didReject) {
               didResolve = true;
               clearTimeout(startupTimer);
               console.log(`Successfully connected to API at ${url}`);
@@ -114,7 +127,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
           } catch {
             // The sidecar may log its address before it is ready to accept requests.
           }
-          if (didResolve || !mountedRef.current) break;
+          if (didResolve || didReject || !mountedRef.current) break;
           await new Promise((r) => setTimeout(r, 500));
         }
         return false;
@@ -122,18 +135,29 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
       const handleOutput = (line: string, source: "STDOUT" | "STDERR") => {
         console.log(`[API ${source}]:`, line);
-        if (didResolve || !mountedRef.current) return;
+        if (didResolve || didReject || !mountedRef.current) return;
+        const normalizedLine = `${outputBuffers[source]}${line}`.replace(
+          /\u001b\[[0-?]*[ -/]*[@-~]/g,
+          "",
+        );
+        outputBuffers[source] = normalizedLine.slice(-1024);
         // Ignore HTTP access log lines like `INFO: 127.0.0.1:55140 - "GET ..."`
-        if (/-\s+"[A-Z]+\s+/.test(line) || /(?:INFO|DEBUG|WARNING|ERROR):\s+\d+\.\d+\.\d+\.\d+:\d+/.test(line)) return;
+        if (
+          /-\s+"[A-Z]+\s+/.test(normalizedLine) ||
+          /(?:INFO|DEBUG|WARNING|ERROR):\s+\d+\.\d+\.\d+\.\d+:\d+/.test(
+            normalizedLine,
+          )
+        )
+          return;
         const match =
-          line.match(
+          normalizedLine.match(
             /(?:running on|listening on|server started at port|port:?)\s*(?:https?:\/\/)?(?:127\.0\.0\.1|localhost|0\.0\.0\.0)?:?(\d{4,5})/i,
           ) ??
-          line.match(
+          normalizedLine.match(
             /(?:https?:\/\/)(?:127\.0\.0\.1|localhost|0\.0\.0\.0):(\d{4,5})/,
           );
         const port = match?.[1];
-        if (port && port !== "0" && mountedRef.current) {
+        if (port && port !== "0" && mountedRef.current && !didReject) {
           console.log(`Resolved local API port from ${source}: ${port}`);
           void probeHealth(`http://127.0.0.1:${port}`);
         }
@@ -141,6 +165,20 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
       sidecar.stdout.on("data", (line) => handleOutput(line, "STDOUT"));
       sidecar.stderr.on("data", (line) => handleOutput(line, "STDERR"));
+      sidecar.on("error", (reason) => {
+        rejectStartup(new Error(`Sidecar process error: ${String(reason)}`));
+      });
+      sidecar.on("close", ({ code, signal }) => {
+        const exitReason =
+          code !== null && code !== undefined
+            ? `exit code ${code}`
+            : signal !== null && signal !== undefined
+              ? `signal ${signal}`
+              : "unknown reason";
+        rejectStartup(
+          new Error(`Sidecar exited before API became ready (${exitReason})`),
+        );
+      });
 
       const process = await sidecar.spawn();
       if (!mountedRef.current) {

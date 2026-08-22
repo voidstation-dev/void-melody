@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     melody_api_token: str | None = None
     cors_origins: list[str] = ["*"]  # Allow electron origins like file:// or app://
     database_url: str = f"sqlite+aiosqlite:///{_data_dir}/app.db"
+    vieneu_hf_home: Path = Path(
+        os.environ.get("VIENEU_HF_HOME", str(_data_dir / "models"))
+    )
     audio_storage_dir: Path = _data_dir / "audio"
     custom_voices_dir: Path = _data_dir / "voices"
     preview_storage_dir: Path = _data_dir / "previews"
@@ -33,6 +36,7 @@ class Settings(BaseSettings):
     tts_min_rate: float = 0.5
     tts_max_rate: float = 2.0
     tts_provider_timeout_seconds: float = 90.0
+    vieneu_clone_timeout_seconds: float = 180.0
     tts_max_auto_retries: int = 2
     tts_retry_base_delay_seconds: float = 2.0
     tts_apply_rate_with_ffmpeg: bool = False
