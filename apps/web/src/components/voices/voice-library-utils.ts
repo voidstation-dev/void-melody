@@ -3,8 +3,14 @@ import { CustomVoice, Voice } from "@/types/voice"
 export type VoiceLibraryTab = "all" | "preset" | "custom"
 export type VoiceFilterValue = "all" | string
 
-type FilterableVoice = Pick<Voice, "displayName" | "voiceType" | "languageCode"> & {
+type FilterableVoice = Pick<Voice, "displayName" | "voiceType" | "languageCode" | "gender" | "region" | "style" | "description"> & {
   providerId?: string | null
+}
+
+const styleLabels: Record<string, string> = {
+  tu_nhien: "Tự nhiên",
+  tin_tuc: "Tin tức",
+  doc_truyen: "Đọc truyện",
 }
 
 export function providerLabel(providerId?: string | null) {
@@ -26,6 +32,10 @@ export function customVoiceAsFilterable(voice: CustomVoice): FilterableVoice {
     voiceType: voice.id,
     languageCode: "vi-VN",
     providerId: voice.provider_id,
+    gender: null,
+    region: null,
+    style: null,
+    description: voice.transcript,
   }
 }
 
@@ -38,7 +48,9 @@ export function matchesVoiceFilters(
   const query = search.trim().toLocaleLowerCase()
   const providerId = voice.providerId?.toLocaleLowerCase() || ""
   const languageCode = voice.languageCode?.toLocaleLowerCase() || ""
-  const searchable = [voice.displayName, voice.voiceType, voice.languageCode, providerId, providerLabel(voice.providerId)]
+  const genderLabel = voice.gender === "male" ? "Nam male" : voice.gender === "female" ? "Nữ female" : ""
+  const styleLabel = voice.style ? `${styleLabels[voice.style] || voice.style} ${voice.style}` : ""
+  const searchable = [voice.displayName, voice.voiceType, voice.languageCode, providerId, providerLabel(voice.providerId), genderLabel, voice.region, styleLabel, voice.description]
     .filter(Boolean)
     .join(" ")
     .toLocaleLowerCase()

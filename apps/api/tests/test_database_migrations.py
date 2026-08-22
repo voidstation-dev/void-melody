@@ -12,7 +12,7 @@ from app.services.database_migrations import (
 )
 
 ALEMBIC_INI = Path(__file__).parents[1] / "alembic.ini"
-HEAD_REVISION = "f4a8b6c2d1e0"
+HEAD_REVISION = "b7e3d2f1a9c4"
 
 
 def sqlite_url(path: Path) -> str:
@@ -223,6 +223,41 @@ async def test_migrations_adopt_current_unversioned_schema(tmp_path):
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
     await engine.dispose()
+
+    await run_database_migrations(
+        database_url=sqlite_url(database_path),
+        alembic_ini_path=ALEMBIC_INI,
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        revision = connection.execute(
+            "SELECT version_num FROM alembic_version"
+        ).fetchone()[0]
+    assert revision == HEAD_REVISION
+
+
+@pytest.mark.asyncio
+async def test_migrations_adopt_emotional_script_schema_at_previous_revision(tmp_path):
+    """A DB with script tables created before their Alembic revision is stamped
+    must not attempt to create those tables a second time on startup.
+    """
+    database_path = tmp_path / "emotional_script_previous_revision.db"
+    from app.models import emotional_script, tts_job  # noqa: F401
+
+    engine = create_database_engine(sqlite_url(database_path))
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    await engine.dispose()
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO alembic_version (version_num) VALUES (?)",
+            ("f4a8b6c2d1e0",),
+        )
+        connection.commit()
 
     await run_database_migrations(
         database_url=sqlite_url(database_path),

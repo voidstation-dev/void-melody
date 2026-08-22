@@ -28,6 +28,7 @@ export type TranslationSchema = {
   };
   nav: {
     generate: string;
+    scripts: string;
     voiceLab: string;
     voices: string;
     history: string;

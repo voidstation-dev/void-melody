@@ -12,6 +12,10 @@ class ProviderVoice:
     resource_id: str | None = None
     captured_at: str | None = None
     provider_id: str = "capcut"
+    gender: str | None = None
+    region: str | None = None
+    style: str | None = None
+    description: str | None = None
 
 
 @dataclass(frozen=True)

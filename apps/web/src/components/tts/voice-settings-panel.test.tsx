@@ -15,6 +15,10 @@ const mockPresets: Voice[] = [
     voiceType: "BV421_vivn_streaming",
     resourceId: "res-1",
     capturedAt: null,
+    gender: "female",
+    region: "Bắc",
+    style: "tu_nhien",
+    description: "Nữ · Bắc · Phong cách tự nhiên",
   },
   {
     id: "preset-2",
@@ -114,5 +118,25 @@ describe("VoiceSettingsPanel", () => {
 
     expect(screen.getByText("Giọng Đọc Cá Nhân Của Tôi")).toBeInTheDocument();
     expect(screen.queryByText("Giọng Nữ Phổ Thông")).not.toBeInTheDocument();
+  });
+
+  it("shows preset metadata so similar voices are easy to distinguish", () => {
+    renderPanel();
+
+    fireEvent.click(screen.getByText("Nhỏ Ngọt Ngào"));
+
+    expect(screen.getByText(/Nữ · Bắc · Tự nhiên/i)).toBeInTheDocument();
+  });
+
+  it("uses an accessible shadcn-style combobox for the voice library", () => {
+    renderPanel();
+
+    const trigger = screen.getByRole("combobox", { name: /giọng đọc đã chọn/i });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole("combobox", { name: /tìm kiếm giọng đọc/i })).toBeInTheDocument();
+    expect(screen.getByRole("listbox", { name: /chọn giọng đọc/i })).toBeInTheDocument();
   });
 });

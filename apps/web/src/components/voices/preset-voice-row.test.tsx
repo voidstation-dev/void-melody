@@ -18,6 +18,10 @@ const voice = {
   resourceId: "resource-1",
   capturedAt: null,
   providerId: "capcut",
+  gender: "female",
+  region: "Bắc",
+  style: "tu_nhien",
+  description: "Nữ · Bắc · Phong cách tự nhiên",
 }
 
 describe("PresetVoiceRow", () => {
@@ -33,6 +37,7 @@ describe("PresetVoiceRow", () => {
     expect(screen.getByText(/Mẫu có sẵn/)).toBeInTheDocument()
     expect(screen.getByText("CapCut")).toBeInTheDocument()
     expect(screen.getByText("Tự nhiên")).toBeInTheDocument()
+    expect(screen.getByText("Nữ · Bắc · Tự nhiên")).toBeInTheDocument()
     expect(screen.getByTestId("voice-waveform")).toBeInTheDocument()
     expect(screen.getByRole("article")).toHaveClass("min-h-[300px]")
     expect(screen.getByRole("article")).toHaveClass("p-4")

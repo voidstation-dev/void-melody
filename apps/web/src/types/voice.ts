@@ -4,9 +4,13 @@ export type Voice = {
   languageShort: string
   voiceType: string
   displayName: string
-  resourceId: string
+  resourceId: string | null
   capturedAt: string | null
   providerId?: string | null
+  gender?: string | null
+  region?: string | null
+  style?: string | null
+  description?: string | null
 }
 
 export type VoiceCapabilities = {

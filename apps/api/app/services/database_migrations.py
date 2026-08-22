@@ -11,6 +11,7 @@ from alembic import command
 from app.config import settings
 
 BASELINE_REVISION = "37c7b24d235a"
+EMOTIONAL_SCRIPT_PREVIOUS_REVISION = "f4a8b6c2d1e0"
 LEGACY_CORE_COLUMNS = {
     "id",
     "kind",
@@ -142,6 +143,18 @@ def _has_post_baseline_columns(connection: sqlite3.Connection) -> bool:
     return POST_BASELINE_CUSTOM_VOICE_COLUMNS.issubset(custom_columns)
 
 
+def _has_emotional_script_tables(connection: sqlite3.Connection) -> bool:
+    return all(
+        _table_exists(connection, table_name)
+        for table_name in (
+            "emotional_scripts",
+            "script_renders",
+            "script_render_segments",
+            "script_audio_cache",
+        )
+    )
+
+
 def _backup_database(database_path: Path, *, retain: int = 3) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     backup_path = database_path.with_name(
@@ -232,10 +245,12 @@ def _run_database_migrations(
         with sqlite3.connect(database_path) as connection:
             has_jobs_table = _table_exists(connection, "tts_jobs")
             current_revision = _current_revision(connection)
+            has_emotional_script_tables = _has_emotional_script_tables(connection)
             schema_is_current = (
                 has_jobs_table
                 and current_revision is None
                 and _has_post_baseline_columns(connection)
+                and has_emotional_script_tables
             )
 
         if has_jobs_table and current_revision is None:
@@ -252,7 +267,17 @@ def _run_database_migrations(
             and current_revision is not None
             and current_revision != head_revision
         ):
-            _backup_database(database_path)
+            if (
+                current_revision == EMOTIONAL_SCRIPT_PREVIOUS_REVISION
+                and has_emotional_script_tables
+            ):
+                # Some development databases created the new script tables
+                # from SQLAlchemy metadata before the Alembic revision was
+                # added.  The schema is already present, so running the
+                # revision would fail with "table already exists".
+                command.stamp(config, head_revision)
+            else:
+                _backup_database(database_path)
 
     command.upgrade(config, "head")
 

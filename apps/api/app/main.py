@@ -19,8 +19,10 @@ from app.services.logging_config import configure_logging
 from app.services.raw_response_storage import cleanup_stale_raw_responses
 from app.services.voice_artifact_cleanup import cleanup_orphan_voice_artifacts
 from app.services.vieneu_bootstrap import bootstrap_vieneu_runtime
+from app.services.script_render_service import recover_interrupted_script_renders
 from app.models.custom_voice import CustomVoiceModel
 from app.workers.queue_manager import queue_manager
+from app.workers.script_render_queue import script_render_queue
 
 
 @asynccontextmanager
@@ -57,13 +59,16 @@ async def lifespan(app: FastAPI):
         older_than_seconds=settings.raw_provider_response_retention_seconds,
     )
     recovered_jobs = await recover_jobs()
+    await recover_interrupted_script_renders()
     await queue_manager.start()
+    await script_render_queue.start()
     for job_id, batch_pos in recovered_jobs:
         await queue_manager.enqueue(job_id, batch_position=batch_pos)
     try:
         yield
     finally:
         await queue_manager.stop()
+        await script_render_queue.stop()
         await close_http_client()
 
 

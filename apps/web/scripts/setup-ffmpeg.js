@@ -16,6 +16,9 @@ const FFMPEG_STATIC_REPO = 'eugeneware/ffmpeg-static';
 
 function download(url, dest) {
   return new Promise((resolve, reject) => {
+    if (fs.existsSync(dest)) {
+      fs.chmodSync(dest, 0o644);
+    }
     const file = fs.createWriteStream(dest);
     https
       .get(url, (response) => {

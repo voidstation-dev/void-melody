@@ -15,4 +15,19 @@ describe("matchesVoiceFilters", () => {
     expect(matchesVoiceFilters(voice, "", "vieneu", "all")).toBe(false)
     expect(matchesVoiceFilters(voice, "", "all", "en-US")).toBe(false)
   })
+
+  it("matches VieNeu profile metadata from the library search", () => {
+    const voice = {
+      displayName: "Thái Sơn",
+      voiceType: "Thái Sơn",
+      languageCode: "vi-VN",
+      providerId: "vieneu",
+      gender: "male",
+      region: "Nam",
+      style: "doc_truyen",
+    }
+
+    expect(matchesVoiceFilters(voice, "đọc truyện")).toBe(true)
+    expect(matchesVoiceFilters(voice, "nam")).toBe(true)
+  })
 })

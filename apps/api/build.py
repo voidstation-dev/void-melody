@@ -1,4 +1,3 @@
-import filecmp
 import os
 import platform
 import shutil
@@ -93,16 +92,17 @@ def main():
         ffmpeg_dest = f"{dest_dir}/ffmpeg"
         if platform.system().lower() == "windows":
             ffmpeg_dest += ".exe"
-        ffmpeg_is_current = os.path.exists(ffmpeg_dest) and filecmp.cmp(
-            ffmpeg_src,
-            ffmpeg_dest,
-            shallow=False,
-        )
-        if ffmpeg_is_current:
-            print(f"FFmpeg already up to date at {ffmpeg_dest}")
+        # setup-ffmpeg.js provisions a portable static binary before this
+        # script runs. Keep it instead of replacing it with a Homebrew/dynamic
+        # build, which may fail to launch on another machine and can preserve
+        # read-only permissions that break the next build.
+        ffmpeg_is_provisioned = os.path.exists(ffmpeg_dest) and os.path.getsize(ffmpeg_dest) > 0
+        if ffmpeg_is_provisioned:
+            print(f"FFmpeg already provisioned at {ffmpeg_dest}")
         else:
             print(f"Copying {ffmpeg_src} to {ffmpeg_dest}")
             shutil.copy2(ffmpeg_src, ffmpeg_dest)
+            os.chmod(ffmpeg_dest, 0o755)
 
     print("Done!")
 

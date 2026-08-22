@@ -11,6 +11,7 @@ import {
   Flame,
   Sparkles,
   User,
+  Clapperboard,
 } from "lucide-react";
 
 export function AppSidebar() {
@@ -50,6 +51,7 @@ export function AppSidebar() {
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         <nav className="space-y-1.5">
           {navItem("/", t("nav.generate"), Mic)}
+          {navItem("/scripts", t("nav.scripts"), Clapperboard)}
           {navItem("/vieneu", t("nav.voiceLab"), Sparkles)}
           {navItem("/voices", t("nav.voices"), User)}
           {navItem("/history", t("nav.history"), FileText)}

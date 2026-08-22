@@ -124,10 +124,17 @@ async def analyze_voice_reference(
 async def list_voices(
     language: str | None = Query(default=None),
     q: str | None = Query(default=None),
+    provider_id: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
 ):
     raw_voices = voice_catalog.list_voices(language=language)
+
+    if provider_id:
+        raw_voices = [
+            voice for voice in raw_voices
+            if voice.provider_id.casefold() == provider_id.casefold()
+        ]
 
     if q:
         query_str = q.lower()
@@ -149,6 +156,10 @@ async def list_voices(
             resourceId=v.resource_id,
             capturedAt=v.captured_at,
             providerId=v.provider_id,
+            gender=v.gender,
+            region=v.region,
+            style=v.style,
+            description=v.description,
         )
         for v in raw_voices[start : start + page_size]
     ]

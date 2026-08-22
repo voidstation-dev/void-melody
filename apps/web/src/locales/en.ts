@@ -28,6 +28,7 @@ export const en: TranslationSchema = {
   },
   nav: {
     generate: "Generate",
+    scripts: "Emotional Script",
     voiceLab: "Voice Lab",
     voices: "Voices",
     history: "History",

@@ -7,18 +7,32 @@ import { providerLabel } from "./voice-library-utils"
 import { VoicePreviewButton } from "./voice-preview-button"
 import { VoiceWaveform } from "./voice-waveform"
 
+const styleLabels: Record<string, string> = {
+  tu_nhien: "Tự nhiên",
+  tin_tuc: "Tin tức",
+  doc_truyen: "Đọc truyện",
+}
+
+function voiceProfileLine(voice: Voice) {
+  const gender = voice.gender === "male" ? "Nam" : voice.gender === "female" ? "Nữ" : null
+  const style = voice.style ? styleLabels[voice.style] || voice.style : null
+  const parts = [gender, voice.region, style].filter(Boolean)
+  return parts.length > 0 ? parts.join(" · ") : voice.description
+}
+
 export function PresetVoiceRow({ voice, onPlayStart }: { voice: Voice; onPlayStart?: (voiceId: string) => void }) {
   const { t } = useTranslation()
   const sampleText = t("voices.sampleSentence", { name: voice.displayName })
   const metadata = [providerLabel(voice.providerId), t("voices.presetMetaStyle"), t("voices.presetMetaPopularity")]
 
   return (
-    <article className="group flex min-h-[300px] flex-col rounded-[1.25rem] border-2 border-blue-500 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none sm:p-5">
+    <article className="group flex min-h-[300px] flex-col rounded-[1.25rem] border border-border/80 border-l-4 border-l-[#df604e] bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted-foreground">{t("voices.presetBadge")} · {voice.languageCode || "vi-VN"}</p>
           <h3 className="mt-4 text-2xl font-black tracking-[-0.045em] text-foreground">{voice.displayName}</h3>
           <p className="mt-2 text-sm leading-5 text-muted-foreground">{t("voices.presetDescription")}</p>
+          {voiceProfileLine(voice) && <p className="mt-3 inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-foreground/80">{voiceProfileLine(voice)}</p>}
         </div>
         <span aria-hidden="true" className="pt-1 text-xl leading-none tracking-[0.2em] text-muted-foreground/70">•••</span>
       </div>

@@ -8,12 +8,11 @@ from pathlib import Path
 
 from sqlalchemy import select
 from vieneu_core.engine import ModelManager
-from vieneu_core.fixtures import FIXTURE_VOICES
-
 from app.database import AsyncSessionLocal
 from app.models.custom_voice import CustomVoiceModel
 from app.providers.base import ProviderResult, ProviderVoice, SynthesisOptions
 from app.config import settings
+from app.services.vieneu_preset_catalog import list_vieneu_preset_voices
 
 logger = logging.getLogger(__name__)
 
@@ -24,16 +23,12 @@ class VieneuProvider:
         self._inference_semaphore = asyncio.Semaphore(1)
 
     async def list_voices(self, language: str | None = None) -> list[ProviderVoice]:
+        voices = list(list_vieneu_preset_voices())
+        if language is None:
+            return voices
         return [
-            ProviderVoice(
-                language_short="vi",
-                language_code="vi-VN",
-                voice_type=v.voice_id,
-                display_name=v.display_name,
-                resource_id=None,
-                provider_id="vieneu",
-            )
-            for v in FIXTURE_VOICES
+            voice for voice in voices
+            if voice.language_code.casefold() == language.casefold()
         ]
 
     async def synthesize(
@@ -96,6 +91,67 @@ class VieneuProvider:
 
             return ProviderResult(
                 raw_response={"engine": "vieneu-v3-turbo", "voice": voice_type},
+                audio_urls=[],
+                local_paths=[str(mp3_path)],
+            )
+        finally:
+            wav_path.unlink(missing_ok=True)
+
+    async def synthesize_script(
+        self,
+        *,
+        text: str,
+        voice_type: str,
+        rate: float,
+    ) -> ProviderResult:
+        """Synthesize an Emotional Script unit without the deprecated style arg.
+
+        The standard TTS path intentionally keeps its existing ``style``
+        behavior. This separate method is the only entry point used by the
+        script adapter, so future VieNeu runtime changes stay isolated.
+        """
+        del rate  # VieNeu v3 Turbo has no native rate control in this path.
+        logger.info("VieneuProvider synthesizing script unit for %s", voice_type)
+        engine = await self.manager.get_engine()
+        voice_id, ref_audio, prompt_text = await self._resolve_custom_voice(voice_type)
+
+        async with self._inference_semaphore:
+            wav = await asyncio.to_thread(
+                engine.infer,
+                text=text,
+                voice=voice_id,
+                ref_audio=ref_audio,
+                prompt_text=prompt_text,
+                apply_watermark=False,
+            )
+
+        fd, wav_path_str = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        wav_path = Path(wav_path_str)
+        try:
+            await asyncio.to_thread(engine.save, wav, wav_path)
+            mp3_path = wav_path.with_suffix(".mp3")
+            command = [
+                settings.ffmpeg_binary_path,
+                "-y",
+                "-i",
+                str(wav_path),
+                "-q:a",
+                "2",
+                str(mp3_path),
+            ]
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await process.communicate()
+            if process.returncode != 0:
+                raise RuntimeError(
+                    f"FFmpeg conversion failed: {stderr.decode('utf-8', errors='ignore')}"
+                )
+            return ProviderResult(
+                raw_response={"engine": "vieneu-v3-turbo", "voice": voice_type, "script": True},
                 audio_urls=[],
                 local_paths=[str(mp3_path)],
             )

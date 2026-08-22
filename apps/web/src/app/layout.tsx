@@ -8,6 +8,10 @@ import { QueueProvider } from "@/contexts/queue-context"
 import { I18nProvider } from "@/contexts/i18n-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { AuthGuard } from "@/components/auth/auth-guard"
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata = {
   title: "Melody - Text to Speech Studio",
@@ -16,7 +20,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html lang="vi" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
       <body>
         <QueryProvider>
           <ThemeProvider attribute="class" defaultTheme="light" forcedTheme="light">

@@ -28,6 +28,7 @@ export const vi: TranslationSchema = {
   },
   nav: {
     generate: "Tạo âm thanh",
+    scripts: "Kịch bản cảm xúc",
     voiceLab: "Phòng thu giọng",
     voices: "Thư viện giọng",
     history: "Lịch sử",

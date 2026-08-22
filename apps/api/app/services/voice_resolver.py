@@ -21,6 +21,7 @@ class ResolvedVoice:
     provider_id: str
     source: str  # "preset" | "custom"
     status: str
+    voice_revision: str = "unknown"
 
 
 class VoiceResolutionError(ValueError):
@@ -43,6 +44,7 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
             provider_id=preset.provider_id,
             source="preset",
             status="ready",
+            voice_revision="preset:vieneu-v3turbo",
         )
 
     custom = await session.scalar(
@@ -72,4 +74,9 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
         provider_id=custom.provider_id,
         source="custom",
         status=custom.status,
+        voice_revision=(
+            custom.updated_at.isoformat()
+            if custom.updated_at
+            else f"reference:{Path(custom.reference_audio_path).stat().st_mtime_ns}"
+        ),
     )
