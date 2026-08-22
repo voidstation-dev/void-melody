@@ -58,9 +58,19 @@ export function validateSidecarEnvironment(
 }
 
 export function formatPreflightFailure(report: PreflightReport): string {
-  if (report.ok || report.missing.length === 0) {
+  const knownNames = new Set([
+    ...manifest.requiredSidecarEnv,
+    ...manifest.requiredResources,
+  ]);
+  const safeMissing = report.missing.filter((name) => knownNames.has(name));
+
+  if (report.ok) {
     return "Runtime preflight passed";
   }
 
-  return `Missing runtime configuration: ${report.missing.join(", ")}`;
+  if (safeMissing.length === 0) {
+    return "Missing runtime configuration";
+  }
+
+  return `Missing runtime configuration: ${safeMissing.join(", ")}`;
 }

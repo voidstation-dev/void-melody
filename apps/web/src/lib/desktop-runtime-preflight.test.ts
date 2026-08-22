@@ -51,4 +51,14 @@ describe("desktop runtime preflight", () => {
       missing: ["MELODY_API_TOKEN", "MELODY_DATA_DIR"],
     })).toBe("Missing runtime configuration: MELODY_API_TOKEN, MELODY_DATA_DIR");
   });
+
+  it("does not emit malformed value-bearing missing entries", () => {
+    const message = formatPreflightFailure({
+      ok: false,
+      missing: ["MELODY_API_TOKEN=secret"],
+    });
+
+    expect(message).not.toContain("MELODY_API_TOKEN=secret");
+    expect(message).toBe("Missing runtime configuration");
+  });
 });
