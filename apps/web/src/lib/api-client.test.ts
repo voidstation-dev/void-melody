@@ -6,6 +6,7 @@ import {
   onTrialBlocked,
   setApiConnection,
 } from "./api-client"
+import { DEFAULT_DEV_KEY, STORAGE_KEYS } from "@/constants"
 
 
 describe("authenticated API client", () => {
@@ -33,6 +34,27 @@ describe("authenticated API client", () => {
           "X-Melody-Token": "secret-token",
         }),
       }),
+    )
+  })
+
+  it("attaches the development license entitlement when it is active", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => key === STORAGE_KEYS.AUTH_KEY ? DEFAULT_DEV_KEY : null,
+      },
+    })
+
+    await apiFetch("/api/v1/trial/status")
+
+    expect(fetchMock.mock.calls[0][1].headers).toEqual(
+      expect.objectContaining({ "X-Melody-License-Key": DEFAULT_DEV_KEY }),
     )
   })
 

@@ -99,7 +99,12 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Request-ID", "X-Melody-Token"],
+    allow_headers=[
+        "Content-Type",
+        "X-Request-ID",
+        "X-Melody-Token",
+        "X-Melody-License-Key",
+    ],
 )
 
 app.include_router(api_router, prefix="/api/v1")

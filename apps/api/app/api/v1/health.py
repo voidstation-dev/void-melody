@@ -1,4 +1,6 @@
+import asyncio
 import os
+import signal
 import shutil
 import tempfile
 from pathlib import Path
@@ -13,6 +15,7 @@ from app.services.voice_catalog import voice_catalog
 from app.workers.queue_manager import queue_manager
 
 router = APIRouter()
+SHUTDOWN_DELAY_SECONDS = 0.05
 
 
 def _liveness_payload() -> dict[str, str]:
@@ -27,6 +30,24 @@ async def health_check():
 @router.get("/health/live")
 async def liveness_check():
     return _liveness_payload()
+
+
+def schedule_process_shutdown() -> None:
+    """Ask the PyInstaller child process to exit after the response is sent."""
+
+    loop = asyncio.get_running_loop()
+    loop.call_later(
+        SHUTDOWN_DELAY_SECONDS,
+        os.kill,
+        os.getpid(),
+        signal.SIGTERM,
+    )
+
+
+@router.post("/health/shutdown", status_code=202)
+async def shutdown_sidecar():
+    schedule_process_shutdown()
+    return {"status": "shutting_down"}
 
 
 async def _database_ready() -> bool:

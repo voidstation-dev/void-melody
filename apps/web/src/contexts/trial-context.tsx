@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { AlertTriangle, Clock3, LockKeyhole } from "lucide-react"
 import { apiFetch, onTrialBlocked } from "@/lib/api-client"
+import { useAuth } from "@/contexts/auth-context"
 import type { TrialStatus } from "@/types/trial"
 import {
   Dialog,
@@ -85,6 +86,7 @@ function TrialExpiredDialog({ open, onOpenChange }: { open: boolean; onOpenChang
 }
 
 export function TrialProvider({ children }: { children: React.ReactNode }) {
+  const { licenseKey } = useAuth()
   const [status, setStatus] = useState<TrialStatus>(DEFAULT_STATUS)
   const [isLoading, setIsLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -117,7 +119,7 @@ export function TrialProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("focus", onFocus)
       window.clearInterval(timer)
     }
-  }, [refresh])
+  }, [licenseKey, refresh])
 
   const value = useMemo(() => ({ status, isLoading, refresh, openExpiredDialog: () => setDialogOpen(true) }), [isLoading, refresh, status])
   return (

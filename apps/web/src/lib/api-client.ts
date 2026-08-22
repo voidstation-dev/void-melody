@@ -1,3 +1,5 @@
+import { DEFAULT_DEV_KEY, STORAGE_KEYS } from "@/constants"
+
 export let API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000"
 let API_TOKEN: string | null = null
 const trialBlockedListeners = new Set<() => void>()
@@ -24,6 +26,17 @@ export function setApiConnection(url: string, token: string | null) {
 export function resolveApiUrl(path: string): string {
   return `${API_BASE_URL}${path}`
 }
+
+function activeDevelopmentLicenseKey(): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    const key = window.localStorage.getItem(STORAGE_KEYS.AUTH_KEY)?.trim()
+    return key?.toLowerCase() === DEFAULT_DEV_KEY.toLowerCase() ? DEFAULT_DEV_KEY : null
+  } catch {
+    return null
+  }
+}
+
 export class ApiError extends Error {
   constructor(message: unknown, public status: number, public code?: string) {
     const readable = typeof message === "string"
@@ -42,6 +55,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     ...(init?.headers as Record<string, string> | undefined),
   }
   if (API_TOKEN) headers["X-Melody-Token"] = API_TOKEN
+  const licenseKey = activeDevelopmentLicenseKey()
+  if (licenseKey) headers["X-Melody-License-Key"] = licenseKey
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers,
@@ -62,6 +77,8 @@ export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Bl
   if (!(init?.body instanceof FormData)) headers["Content-Type"] = "application/json"
   Object.assign(headers, init?.headers as Record<string, string> | undefined)
   if (API_TOKEN) headers["X-Melody-Token"] = API_TOKEN
+  const licenseKey = activeDevelopmentLicenseKey()
+  if (licenseKey) headers["X-Melody-License-Key"] = licenseKey
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
   if (!response.ok) {
     const body = await response.json().catch(() => null)

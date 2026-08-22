@@ -140,7 +140,9 @@ describe("UpdateProvider checks", () => {
     bridge.relaunch.mockReset().mockResolvedValue(undefined);
     bridge.updaterModuleLoads = 0;
     vi.stubGlobal("crypto", { randomUUID: vi.fn(() => "random-token") });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((input: string) => (
+      Promise.resolve({ ok: !input.includes("/health/shutdown") })
+    )));
   });
 
   afterEach(() => {
@@ -441,7 +443,9 @@ describe("UpdateProvider installation", () => {
     bridge.relaunch.mockReset().mockResolvedValue(undefined);
     bridge.updaterModuleLoads = 0;
     vi.stubGlobal("crypto", { randomUUID: vi.fn(() => "random-token") });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((input: string) => (
+      Promise.resolve({ ok: !input.includes("/health/shutdown") })
+    )));
   });
 
   afterEach(() => {

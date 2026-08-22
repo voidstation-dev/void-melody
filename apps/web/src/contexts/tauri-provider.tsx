@@ -14,12 +14,18 @@ import { resolveResource } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2 } from "lucide-react";
 import { setApiConnection } from "@/lib/api-client";
+import { DEFAULT_DEV_KEY, STORAGE_KEYS } from "@/constants";
 
 type TauriContextValue = {
   isDesktop: boolean;
   isReady: boolean;
   shutdownSidecar: () => Promise<void>;
   restartSidecar: () => Promise<void>;
+};
+
+type SidecarConnection = {
+  url: string;
+  token: string;
 };
 
 const TauriContext = createContext<TauriContextValue | null>(null);
@@ -32,6 +38,16 @@ function hasTauriRuntime() {
         .__TAURI_INTERNALS__,
     )
   );
+}
+
+function activeDevelopmentLicenseKey() {
+  if (typeof window === "undefined") return "";
+  try {
+    const key = window.localStorage.getItem(STORAGE_KEYS.AUTH_KEY)?.trim();
+    return key?.toLowerCase() === DEFAULT_DEV_KEY.toLowerCase() ? DEFAULT_DEV_KEY : "";
+  } catch {
+    return "";
+  }
 }
 
 async function initializeTrialRuntime() {
@@ -65,6 +81,8 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(false);
   const sidecarProcessRef = useRef<Child | null>(null);
+  const sidecarConnectionRef = useRef<SidecarConnection | null>(null);
+  const sidecarExitPromiseRef = useRef<Promise<void> | null>(null);
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const shutdownPromiseRef = useRef<Promise<void> | null>(null);
   const restartPromiseRef = useRef<Promise<void> | null>(null);
@@ -74,6 +92,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
     const start = (async () => {
       const apiToken = crypto.randomUUID();
+      const developmentLicenseKey = activeDevelopmentLicenseKey();
       const [trialRuntime, catalogPath] = await Promise.all([
         initializeTrialRuntime(),
         resolveResource("bin/Voice.json"),
@@ -89,6 +108,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
           API_HOST: "127.0.0.1",
           API_PORT: "0",
           MELODY_API_TOKEN: apiToken,
+          MELODY_LICENSE_KEY: developmentLicenseKey,
           MELODY_DATA_DIR: dataDir,
           MELODY_TRIAL_INTEGRITY_KEY: trialIntegrityKey,
           MELODY_CATALOG_PATH: catalogPath,
@@ -106,6 +126,11 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         resolveReady = resolve;
         rejectReady = reject;
       });
+      let resolveExit: (() => void) | undefined;
+      const exitPromise = new Promise<void>((resolve) => {
+        resolveExit = resolve;
+      });
+      sidecarExitPromiseRef.current = exitPromise;
 
       // If the sidecar never prints a port (e.g. macOS Gatekeeper quarantines
       // the bundled binary and blocks its launch silently), the ready promise
@@ -139,6 +164,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
               didResolve = true;
               clearTimeout(startupTimer);
               console.log(`Successfully connected to API at ${url}`);
+              sidecarConnectionRef.current = { url, token: apiToken };
               setApiConnection(url, apiToken);
               setIsReady(true);
               resolveReady?.();
@@ -189,6 +215,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         rejectStartup(new Error(`Sidecar process error: ${String(reason)}`));
       });
       sidecar.on("close", ({ code, signal }) => {
+        resolveExit?.();
         const exitReason =
           code !== null && code !== undefined
             ? `exit code ${code}`
@@ -225,15 +252,39 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     if (shutdownPromiseRef.current) return shutdownPromiseRef.current;
 
     const process = sidecarProcessRef.current;
-    sidecarProcessRef.current = null;
+    const connection = sidecarConnectionRef.current;
+    const exitPromise = sidecarExitPromiseRef.current;
     const shutdown = (async () => {
-      if (process) {
+      let exitedGracefully = false;
+      if (process && connection) {
+        try {
+          const response = await fetch(`${connection.url}/api/v1/health/shutdown`, {
+            method: "POST",
+            headers: { "X-Melody-Token": connection.token },
+            keepalive: true,
+          });
+          if (response.ok && exitPromise) {
+            exitedGracefully = await Promise.race([
+              exitPromise.then(() => true),
+              new Promise<boolean>((resolve) => {
+                setTimeout(() => resolve(false), 5_000);
+              }),
+            ]);
+          }
+        } catch {
+          // Fall back to the shell plugin kill below.
+        }
+      }
+      if (process && !exitedGracefully) {
         try {
           await process.kill();
         } catch {
           // ignore
         }
       }
+      if (sidecarProcessRef.current === process) sidecarProcessRef.current = null;
+      if (sidecarConnectionRef.current === connection) sidecarConnectionRef.current = null;
+      if (sidecarExitPromiseRef.current === exitPromise) sidecarExitPromiseRef.current = null;
     })();
     shutdownPromiseRef.current = shutdown.finally(() => {
       shutdownPromiseRef.current = null;
@@ -278,11 +329,9 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mountedRef.current = false;
-      const process = sidecarProcessRef.current;
-      sidecarProcessRef.current = null;
-      if (process) void process.kill();
+      void shutdownSidecar();
     };
-  }, [startSidecar]);
+  }, [shutdownSidecar, startSidecar]);
 
   const contextValue = useMemo(
     () => ({ isDesktop, isReady, shutdownSidecar, restartSidecar }),

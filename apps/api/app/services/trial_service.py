@@ -22,6 +22,9 @@ from app.services.trial_storage import (
     TrialStateRepository,
     decode_integrity_key,
 )
+from app.services.license_context import get_runtime_license_key
+
+TRIAL_BYPASS_LICENSE_KEY = "phongvu"
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,8 +111,9 @@ class TrialService:
 class DevelopmentTrialService:
     """Explicit development-only bypass; no persisted reset exists in release."""
 
-    def __init__(self, clock: TrialClock | None = None):
+    def __init__(self, clock: TrialClock | None = None, *, override: str = "disabled"):
         self.clock = clock or SystemUtcClock()
+        self.override = override
 
     def get_status(self) -> TrialStatusSnapshot:
         now = self.clock.now()
@@ -120,7 +124,7 @@ class DevelopmentTrialService:
             expires_at=now,
             remaining_seconds=-1,
             warning_level=WarningLevel.NONE,
-            override="disabled",
+            override=self.override,
         )
 
     def assert_synthesis_allowed(self) -> TrialStatusSnapshot:
@@ -129,6 +133,15 @@ class DevelopmentTrialService:
 
 def get_runtime_trial_service() -> TrialService | DevelopmentTrialService:
     """Build the service from runtime configuration without frontend input."""
+
+    configured_license = settings.license_key
+    request_license = get_runtime_license_key()
+    if any(
+        value is not None
+        and value.strip().casefold() == TRIAL_BYPASS_LICENSE_KEY
+        for value in (configured_license, request_license)
+    ):
+        return DevelopmentTrialService(override=TRIAL_BYPASS_LICENSE_KEY)
 
     is_development = settings.app_env.lower() == "development"
     if is_development and settings.trial_mode.lower() == "disabled":

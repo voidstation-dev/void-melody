@@ -23,6 +23,29 @@ async def test_health_endpoint():
 
 
 @pytest.mark.asyncio
+async def test_sidecar_shutdown_endpoint_schedules_process_shutdown(monkeypatch):
+    scheduled = []
+
+    def schedule_shutdown():
+        scheduled.append(True)
+
+    monkeypatch.setattr(
+        "app.api.v1.health.schedule_process_shutdown",
+        schedule_shutdown,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        response = await ac.post("/api/v1/health/shutdown")
+
+    assert response.status_code == 202
+    assert response.json() == {"status": "shutting_down"}
+    assert scheduled == [True]
+
+
+@pytest.mark.asyncio
 async def test_readiness_reports_queue_and_dependency_state():
     async with AsyncClient(
         transport=ASGITransport(app=app),

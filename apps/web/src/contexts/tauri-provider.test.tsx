@@ -4,6 +4,7 @@ import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TauriProvider, useTauri } from "./tauri-provider";
+import { DEFAULT_DEV_KEY, STORAGE_KEYS } from "@/constants";
 
 const bridge = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -124,6 +125,24 @@ describe("TauriProvider", () => {
     expect(bridge.setApiConnection).toHaveBeenCalledWith("http://127.0.0.1:43127", "random-token");
   });
 
+  it("passes the active development license to the sidecar", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    localStorage.setItem(STORAGE_KEYS.AUTH_KEY, DEFAULT_DEV_KEY);
+    const sidecar = makeSidecar();
+    bridge.sidecar.mockReturnValue(sidecar.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    expect(bridge.sidecar).toHaveBeenCalledWith("bin/melody-api", [], {
+      env: expect.objectContaining({ MELODY_LICENSE_KEY: DEFAULT_DEV_KEY }),
+    });
+  });
+
   it("recognizes a Uvicorn port split across output chunks", async () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const sidecar = makeSidecar();
@@ -161,7 +180,15 @@ describe("TauriProvider", () => {
     await screen.findByText("desktop:ready");
 
     fireEvent.click(screen.getByRole("button", { name: "Stop" }));
-    await waitFor(() => expect(first.child.kill).toHaveBeenCalledOnce());
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+      "http://127.0.0.1:41001/api/v1/health/shutdown",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "X-Melody-Token": "random-token" },
+      }),
+    ));
+    act(() => first.processEventHandlers.close[0]({ code: 0, signal: null }));
+    await waitFor(() => expect(first.child.kill).not.toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "Restart" }));
 
     await waitFor(() => expect(second.command.spawn).toHaveBeenCalledOnce());
@@ -201,6 +228,24 @@ describe("TauriProvider", () => {
 
     expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
     expect(screen.getByText("Error: Sidecar process error: permission denied")).toBeInTheDocument();
+  });
+
+  it("surfaces a signal exit before the API becomes ready", async () => {
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+    const sidecar = makeSidecar();
+    bridge.sidecar.mockReturnValue(sidecar.command);
+
+    render(
+      <TauriProvider>
+        <ContextProbe />
+      </TauriProvider>,
+    );
+
+    await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
+    act(() => sidecar.processEventHandlers.close[0]({ code: null, signal: 9 }));
+
+    expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+    expect(screen.getByText(/signal 9/)).toBeInTheDocument();
   });
 
   it("surfaces a timeout error with the xattr workaround when the sidecar never prints a port", async () => {

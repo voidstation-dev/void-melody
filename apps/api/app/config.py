@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = int(os.environ.get("API_PORT", "8000"))
     melody_api_token: str | None = None
+    license_key: str | None = os.environ.get("MELODY_LICENSE_KEY")
     trial_mode: str = os.environ.get("MELODY_TRIAL_MODE", "auto")
     trial_integrity_key: str | None = os.environ.get("MELODY_TRIAL_INTEGRITY_KEY")
     trial_state_path: Path = Field(default=_data_dir / "trial-state-v1.json")
