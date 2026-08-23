@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "VoidMelody",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "identifier": "com.voidstation.melody",
   "build": {
     "frontendDist": "../out",
@@ -49,7 +49,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQxMTBBMzE5RjJBNDkyNgpSV1FtU1NxZk1Rb1JCSlFRekRTbmRVM3FjQkdqSHlkdHBVWUN6c3lGb2VtZlFTSk9KbWhzRk5lYgo=",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM3RDBGRjU2MjEyNTA3RUUKUldUdUJ5VWhWdi9ReC80NUw0UGQyTjA1THVxV3M5em80ZzNxN1pOOVFzODk5OGxUL0FGODRoUG8K",
       "endpoints": [
         "https://github.com/voidstation-dev/void-melody/releases/latest/download/latest.json"
       ],
