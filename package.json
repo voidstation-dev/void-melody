@@ -1,6 +1,6 @@
 {
   "name": "voidmelody-monorepo",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "scripts": {

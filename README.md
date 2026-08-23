@@ -157,7 +157,7 @@ Install the Evergreen WebView2 Runtime and Visual Studio 2022 Build Tools with D
 
 ### macOS says the app cannot be opened, or it hangs on "Starting local environment..."
 
-Unsigned local and release builds are tagged with a `com.apple.quarantine` attribute by Gatekeeper. In Finder, Control-click the app, choose **Open**, and confirm the prompt to dismiss the open dialog.
+The macOS bundle uses an ad-hoc signing identity (`signingIdentity: "-"`) so Apple Silicon does not classify the downloaded app as damaged. It is still not signed with a Developer ID certificate or notarized, so Gatekeeper may require an explicit approval. In Finder, Control-click the app, choose **Open**, and confirm the prompt.
 
 If the app launches but never leaves the "Starting local environment..." screen, the quarantine attribute is also being applied to the bundled `melody-api` sidecar binary, which macOS then refuses to launch silently. The Tauri shell plugin spawns the sidecar but no port is ever printed, so the desktop UI waits forever. Clear the attribute recursively and relaunch:
 
@@ -165,7 +165,7 @@ If the app launches but never leaves the "Starting local environment..." screen,
 xattr -cr /Applications/VoidMelody.app
 ```
 
-This phase signs only the Tauri updater artifacts; Apple Developer ID code signing and notarization are not configured, so Gatekeeper quarantine is expected for downloaded builds.
+The current release signs the Tauri updater artifacts and ad-hoc-signs the macOS bundle. Apple Developer ID code signing and notarization are not configured, so Gatekeeper approval is still expected for downloaded builds. A Developer ID certificate plus notarization is required for a normal trusted first launch.
 
 ### Windows SmartScreen warns about the installer
 
