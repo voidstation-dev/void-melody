@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router"
-import { useHistory } from "@/hooks/use-history"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useTranslation } from "@/hooks/use-translation"
-
+import { JobQueueSidebar } from "@/components/tts/job-queue-sidebar"
 import { historyQueries } from "@/queries/history.queries"
+import { toast } from "sonner"
 
 export const Route = createFileRoute("/history")({
   loader: ({ context }) => {
@@ -12,56 +12,42 @@ export const Route = createFileRoute("/history")({
 })
 
 function HistoryRoute() {
-  const { data, isLoading } = useHistory()
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "completed":
-        return t("history.statusCompleted");
-      case "failed":
-        return t("history.statusFailed");
-      case "processing":
-        return t("history.statusProcessing");
-      case "queued":
-        return t("history.statusQueued");
-      default:
-        return status;
+  const handleReparse = (jobText: string) => {
+    try {
+      const existing = localStorage.getItem("voidmelody_audio_studio_draft_v1")
+      const draft = existing ? JSON.parse(existing) : {}
+      localStorage.setItem(
+        "voidmelody_audio_studio_draft_v1",
+        JSON.stringify({
+          ...draft,
+          text: jobText,
+          updatedAt: Date.now(),
+        }),
+      )
+    } catch {
+      // ignore
     }
-  };
+    toast.success("Đã nạp lại nội dung vào Audio Studio")
+    void navigate({ to: "/" })
+  }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="mb-6 shrink-0">
-        <h1 className="text-2xl font-bold">{t("history.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("history.subtitle")}</p>
+    <div className="flex flex-col h-full space-y-4 max-w-[1400px] mx-auto w-full pb-8">
+      <div className="shrink-0">
+        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">{t("history.title")}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("history.subtitle")}</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 pr-2 pb-6">
-        {isLoading ? (
-          <div className="text-sm text-muted-foreground">{t("history.loading")}</div>
-        ) : !data?.items || data.items.length === 0 ? (
-          <div className="flex min-h-48 items-center justify-center rounded-2xl border border-dashed border-border bg-card p-8 text-center text-muted-foreground">
-            <div>
-              <p className="font-bold text-foreground">{t("history.empty")}</p>
-              <p className="mt-1 text-xs">{t("history.emptyDesc")}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {data.items.map((job) => (
-              <div key={job.id} className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm">
-                <div>
-                  <div className="font-bold text-foreground">{job.voiceDisplayName || job.voiceType}</div>
-                  <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{job.textPreview}</div>
-                </div>
-                <div className="text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-foreground">
-                  {getStatusText(job.status)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <div className="flex-1 min-h-0">
+        <JobQueueSidebar
+          onReparse={handleReparse}
+          title={t("history.title")}
+          maxHeightClass="max-h-[calc(100vh-220px)] min-h-[400px]"
+          className="h-full border border-border/80 shadow-xs"
+        />
       </div>
     </div>
   )

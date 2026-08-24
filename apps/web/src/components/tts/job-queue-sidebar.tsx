@@ -36,7 +36,19 @@ import { toast } from "sonner";
 
 type FilterTab = "all" | "active" | "completed" | "failed";
 
-export function JobQueueSidebar({ onReparse }: { onReparse?: (jobText: string, fileName?: string) => void }) {
+export interface JobQueueSidebarProps {
+  onReparse?: (jobText: string, fileName?: string) => void;
+  className?: string;
+  maxHeightClass?: string;
+  title?: string;
+}
+
+export function JobQueueSidebar({
+  onReparse,
+  className,
+  maxHeightClass = "max-h-[380px] sm:max-h-[440px]",
+  title,
+}: JobQueueSidebarProps) {
   const { queue, activeJobs, refreshQueue, removeFromQueue } = useQueue();
   const { t } = useTranslation();
   const [filter, setFilter] = useState<FilterTab>("all");
@@ -85,7 +97,7 @@ export function JobQueueSidebar({ onReparse }: { onReparse?: (jobText: string, f
 
   if (queue.length === 0) {
     return (
-      <Card className="rounded-2xl border-2 border-dashed border-border/70 bg-card/60 p-6 flex flex-col items-center justify-center text-center overflow-hidden min-h-[180px] group transition-all hover:border-primary/40 shadow-xs">
+      <Card className={cn("rounded-2xl border-2 border-dashed border-border/70 bg-card/60 p-6 flex flex-col items-center justify-center text-center overflow-hidden min-h-[180px] group transition-all hover:border-primary/40 shadow-xs", className)}>
         <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/80 shadow-xs border border-border/50 mb-3 group-hover:scale-110 group-hover:bg-primary/10 transition-all duration-300">
           <Layers className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
         </div>
@@ -98,7 +110,7 @@ export function JobQueueSidebar({ onReparse }: { onReparse?: (jobText: string, f
   }
 
   return (
-    <Card className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden flex flex-col">
+    <Card className={cn("rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden flex flex-col", className)}>
       {/* Header with Title & Stats */}
       <CardHeader className="p-3.5 pb-2.5 border-b border-border/60 bg-muted/20 space-y-2">
         <div className="flex items-center justify-between gap-2">
@@ -108,7 +120,7 @@ export function JobQueueSidebar({ onReparse }: { onReparse?: (jobText: string, f
             </div>
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                <span>{t("generate.queueTitle")}</span>
+                <span>{title || t("generate.queueTitle")}</span>
                 <span className="text-[10px] font-mono font-bold text-muted-foreground">({queue.length})</span>
               </h3>
             </div>
@@ -196,7 +208,7 @@ export function JobQueueSidebar({ onReparse }: { onReparse?: (jobText: string, f
       </CardHeader>
 
       {/* Bounded Scrollable Queue List */}
-      <CardContent className="p-3.5 pt-4 sm:p-4 sm:pt-5 max-h-[380px] sm:max-h-[440px] overflow-y-auto space-y-3 pr-1.5 divide-y-0">
+      <CardContent className={cn("p-3.5 pt-4 sm:p-4 sm:pt-5 overflow-y-auto space-y-3 pr-1.5 divide-y-0", maxHeightClass)}>
         {filteredQueue.length === 0 ? (
           <div className="py-6 text-center text-xs text-muted-foreground flex flex-col items-center gap-1">
             <Filter className="h-4 w-4 opacity-40 mb-0.5" />

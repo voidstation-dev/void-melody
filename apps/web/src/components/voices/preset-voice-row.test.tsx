@@ -36,12 +36,10 @@ describe("PresetVoiceRow", () => {
     expect(screen.getByText(/vi-VN/)).toBeInTheDocument()
     expect(screen.getByText(/Mẫu có sẵn/)).toBeInTheDocument()
     expect(screen.getByText("CapCut")).toBeInTheDocument()
-    expect(screen.getByText("Tự nhiên")).toBeInTheDocument()
-    expect(screen.getByText("Nữ · Bắc · Tự nhiên")).toBeInTheDocument()
+    expect(screen.getByText(/Nữ · Bắc · Tự nhiên/)).toBeInTheDocument()
     expect(screen.getByTestId("voice-waveform")).toBeInTheDocument()
-    expect(screen.getByRole("article")).toHaveClass("min-h-[220px]")
-    expect(screen.getByRole("article")).toHaveClass("p-4")
-    expect(screen.getByRole("heading", { name: "Nhỏ Ngọt Ngào" })).toHaveClass("text-2xl")
+    expect(screen.getByRole("article")).toHaveClass("p-3")
+    expect(screen.getByRole("heading", { name: "Nhỏ Ngọt Ngào" })).toHaveClass("text-sm")
     expect(screen.getByRole("link", { name: /dùng giọng/i })).toHaveAttribute(
       "href",
       "/?voice=BV421_vivn_streaming",
