@@ -1,5 +1,6 @@
 import { BrandMark } from "@/components/ui/brand-logo"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { LanguageToggle } from "@/components/ui/language-toggle"
 
 export function AppHeader() {
   return (
@@ -9,7 +10,8 @@ export function AppHeader() {
         <span className="text-xl font-extrabold tracking-tight">Melody</span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
+        <LanguageToggle />
         <ThemeToggle />
       </div>
     </header>
