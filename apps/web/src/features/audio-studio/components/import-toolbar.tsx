@@ -3,6 +3,7 @@ import { Clipboard, FileUp, FolderOpen, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "sonner"
+import { useTranslation } from "@/hooks/use-translation"
 
 interface ImportToolbarProps {
   onPasteText: (text: string) => void
@@ -19,6 +20,7 @@ export function ImportToolbar({
   onClearText,
   hasText,
 }: ImportToolbarProps) {
+  const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
 
@@ -27,12 +29,12 @@ export function ImportToolbar({
       const clipboardText = await navigator.clipboard.readText()
       if (clipboardText.trim()) {
         onPasteText(clipboardText)
-        toast.success("Đã dán nội dung từ bộ nhớ tạm!")
+        toast.success(t("audioStudio.pasteSuccess"))
       } else {
-        toast.error("Bộ nhớ tạm trống!")
+        toast.error(t("audioStudio.clipboardEmpty"))
       }
     } catch {
-      toast.error("Không thể truy cập bộ nhớ tạm. Hãy dùng phím Ctrl+V để dán trực tiếp.")
+      toast.error(t("audioStudio.clipboardError"))
     }
   }
 
@@ -82,7 +84,7 @@ export function ImportToolbar({
           className="h-8 gap-1.5 rounded-xl text-xs font-semibold"
         >
           <Clipboard className="h-3.5 w-3.5" />
-          <span>Dán nhanh</span>
+          <span>{t("audioStudio.pasteQuick")}</span>
         </Button>
 
         <Button
@@ -93,7 +95,7 @@ export function ImportToolbar({
           className="h-8 gap-1.5 rounded-xl text-xs font-semibold"
         >
           <FileUp className="h-3.5 w-3.5" />
-          <span>Nhập TXT / SRT</span>
+          <span>{t("audioStudio.importFile")}</span>
         </Button>
 
         {onImportFolder && (
@@ -105,7 +107,7 @@ export function ImportToolbar({
             className="h-8 gap-1.5 rounded-xl text-xs font-semibold hidden sm:inline-flex"
           >
             <FolderOpen className="h-3.5 w-3.5" />
-            <span>Nhập thư mục</span>
+            <span>{t("audioStudio.importFolder")}</span>
           </Button>
         )}
       </div>
@@ -122,11 +124,11 @@ export function ImportToolbar({
                 className="h-8 gap-1.5 rounded-xl text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>Xóa sạch</span>
+                <span>{t("audioStudio.clearText")}</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="left" className="text-xs">
-              Xóa toàn bộ nội dung kịch bản và bản nháp
+              {t("audioStudio.clearTooltip")}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

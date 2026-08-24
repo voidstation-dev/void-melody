@@ -30,7 +30,7 @@ function HistoryRoute() {
     } catch {
       // ignore
     }
-    toast.success("Đã nạp lại nội dung vào Audio Studio")
+    toast.success(t("history.reloadedToStudioToast"))
     void navigate({ to: "/" })
   }
 

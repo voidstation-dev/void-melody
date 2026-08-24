@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import type { PreflightReport } from "../types"
+import { useTranslation } from "@/hooks/use-translation"
 import { cn } from "@/lib/utils"
 
 interface RenderPreflightProps {
@@ -19,6 +20,7 @@ interface RenderPreflightProps {
 }
 
 export function RenderPreflight({ report }: RenderPreflightProps) {
+  const { t } = useTranslation()
   const { stats, checks, canGenerate } = report
   const isEmotional = stats.emotionCount > 0 || stats.nativeCueCount > 0
 
@@ -33,9 +35,9 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
             </div>
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
-                Kiểm tra kết xuất
+                {t("audioStudio.preflightTitle")}
               </h3>
-              <p className="text-[10px] text-muted-foreground">Preflight Verification</p>
+              <p className="text-[10px] text-muted-foreground">{t("audioStudio.preflightSubtitle")}</p>
             </div>
           </div>
 
@@ -54,7 +56,7 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
                 canGenerate ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
               )}
             />
-            <span>{canGenerate ? "Sẵn sàng" : "Chưa hoàn tất"}</span>
+            <span>{canGenerate ? t("audioStudio.ready") : t("audioStudio.notReady")}</span>
           </div>
         </div>
       </CardHeader>
@@ -83,7 +85,7 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
           <div className="min-w-0 flex-1 pt-0.5">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs sm:text-[13px] font-bold">
-                {isEmotional ? "Chế độ: Đa ngữ điệu & Cảm xúc" : "Chế độ: Đọc tiêu chuẩn"}
+                {isEmotional ? t("audioStudio.modeExpressiveTitle") : t("audioStudio.modeStandardTitle")}
               </span>
               <span
                 className={cn(
@@ -98,8 +100,8 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
             </div>
             <p className="text-[11px] sm:text-xs text-muted-foreground mt-1.5 leading-relaxed">
               {isEmotional
-                ? `Tự động phân đoạn và áp dụng ${stats.nativeCueCount} Native cues, ${stats.emotionCount} sắc thái cảm xúc`
-                : "Tổng hợp văn bản liền mạch theo cấu hình giọng và tốc độ đã chọn"}
+                ? t("audioStudio.modeExpressiveDesc", { cues: stats.nativeCueCount, emotions: stats.emotionCount })
+                : t("audioStudio.modeStandardDesc")}
             </p>
           </div>
         </div>
@@ -109,7 +111,7 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
           <div className="flex flex-col items-center justify-center px-1">
             <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground mb-0.5">
               <AlignLeft className="h-3 w-3" />
-              <span>Đoạn văn</span>
+              <span>{t("audioStudio.statsSegments")}</span>
             </div>
             <span className="text-sm font-extrabold text-foreground">{stats.segmentCount}</span>
           </div>
@@ -117,7 +119,7 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
           <div className="flex flex-col items-center justify-center px-1">
             <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground mb-0.5">
               <Zap className={cn("h-3 w-3", stats.nativeCueCount > 0 && "text-emerald-500")} />
-              <span>Native cues</span>
+              <span>{t("audioStudio.statsNativeCues")}</span>
             </div>
             <span
               className={cn(
@@ -134,7 +136,7 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
           <div className="flex flex-col items-center justify-center px-1">
             <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground mb-0.5">
               <Smile className={cn("h-3 w-3", stats.emotionCount > 0 && "text-amber-500")} />
-              <span>Cảm xúc</span>
+              <span>{t("audioStudio.statsEmotions")}</span>
             </div>
             <span
               className={cn(

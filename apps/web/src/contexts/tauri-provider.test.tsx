@@ -177,7 +177,7 @@ describe("TauriProvider", () => {
       </TauriProvider>,
     );
 
-    expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Failed to start local API|Không thể khởi động/i })).toBeInTheDocument();
     expect(screen.getByText("Error: sidecar unavailable")).toBeInTheDocument();
   });
 
@@ -196,7 +196,7 @@ describe("TauriProvider", () => {
     );
 
     expect(await screen.findByText("Error: initial sidecar unavailable")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Restart API / Thử lại" }));
+    fireEvent.click(screen.getByRole("button", { name: /Restart API|Khởi động lại/i }));
 
     expect(await screen.findByText("Error: restart sidecar unavailable")).toBeInTheDocument();
   });
@@ -215,7 +215,7 @@ describe("TauriProvider", () => {
     await waitFor(() => expect(sidecar.command.spawn).toHaveBeenCalledOnce());
     act(() => sidecar.processEventHandlers.error[0]("permission denied"));
 
-    expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Failed to start local API|Không thể khởi động/i })).toBeInTheDocument();
     expect(screen.getByText("Error: Sidecar process error: permission denied")).toBeInTheDocument();
   });
 
@@ -236,7 +236,7 @@ describe("TauriProvider", () => {
       sidecar.processEventHandlers.close[0]({ code: 3, signal: null });
     });
 
-    expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Failed to start local API|Không thể khởi động/i })).toBeInTheDocument();
     expect(screen.getByText(/TRIAL_STATE_CORRUPTED/)).toBeInTheDocument();
   });
 
@@ -258,7 +258,7 @@ describe("TauriProvider", () => {
       // quarantined binary). The startup timeout should fire and surface the
       // xattr -cr guidance instead of hanging on "Starting local environment...".
       await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
-      expect(await screen.findByRole("heading", { name: "Failed to start local API" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: /Failed to start local API|Không thể khởi động/i })).toBeInTheDocument();
       expect(screen.getByText(/did not start in time/)).toBeInTheDocument();
       expect(screen.getByText(/xattr -cr/)).toBeInTheDocument();
     } finally {

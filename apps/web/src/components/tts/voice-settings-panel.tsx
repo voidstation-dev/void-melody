@@ -90,17 +90,11 @@ const CustomSlider = ({
   );
 };
 
-const presetStyleLabels: Record<string, string> = {
-  tu_nhien: "Tự nhiên",
-  tin_tuc: "Tin tức",
-  doc_truyen: "Đọc truyện",
-};
-
-function presetMetadata(voice: Voice) {
-  const gender = voice.gender === "male" ? "Nam" : voice.gender === "female" ? "Nữ" : null;
-  const style = voice.style ? presetStyleLabels[voice.style] || voice.style : null;
-  const metadata = [gender, voice.region, style].filter(Boolean);
-  return metadata.length > 0 ? metadata.join(" · ") : voice.description || `${voice.languageCode || "vi-VN"} · Giọng mẫu`;
+function getPresetMetadata(voice: Voice, t: (key: any, params?: any) => string) {
+  const gender = voice.gender === "male" ? t("voices.genderMale") : voice.gender === "female" ? t("voices.genderFemale") : null;
+  const styleLabel = voice.style === "tu_nhien" ? t("voices.styleNatural") : voice.style === "tin_tuc" ? t("voices.styleNews") : voice.style === "doc_truyen" ? t("voices.styleStory") : voice.style;
+  const metadata = [gender, voice.region, styleLabel].filter(Boolean);
+  return metadata.length > 0 ? metadata.join(" · ") : voice.description || `${voice.languageCode || "vi-VN"} · ${t("voices.presetBadge")}`;
 }
 
 export function VoiceSettingsPanel({
@@ -133,7 +127,7 @@ export function VoiceSettingsPanel({
   const query = searchQuery.toLowerCase().trim();
   const filteredPresets = voices.filter(
     (voice) =>
-      (!query || `${voice.displayName} ${voice.voiceType} ${voice.description || ""} ${presetMetadata(voice)}`.toLowerCase().includes(query)) &&
+      (!query || `${voice.displayName} ${voice.voiceType} ${voice.description || ""} ${getPresetMetadata(voice, t)}`.toLowerCase().includes(query)) &&
       (presetRegion === "all" || voice.region === presetRegion) &&
       (presetGender === "all" || voice.gender === presetGender),
   );
@@ -148,7 +142,6 @@ export function VoiceSettingsPanel({
   const regions = Array.from(new Set(voices.map((voice) => voice.region).filter(Boolean))) as string[];
   const genders = Array.from(new Set(voices.map((voice) => voice.gender).filter(Boolean))) as string[];
   const presetFiltersActive = presetRegion !== "all" || presetGender !== "all";
-  const vieneuPresetCount = voices.filter((voice) => voice.providerId === "vieneu").length || voices.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -160,28 +153,36 @@ export function VoiceSettingsPanel({
         <Popover open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
           <PopoverTrigger asChild>
             <Button
-              type="button"
+              id="selected-voice-trigger"
+              variant="outline"
               role="combobox"
               aria-label={t("generate.selectedVoice")}
               aria-expanded={isDropdownOpen}
-              variant="outline"
               className={cn(
-                "group h-auto min-h-[76px] w-full justify-between rounded-2xl border bg-card p-3.5 text-left shadow-none",
-                isDropdownOpen ? "border-primary ring-4 ring-primary/10" : "border-border hover:border-primary/50 hover:shadow-xs",
+                "group relative flex h-auto min-h-[4.75rem] w-full items-center justify-between gap-3.5 rounded-2xl border border-border/80 bg-card p-4 text-left shadow-xs transition-all duration-200 hover:border-primary/50 hover:bg-card hover:shadow-md",
+                isDropdownOpen && "border-primary ring-2 ring-primary/20",
               )}
             >
               <span className="flex min-w-0 items-center gap-3.5">
-                <span className={cn(
-                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-2xs transition-all",
-                  isCustomSelected
-                    ? "border-violet-500/25 bg-violet-500/15 text-violet-600 group-hover:bg-violet-500/20 dark:text-violet-400"
-                    : "border-primary/20 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent text-primary group-hover:from-primary/25",
-                )}>
-                  {isCustomSelected ? <Sparkles className="h-5 w-5" /> : <AudioLines className="h-5 w-5" />}
+                <span
+                  className={cn(
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold shadow-xs transition-all group-hover:scale-105",
+                    isCustomSelected
+                      ? "bg-violet-500/10 text-violet-600 ring-1 ring-violet-500/20 dark:bg-violet-950/40 dark:text-violet-300"
+                      : "bg-primary/10 text-primary ring-1 ring-primary/20",
+                  )}
+                >
+                  {isCustomSelected ? (
+                    <Sparkles className="h-5 w-5" />
+                  ) : (
+                    <AudioLines className="h-5 w-5" />
+                  )}
                 </span>
                 <span className="flex min-w-0 flex-col items-start">
                   <span className="flex max-w-full items-center gap-2">
-                    <span className="truncate text-base font-bold text-foreground">{currentDisplayName}</span>
+                    <span className="truncate text-base font-black tracking-tight text-foreground sm:text-lg">
+                      {currentDisplayName}
+                    </span>
                     <Badge
                       variant="outline"
                       className={cn(
@@ -192,11 +193,14 @@ export function VoiceSettingsPanel({
                       {isCustomSelected ? "Clone" : t("generate.presetVoiceBadge")}
                     </Badge>
                   </span>
-                  <span className="mt-0.5 truncate text-xs font-medium text-muted-foreground">{currentSubtitle}</span>
+                  <span className="truncate text-xs font-semibold text-muted-foreground">
+                    {currentSubtitle}
+                  </span>
                 </span>
               </span>
-              <span className="flex shrink-0 items-center gap-2.5 pr-1">
-                <span className="hidden text-[11px] font-bold uppercase tracking-wider text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:block">
+
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="hidden rounded-lg border border-border/70 bg-muted/60 px-2.5 py-1 text-xs font-bold text-muted-foreground sm:inline-block">
                   {t("generate.changeVoice")}
                 </span>
                 <ChevronsUpDown className={cn("h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground", isDropdownOpen && "text-primary")} />
@@ -218,7 +222,7 @@ export function VoiceSettingsPanel({
                     <span>VieNeu · Preset library</span>
                   </div>
                   <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-extrabold text-primary">
-                    {voices.length} giọng
+                    {t("voices.totalVoicesCount", { count: voices.length })}
                   </span>
                 </div>
 
@@ -233,7 +237,7 @@ export function VoiceSettingsPanel({
                   {([
                     ["all", `${t("common.all")} (${voices.length + customVoices.length})`],
                     ["preset", `${t("voices.presetBadge")} (${voices.length})`],
-                    ["custom", `${t("voices.tabCustom")} (${customVoices.length})`],
+                    ["custom", `${t("voices.tabCustomShort")} (${customVoices.length})`],
                   ] as const).map(([tab, label]) => (
                     <Button
                       key={tab}
@@ -255,22 +259,26 @@ export function VoiceSettingsPanel({
                   <div className="flex items-center gap-1.5 pt-0.5">
                     <SlidersHorizontal className="h-3 w-3 shrink-0 text-muted-foreground" />
                     <select
-                      aria-label="Lọc vùng giọng"
+                      aria-label={t("voices.filterRegionLabel")}
                       value={presetRegion}
                       onChange={(event) => setPresetRegion(event.target.value)}
                       className="h-7 min-w-0 flex-1 rounded-lg border border-border/60 bg-background px-2 py-0.5 text-[10px] font-semibold text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary/20"
                     >
-                      <option value="all">Tất cả vùng giọng</option>
+                      <option value="all">{t("voices.allRegions")}</option>
                       {regions.map((region) => <option key={region} value={region}>{region}</option>)}
                     </select>
                     <select
-                      aria-label="Lọc giới tính"
+                      aria-label={t("voices.filterGenderLabel")}
                       value={presetGender}
                       onChange={(event) => setPresetGender(event.target.value)}
                       className="h-7 min-w-0 flex-1 rounded-lg border border-border/60 bg-background px-2 py-0.5 text-[10px] font-semibold text-foreground outline-none transition focus:border-primary focus:ring-1 focus:ring-primary/20"
                     >
-                      <option value="all">Tất cả chất giọng</option>
-                      {genders.map((gender) => <option key={gender} value={gender}>{gender === "male" ? "Nam" : "Nữ"}</option>)}
+                      <option value="all">{t("voices.allGenders")}</option>
+                      {genders.map((gender) => (
+                        <option key={gender} value={gender}>
+                          {gender === "male" ? t("voices.genderMale") : t("voices.genderFemale")}
+                        </option>
+                      ))}
                     </select>
                     {presetFiltersActive && (
                       <Button
@@ -278,9 +286,8 @@ export function VoiceSettingsPanel({
                         variant="ghost"
                         size="icon"
                         onClick={() => { setPresetRegion("all"); setPresetGender("all"); }}
-                        className="h-7 w-7 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
-                        aria-label="Xóa bộ lọc giọng"
-                        title="Xóa bộ lọc"
+                        aria-label={t("voices.clearFilters")}
+                        className="h-7 w-7 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -290,9 +297,9 @@ export function VoiceSettingsPanel({
               </div>
 
               <ScrollArea className="min-h-0 flex-1 overflow-y-auto">
-                <CommandList label="Chọn giọng đọc" className="max-h-none p-2">
+                <CommandList aria-label={t("voices.selectVoiceLabel")} className="max-h-none p-2">
                   {showCustoms && (
-                    <CommandGroup heading={t("generate.tabMyVoices")}>
+                    <CommandGroup heading={t("voices.tabCustom")}>
                       <div className="mb-1 flex items-center justify-end px-2">
                         <Link to="/vieneu" onClick={() => setIsDropdownOpen(false)} className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline">
                           <Plus className="h-3 w-3" />
@@ -343,7 +350,7 @@ export function VoiceSettingsPanel({
                   {showCustoms && showPresets && <CommandSeparator />}
 
                   {showPresets && (
-                    <CommandGroup heading={t("generate.tabPresetVoices")}>
+                    <CommandGroup heading={t("voices.tabPreset")}>
                       {filteredPresets.map((voice) => {
                         const isSelected = selectedVoice === voice.voiceType;
                         return (
@@ -366,7 +373,7 @@ export function VoiceSettingsPanel({
                             <span className="flex min-w-0 flex-1 flex-col">
                               <span className="truncate">{voice.displayName}</span>
                               <span className={cn("text-[10px]", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                                {presetMetadata(voice)}
+                                {getPresetMetadata(voice, t)}
                               </span>
                             </span>
                             {isSelected && <Check className="ml-auto h-4 w-4 shrink-0 text-primary-foreground" />}

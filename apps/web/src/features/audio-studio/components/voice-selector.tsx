@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Check, ChevronsUpDown, Mic, Sparkles, UserCheck, Play, Pause, Loader2 } from "lucide-react"
+import { Check, ChevronsUpDown, Mic, Sparkles, UserCheck, Play, Pause } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Command,
@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useVoicePreview } from "@/hooks/use-voice-preview"
+import { useTranslation } from "@/hooks/use-translation"
 import { cn } from "@/lib/utils"
 
 interface VoiceItem {
@@ -36,6 +37,7 @@ export function VoiceSelector({
   voices,
   disabled,
 }: VoiceSelectorProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { isPlaying, activeVoiceType, togglePreview } = useVoicePreview()
 
@@ -51,7 +53,7 @@ export function VoiceSelector({
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
           <Mic className="h-3.5 w-3.5 text-muted-foreground" />
-          <span>Giọng đọc</span>
+          <span>{t("audioStudio.voiceLabel")}</span>
         </label>
         {currentVoice && (
           <span className="text-[11px] font-semibold text-muted-foreground">
@@ -92,7 +94,7 @@ export function VoiceSelector({
               <div className="truncate">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-foreground truncate">
-                    {currentVoice?.displayName || selectedVoiceId || "Chọn giọng đọc…"}
+                    {currentVoice?.displayName || selectedVoiceId || t("audioStudio.voicePlaceholder")}
                   </span>
                   {isVieNeu && (
                     <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] font-bold px-1.5 py-0">
@@ -101,16 +103,16 @@ export function VoiceSelector({
                   )}
                   {isCustom && (
                     <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 text-[10px] font-bold px-1.5 py-0">
-                      Đã nhân bản
+                      {t("audioStudio.customVoiceBadge")}
                     </Badge>
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                   {isVieNeu
-                    ? "Neural TTS · Hỗ trợ toàn bộ cảm xúc & Native Cues"
+                    ? t("audioStudio.vieneuVoiceDesc")
                     : isCustom
-                      ? "Giọng nhân bản tùy chỉnh"
-                      : "Streaming TTS tiêu chuẩn"}
+                      ? t("audioStudio.customVoiceDesc")
+                      : t("audioStudio.standardVoiceDesc")}
                 </p>
               </div>
             </div>
@@ -121,11 +123,11 @@ export function VoiceSelector({
 
         <PopoverContent className="w-[340px] p-0" align="start">
           <Command>
-            <CommandInput placeholder="Tìm kiếm giọng đọc theo tên…" className="h-10 text-xs" />
+            <CommandInput placeholder={t("audioStudio.searchVoicePlaceholder")} className="h-10 text-xs" />
             <CommandList className="max-h-[300px]">
-              <CommandEmpty>Không tìm thấy giọng đọc phù hợp.</CommandEmpty>
+              <CommandEmpty>{t("audioStudio.noVoiceFound")}</CommandEmpty>
 
-              <CommandGroup heading="VieNeu Studio (Khuyên dùng)">
+              <CommandGroup heading={t("audioStudio.groupVieNeu")}>
                 {voices
                   .filter((v) => v.providerId === "vieneu" || (!v.providerId && v.voiceType.includes("vieneu")))
                   .map((v) => {
@@ -173,7 +175,7 @@ export function VoiceSelector({
               </CommandGroup>
 
               {voices.some((v) => v.providerId === "custom") && (
-                <CommandGroup heading="Giọng đã nhân bản (Custom Clones)">
+                <CommandGroup heading={t("audioStudio.groupCustom")}>
                   {voices
                     .filter((v) => v.providerId === "custom")
                     .map((v) => {
@@ -197,7 +199,7 @@ export function VoiceSelector({
                             />
                             <div className="truncate">
                               <p className="font-bold text-xs text-foreground truncate">{v.displayName}</p>
-                              <p className="text-[10px] text-amber-600 font-semibold truncate">Giọng nhân bản</p>
+                              <p className="text-[10px] text-amber-600 font-semibold truncate">{t("audioStudio.customVoiceDesc")}</p>
                             </div>
                           </div>
                         </CommandItem>
@@ -207,7 +209,7 @@ export function VoiceSelector({
               )}
 
               {voices.some((v) => v.providerId !== "vieneu" && v.providerId !== "custom" && !v.voiceType.includes("vieneu")) && (
-                <CommandGroup heading="Giọng đọc khác (CapCut / Streaming)">
+                <CommandGroup heading={t("audioStudio.groupOther")}>
                   {voices
                     .filter((v) => v.providerId !== "vieneu" && v.providerId !== "custom" && !v.voiceType.includes("vieneu"))
                     .map((v) => {

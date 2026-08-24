@@ -1,5 +1,6 @@
 import { Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useTranslation } from "@/hooks/use-translation"
 
 interface GenerateAudioButtonProps {
   onClick: () => void
@@ -12,6 +13,8 @@ export function GenerateAudioButton({
   disabled,
   isLoading,
 }: GenerateAudioButtonProps) {
+  const { t } = useTranslation()
+
   return (
     <Button
       type="button"
@@ -23,14 +26,14 @@ export function GenerateAudioButton({
       {isLoading ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Đang tạo audio…</span>
+          <span>{t("audioStudio.generatingBtn")}</span>
         </>
       ) : (
         <>
           <Sparkles className="h-4 w-4" />
-          <span>Tạo audio</span>
+          <span>{t("audioStudio.generateBtn")}</span>
           <span className="ml-auto rounded-md bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-mono font-normal">
-            Ctrl + Enter
+            {t("audioStudio.shortcutHint")}
           </span>
         </>
       )}

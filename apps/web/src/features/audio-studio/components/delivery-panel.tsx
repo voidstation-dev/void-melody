@@ -4,12 +4,14 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { EmotionTag } from "./emotion-tag"
 import { ADVANCED_DELIVERY_TAGS } from "../lib/delivery-tags"
+import { useTranslation } from "@/hooks/use-translation"
 
 interface DeliveryPanelProps {
   onInsertTag: (token: string) => void
 }
 
 export function DeliveryPanel({ onInsertTag }: DeliveryPanelProps) {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -25,8 +27,8 @@ export function DeliveryPanel({ onInsertTag }: DeliveryPanelProps) {
                 <Sliders className="h-3.5 w-3.5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-foreground">Ngữ điệu nâng cao</h3>
-                <p className="text-xs text-muted-foreground">Điều chỉnh tốc độ, độ ngắt nghỉ và sắc thái từng câu</p>
+                <h3 className="text-sm font-bold text-foreground">{t("audioStudio.deliveryTitle")}</h3>
+                <p className="text-xs text-muted-foreground">{t("audioStudio.deliveryDesc")}</p>
               </div>
             </div>
             <div className="rounded-lg p-1 text-muted-foreground transition-transform">

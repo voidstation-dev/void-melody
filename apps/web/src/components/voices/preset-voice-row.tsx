@@ -6,15 +6,9 @@ import { VoicePreviewButton } from "./voice-preview-button"
 import { VoiceWaveform } from "./voice-waveform"
 import { ArrowRight } from "lucide-react"
 
-const styleLabels: Record<string, string> = {
-  tu_nhien: "Tự nhiên",
-  tin_tuc: "Tin tức",
-  doc_truyen: "Đọc truyện",
-}
-
-function voiceProfileLine(voice: Voice) {
-  const gender = voice.gender === "male" ? "Nam" : voice.gender === "female" ? "Nữ" : null
-  const style = voice.style ? styleLabels[voice.style] || voice.style : null
+function voiceProfileLine(voice: Voice, t: (key: any, params?: any) => string) {
+  const gender = voice.gender === "male" ? t("voices.genderMale") : voice.gender === "female" ? t("voices.genderFemale") : null
+  const style = voice.style === "tu_nhien" ? t("voices.styleNatural") : voice.style === "tin_tuc" ? t("voices.styleNews") : voice.style === "doc_truyen" ? t("voices.styleStory") : voice.style
   const parts = [gender, voice.region, style].filter(Boolean)
   return parts.length > 0 ? parts.join(" · ") : null
 }
@@ -22,7 +16,7 @@ function voiceProfileLine(voice: Voice) {
 export function PresetVoiceRow({ voice, onPlayStart }: { voice: Voice; onPlayStart?: (voiceId: string) => void }) {
   const { t } = useTranslation()
   const sampleText = t("voices.sampleSentence", { name: voice.displayName })
-  const profile = voiceProfileLine(voice)
+  const profile = voiceProfileLine(voice, t)
 
   return (
     <article className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 shadow-2xs transition-all duration-200 hover:border-primary/50 hover:shadow-xs">

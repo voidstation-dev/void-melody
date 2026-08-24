@@ -30,7 +30,7 @@ export function VoiceActionsMenu({ voiceId, onDelete, disabled = false }: VoiceA
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        aria-label={`${t("voices.moreActions")} ${voiceId}`}
+        aria-label={t("voices.moreActions", { name: voiceId })}
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={disabled}

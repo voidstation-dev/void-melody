@@ -55,7 +55,7 @@ describe("I18nProvider", () => {
     expect(screen.getByTestId("current-locale")).toHaveTextContent("en");
     expect(screen.getByTestId("is-vi")).toHaveTextContent("no");
     expect(screen.getByTestId("is-en")).toHaveTextContent("yes");
-    expect(screen.getByTestId("nav-generate")).toHaveTextContent("Create Audio");
+    expect(screen.getByTestId("nav-generate")).toHaveTextContent("Audio Studio");
     expect(screen.getByTestId("char-count")).toHaveTextContent("125 characters");
     expect(localStorage.getItem("voidmelody_locale")).toBe("en");
     expect(document.documentElement.lang).toBe("en");
@@ -71,6 +71,6 @@ describe("I18nProvider", () => {
     );
 
     expect(screen.getByTestId("current-locale")).toHaveTextContent("en");
-    expect(screen.getByTestId("nav-generate")).toHaveTextContent("Create Audio");
+    expect(screen.getByTestId("nav-generate")).toHaveTextContent("Audio Studio");
   });
 });

@@ -69,31 +69,31 @@ function CommandInput({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
-    <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="h-8 rounded-lg border-input/30 bg-input/30 shadow-none [&>[data-slot=input-group-addon]]:pl-2">
-        <CommandPrimitive.Input
-          data-slot="command-input"
-          className={cn(
-            "w-full text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50",
-            className
-          )}
-          {...props}
-        />
-        <InputGroupAddon>
-          <SearchIcon className="size-4 shrink-0 opacity-50" />
-        </InputGroupAddon>
-      </InputGroup>
+    <div data-slot="command-input-wrapper" className="flex h-9 items-center gap-2 rounded-lg border border-input/40 bg-input/20 px-2.5 shadow-none">
+      <SearchIcon className="size-3.5 shrink-0 opacity-50 text-muted-foreground" />
+      <CommandPrimitive.Input
+        data-slot="command-input"
+        className={cn(
+          "flex h-full w-full rounded-md bg-transparent text-xs outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        {...props}
+      />
     </div>
   )
 }
 
 function CommandList({
   className,
+  label,
+  "aria-label": ariaLabel,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.List>) {
+}: React.ComponentProps<typeof CommandPrimitive.List> & { label?: string; "aria-label"?: string }) {
   return (
     <CommandPrimitive.List
       data-slot="command-list"
+      label={label || ariaLabel}
+      aria-label={ariaLabel || label}
       className={cn(
         "max-h-72 scroll-py-1 overflow-x-hidden overflow-y-auto outline-none",
         className

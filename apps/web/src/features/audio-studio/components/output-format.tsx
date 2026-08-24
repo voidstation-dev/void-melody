@@ -1,5 +1,6 @@
 import { Radio } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useTranslation } from "@/hooks/use-translation"
 
 interface OutputFormatProps {
   format: "mp3" | "wav"
@@ -8,14 +9,16 @@ interface OutputFormatProps {
 }
 
 export function OutputFormat({ format, onChange, disabled }: OutputFormatProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
           <Radio className="h-3.5 w-3.5 text-muted-foreground" />
-          <span>Định dạng âm thanh</span>
+          <span>{t("audioStudio.formatLabel")}</span>
         </div>
-        <span className="text-[11px] font-medium text-muted-foreground">48 kHz · 24-bit</span>
+        <span className="text-[11px] font-medium text-muted-foreground">{t("audioStudio.formatResolution")}</span>
       </div>
 
       <ToggleGroup
@@ -28,10 +31,10 @@ export function OutputFormat({ format, onChange, disabled }: OutputFormatProps) 
         className="w-full grid grid-cols-2"
       >
         <ToggleGroupItem value="mp3" className="w-full font-bold">
-          MP3 (Nhẹ & Phổ biến)
+          {t("audioStudio.formatMp3")}
         </ToggleGroupItem>
         <ToggleGroupItem value="wav" className="w-full font-bold">
-          WAV (Lossless Studio)
+          {t("audioStudio.formatWav")}
         </ToggleGroupItem>
       </ToggleGroup>
     </div>

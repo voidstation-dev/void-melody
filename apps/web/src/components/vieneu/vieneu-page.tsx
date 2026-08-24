@@ -257,7 +257,7 @@ export function VieneuPage({
     if (!cloneMutation.isPending) {
       if (cloneMutation.isSuccess) {
         setCloneProgress(100);
-        setCloneStage("Hoàn tất khởi tạo hồ sơ giọng!");
+        setCloneStage(t("voiceLab.stageCompleted"));
       } else {
         setCloneProgress(0);
         setCloneStage("");
@@ -266,21 +266,21 @@ export function VieneuPage({
     }
 
     setCloneProgress(15);
-    setCloneStage("Đang tải lên tệp mẫu âm thanh...");
+    setCloneStage(t("voiceLab.stageUpload"));
 
     const t1 = setTimeout(() => {
       setCloneProgress(40);
-      setCloneStage("Đang phân tích & chuẩn bị đoạn đối chiếu...");
+      setCloneStage(t("voiceLab.stageAnalyze"));
     }, 600);
 
     const t2 = setTimeout(() => {
       setCloneProgress(75);
-      setCloneStage("Đang trích xuất đặc trưng âm sắc (VieNeu Turbo)...");
+      setCloneStage(t("voiceLab.stageExtract"));
     }, 1800);
 
     const t3 = setTimeout(() => {
       setCloneProgress(92);
-      setCloneStage("Đang hoàn tất lưu trữ hồ sơ giọng...");
+      setCloneStage(t("voiceLab.stageSaving"));
     }, 3200);
 
     return () => {
@@ -288,7 +288,7 @@ export function VieneuPage({
       clearTimeout(t2);
       clearTimeout(t3);
     };
-  }, [cloneMutation.isPending, cloneMutation.isSuccess]);
+  }, [cloneMutation.isPending, cloneMutation.isSuccess, t]);
 
   // Load preview audio blob reliably through apiFetchBlob
   useEffect(() => {
@@ -934,7 +934,7 @@ export function VieneuPage({
                       {(previewJob.status === "processing" || previewJob.status === "queued") && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary animate-pulse">
                           <Loader2 className="h-3 w-3 animate-spin" />
-                          Đang tạo...
+                          {t("jobQueue.statusGenerating")}
                         </span>
                       )}
                     </div>
@@ -952,7 +952,7 @@ export function VieneuPage({
                         {isLoadingPreviewAudio ? (
                           <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground bg-muted/20 rounded-xl border border-border/50">
                             <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            <span>Đang nạp file âm thanh...</span>
+                            <span>{t("voiceLab.loadingAudioFile")}</span>
                           </div>
                         ) : previewAudioBlobUrl ? (
                           <audio
@@ -971,13 +971,13 @@ export function VieneuPage({
                                   .then((blob) => {
                                     setPreviewAudioBlobUrl(URL.createObjectURL(blob));
                                   })
-                                  .catch(() => toast.error("Không thể tải audio"))
+                                  .catch(() => toast.error(t("errors.previewFailed")))
                                   .finally(() => setIsLoadingPreviewAudio(false));
                               }
                             }}
                             className="w-full rounded-lg border border-border bg-card py-2 text-xs font-bold hover:bg-muted"
                           >
-                            Tải lại trình phát âm thanh
+                            {t("voiceLab.reloadAudioPlayer")}
                           </button>
                         )}
                       </div>
@@ -985,7 +985,7 @@ export function VieneuPage({
 
                     {previewJob.status === "completed" && (
                       <div className="pt-2 border-t border-border/60">
-                        <p className="text-[11px] font-bold text-muted-foreground mb-2">Tải file âm thanh:</p>
+                        <p className="text-[11px] font-bold text-muted-foreground mb-2">{t("voiceLab.downloadAudioFiles")}</p>
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
@@ -1074,7 +1074,7 @@ export function VieneuPage({
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}
                 {previewJob?.status === "queued" || previewJob?.status === "processing"
-                  ? "Đang tổng hợp..."
+                  ? t("voiceLab.synthesizing")
                   : t("voiceLab.generatePreview")}
               </button>
             </div>

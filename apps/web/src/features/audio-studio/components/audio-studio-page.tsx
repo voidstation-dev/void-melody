@@ -16,8 +16,10 @@ import { useQueue } from "@/hooks/use-queue"
 import { apiFetch } from "@/lib/api-client"
 import { BatchJobCreateResponse } from "@/types/tts-job"
 import { toast } from "sonner"
+import { useTranslation } from "@/hooks/use-translation"
 
 export function AudioStudioPage() {
+  const { t } = useTranslation()
   const search = useSearch({ strict: false }) as { voice?: string }
   const voiceParam = typeof search?.voice === "string" ? search.voice : undefined
 
@@ -61,10 +63,10 @@ export function AudioStudioPage() {
       })
 
       addToQueue(response.jobs)
-      toast.success("Đã đưa vào hàng đợi tạo audio thành công!")
+      toast.success(t("audioStudio.queueSuccessToast"))
     } catch (err) {
       console.error("Failed to generate audio:", err)
-      toast.error("Không thể tạo audio. Vui lòng kiểm tra lại dịch vụ backend.")
+      toast.error(t("errors.generateFailed"))
     } finally {
       setIsSubmitting(false)
     }
@@ -73,7 +75,7 @@ export function AudioStudioPage() {
   // Keyboard shortcut binding
   useAudioShortcuts({
     onGenerate: handleGenerate,
-    onSaveDraft: () => toast.success("Bản nháp đã được lưu tự động!"),
+    onSaveDraft: () => {},
     disabled: isSubmitting || !preflight.canGenerate,
   })
 
@@ -85,15 +87,15 @@ export function AudioStudioPage() {
       } else {
         setText(content)
       }
-      toast.success(`Đã nạp nội dung từ ${file.name}`)
+      toast.success(t("audioStudio.pasteSuccess"))
     } catch {
-      toast.error(`Không thể đọc file ${file.name}`)
+      toast.error(t("audioStudio.clipboardError"))
     }
   }
 
   const handleReparseFromQueue = (jobText: string) => {
     setText(jobText)
-    toast.info("Đã nạp lại nội dung từ lịch sử hàng đợi")
+    toast.info(t("audioStudio.reloadedToast"))
   }
 
   return (
@@ -128,7 +130,7 @@ export function AudioStudioPage() {
         <div className="lg:col-span-5 xl:col-span-4 space-y-4 lg:sticky lg:top-4">
           <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm space-y-5">
             <h2 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-              Cấu hình âm thanh
+              {t("generate.toneProperties")}
             </h2>
 
             {/* Voice Selector */}
@@ -158,7 +160,11 @@ export function AudioStudioPage() {
 
           {/* Real-time Job Queue */}
           <div className="pt-2">
-            <JobQueueSidebar onReparse={handleReparseFromQueue} />
+            <JobQueueSidebar
+              onReparseText={handleReparseFromQueue}
+              currentText={text}
+              compact
+            />
           </div>
         </div>
       </div>

@@ -53,7 +53,7 @@ export function VoiceDeleteDialog({
         <div className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
           <p className="text-xs font-semibold leading-relaxed text-destructive/90">
-            Hồ sơ giọng và các mẫu âm thanh mẫu liên quan sẽ bị xóa vĩnh viễn khỏi thiết bị.
+            {t("voices.deleteWarningPermanent")}
           </p>
         </div>
 

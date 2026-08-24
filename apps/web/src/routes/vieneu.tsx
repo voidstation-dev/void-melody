@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
 import { VieneuPage } from "@/components/vieneu/vieneu-page"
+import { useTranslation } from "@/hooks/use-translation"
 
 type VieneuSearchParams = {
   voice?: string
@@ -17,8 +18,9 @@ export const Route = createFileRoute("/vieneu")({
 
 function VieneuRouteComponent() {
   const { voice } = Route.useSearch()
+  const { t } = useTranslation()
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading Voice Lab…</div>}>
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">{t("common.loadingVoiceLab")}</div>}>
       <VieneuPage initialVoiceId={voice} />
     </Suspense>
   )

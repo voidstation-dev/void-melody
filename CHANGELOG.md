@@ -4,6 +4,21 @@ All notable changes to VoidMelody Desktop are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-08-25
+
+### Added
+
+- **Full Application i18n Localization**: Completed end-to-end typed internationalization (Vietnamese & English) across Audio Studio, Voice Lab, Voice Library, Job Queue, History, Settings, and Bootstrap screens with zero hardcoded UI strings.
+- **Modern Voice Selector**: Replaced native select elements with accessible shadcn/ui Combobox and Command primitives supporting instant keyword search, regional and gender filters, and custom vs preset tabs.
+
+### Fixed
+
+- **Desktop Setup & PyInstaller Build**: Resolved `pnpm setup:desktop` hook failure by cleanly excluding unused optional Python dependencies (`pandas`, `matplotlib`, `tkinter`, `IPython`, `pytest`) from sidecar packaging.
+- **Audio Combine & FFmpeg Pipeline**: Fixed bundled FFmpeg executable resolution and temporary file concatenation path handling during multi-segment audio export.
+- **Text Area Overflow**: Fixed Vietnamese multi-byte input overflow and improved editor word-wrapping dynamics in Audio Studio.
+- **Voice Badges & Preview Samples**: Accurately distinguished VieNeu preset vs cloned custom voice badges and enhanced default preview sentences for custom voice clones.
+- **Download Modal Styling**: Fixed button overflow and alignment issues on hover in the Audio Studio download dialog.
+
 ## [0.4.0] - 2026-08-24
 
 ### Added

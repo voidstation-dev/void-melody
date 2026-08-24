@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { FileText, Sparkles } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { ImportToolbar } from "./import-toolbar"
+import { useTranslation } from "@/hooks/use-translation"
 import { cn } from "@/lib/utils"
 
 interface ScriptEditorProps {
@@ -29,6 +30,7 @@ export function ScriptEditor({
   onImportFolder,
   onClearText,
 }: ScriptEditorProps) {
+  const { t } = useTranslation()
   const [isDragging, setIsDragging] = useState(false)
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -87,11 +89,10 @@ export function ScriptEditor({
           {!hasText && (
             <div className="pointer-events-none absolute inset-0 text-sm sm:text-base leading-relaxed text-muted-foreground/40 select-none p-1">
               <p className="font-semibold text-foreground/50">
-                Nhập hoặc dán nội dung kịch bản vào đây…
+                {t("audioStudio.editorPlaceholderTitle")}
               </p>
               <p className="mt-1 text-xs text-muted-foreground/60 leading-normal">
-                Mẹo: Bạn có thể chọn các thẻ cảm xúc bên dưới như <code className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">[cười]</code>,{" "}
-                <code className="text-amber-600 dark:text-amber-400 font-mono font-bold">[bình tĩnh]</code> hoặc kéo thả file TXT/SRT trực tiếp vào đây.
+                {t("audioStudio.editorPlaceholderHint")}
               </p>
             </div>
           )}
@@ -111,16 +112,16 @@ export function ScriptEditor({
         {/* Footer Counters */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-3">
-            <span className="font-semibold">{segmentCount} đoạn văn</span>
+            <span className="font-semibold">{t("audioStudio.segmentCount", { count: segmentCount })}</span>
             {cueCount > 0 && (
               <span className="flex items-center gap-1 font-semibold text-primary">
                 <Sparkles className="h-3 w-3" />
-                {cueCount} thẻ cảm xúc
+                {t("audioStudio.cueCount", { count: cueCount })}
               </span>
             )}
           </div>
           <div className="font-mono text-[11px] font-semibold text-muted-foreground/80">
-            {characterCount.toLocaleString()} / 500,000 ký tự
+            {t("audioStudio.charCount", { count: characterCount.toLocaleString() })}
           </div>
         </div>
 
@@ -128,8 +129,8 @@ export function ScriptEditor({
         {isDragging && (
           <div className="pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center rounded-2xl bg-background/80 backdrop-blur-xs">
             <FileText className="h-12 w-12 text-primary animate-bounce mb-2" />
-            <h3 className="text-base font-bold text-foreground">Thả file TXT / SRT vào đây</h3>
-            <p className="text-xs text-muted-foreground mt-1">Nội dung sẽ được tự động nạp vào kịch bản</p>
+            <h3 className="text-base font-bold text-foreground">{t("audioStudio.dropFileTitle")}</h3>
+            <p className="text-xs text-muted-foreground mt-1">{t("audioStudio.dropFileDesc")}</p>
           </div>
         )}
       </CardContent>

@@ -1,6 +1,6 @@
 [package]
 name = "melody"
-version = "0.4.0"
+version = "0.4.1"
 description = "Melody Desktop Studio"
 authors = ["VoidStation"]
 license = "MIT"

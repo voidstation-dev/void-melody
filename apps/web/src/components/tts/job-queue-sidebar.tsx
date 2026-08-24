@@ -136,7 +136,7 @@ export function JobQueueSidebar({
             {activeJobs.length > 0 && (
               <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-bold bg-primary/10 text-primary border-primary/30 animate-pulse">
                 <Loader2 className="h-2.5 w-2.5 animate-spin mr-1" />
-                {activeJobs.length} đang chạy
+                {activeJobs.length} {t("generate.statusProcessing")}
               </Badge>
             )}
 
@@ -153,10 +153,10 @@ export function JobQueueSidebar({
                 onClick={handleClearCompleted}
                 disabled={isClearingCompleted}
                 className="flex items-center gap-1 h-6 px-1.5 text-[10px] font-semibold rounded-md hover:bg-muted text-muted-foreground hover:text-rose-500 transition-colors disabled:opacity-50"
-                title="Dọn sạch tác vụ đã hoàn thành"
+                title={t("jobQueue.clearCompleted")}
               >
                 <Trash2 className="h-3 w-3" />
-                <span className="hidden sm:inline">Dọn sạch</span>
+                <span className="hidden sm:inline">{t("jobQueue.clearCompleted")}</span>
               </button>
             )}
           </div>
@@ -173,7 +173,7 @@ export function JobQueueSidebar({
                 : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground",
             )}
           >
-            Tất cả ({queue.length})
+            {t("generate.tabAll")} ({queue.length})
           </button>
           <button
             onClick={() => setFilter("active")}
@@ -184,7 +184,7 @@ export function JobQueueSidebar({
                 : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground",
             )}
           >
-            Đang chạy ({activeJobs.length})
+            {t("generate.tabProcessing")} ({activeJobs.length})
           </button>
           <button
             onClick={() => setFilter("completed")}
@@ -195,7 +195,7 @@ export function JobQueueSidebar({
                 : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground",
             )}
           >
-            Hoàn thành ({completedJobs.length})
+            {t("generate.tabCompleted")} ({completedJobs.length})
           </button>
           {failedJobs.length > 0 && (
             <button
@@ -207,7 +207,7 @@ export function JobQueueSidebar({
                   : "bg-rose-500/10 hover:bg-rose-500/20",
               )}
             >
-              Lỗi ({failedJobs.length})
+              {t("generate.tabFailed")} ({failedJobs.length})
             </button>
           )}
         </div>
@@ -218,7 +218,7 @@ export function JobQueueSidebar({
         {filteredQueue.length === 0 ? (
           <div className="py-6 text-center text-xs text-muted-foreground flex flex-col items-center gap-1">
             <Filter className="h-4 w-4 opacity-40 mb-0.5" />
-            <span>Không có tác vụ nào trong bộ lọc này</span>
+            <span>{t("jobQueue.emptyFilter")}</span>
           </div>
         ) : (
           filteredQueue.map((job) => (
@@ -391,7 +391,7 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
     if (!job.text) return;
     navigator.clipboard.writeText(job.text);
     setCopiedText(true);
-    toast.success("Đã sao chép văn bản");
+    toast.success(t("jobQueue.copiedText"));
     setTimeout(() => setCopiedText(false), 2000);
   };
 
@@ -455,18 +455,18 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
             ) : null}
             <span
               className="shrink-0 rounded-md bg-muted/80 px-1.5 py-0.2 text-[9px] font-mono font-bold text-muted-foreground border border-border/50"
-              title="Tốc độ đọc"
+              title={t("jobQueue.speedTooltip")}
             >
               {speedText}
             </span>
             {job.status === "processing" && (
               <span className="text-[10px] font-bold text-primary font-mono">
-                {job.progress && job.progress > 0 ? `${Math.round(job.progress)}%` : "Đang tạo..."}
+                {job.progress && job.progress > 0 ? `${Math.round(job.progress)}%` : t("jobQueue.statusGenerating")}
               </span>
             )}
             {job.status === "queued" && (
               <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                Đang chờ
+                {t("jobQueue.statusWaiting")}
               </span>
             )}
           </div>
@@ -501,7 +501,7 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
                   className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-semibold cursor-pointer rounded-lg"
                 >
                   <span className="font-bold">MP3</span>
-                  <span className="text-[10px] font-medium text-muted-foreground">Audio</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">{t("jobQueue.audioLabel")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleDownloadClick("m4a")}
@@ -509,7 +509,7 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
                   className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-semibold cursor-pointer rounded-lg"
                 >
                   <span className="font-bold">M4A</span>
-                  <span className="text-[10px] font-medium text-muted-foreground">AAC</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">{t("jobQueue.aacLabel")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

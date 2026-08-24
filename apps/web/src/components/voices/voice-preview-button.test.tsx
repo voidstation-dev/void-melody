@@ -44,7 +44,7 @@ describe("VoicePreviewButton", () => {
       )
     })
 
-    expect(await screen.findByRole("button", { name: /tạm dừng voice-1/i })).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: /đang phát voice-1/i })).toBeInTheDocument()
   })
 
   it("shows a recoverable error when preview generation fails", async () => {
@@ -78,10 +78,10 @@ describe("VoicePreviewButton", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: /nghe thử voice-1/i }))
-    expect(await screen.findByRole("button", { name: /tạm dừng voice-1/i })).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: /đang phát voice-1/i })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole("button", { name: /nghe thử voice-2/i }))
-    expect(await screen.findByRole("button", { name: /tạm dừng voice-2/i })).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: /đang phát voice-2/i })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /nghe thử voice-1/i })).toBeInTheDocument()
   })
 })

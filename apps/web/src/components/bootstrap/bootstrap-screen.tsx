@@ -17,6 +17,7 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { BrandMark } from "@/components/ui/brand-logo"
+import { useTranslation } from "@/hooks/use-translation"
 
 export type BootstrapStageId = "desktop" | "storage" | "sidecar" | "models" | "server"
 export type BootstrapStageStatus = "pending" | "active" | "completed" | "error"
@@ -53,6 +54,7 @@ export function BootstrapScreen({
   error,
   onRestart,
 }: BootstrapScreenProps) {
+  const { t } = useTranslation()
   const [showLogs, setShowLogs] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -91,12 +93,10 @@ export function BootstrapScreen({
             </div>
 
             <h1 className="mt-4 text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-              {error ? "Failed to start local API" : "Đang khởi tạo VoidMelody"}
+              {error ? t("bootstrap.titleFailed") : t("bootstrap.titleInitializing")}
             </h1>
             <p className="mt-1.5 text-xs text-muted-foreground sm:text-sm">
-              {error
-                ? "Không thể khởi chạy môi trường máy chủ cục bộ"
-                : "Kiểm tra môi trường hệ thống & tải AI Voice Models"}
+              {error ? t("bootstrap.subtitleFailed") : t("bootstrap.subtitleInitializing")}
             </p>
           </div>
 
@@ -114,7 +114,7 @@ export function BootstrapScreen({
           {/* Environment Checklist */}
           <div className="mt-6 space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-3 sm:p-4">
             <h2 className="px-1 text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
-              Kiểm tra môi trường hệ thống
+              {t("bootstrap.checklistHeading")}
             </h2>
 
             <div className="divide-y divide-border/40">
@@ -135,45 +135,39 @@ export function BootstrapScreen({
                       <div
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors ${
                           isCompleted
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                             : isCurrentActive
-                              ? "bg-primary/10 text-primary"
+                              ? "bg-primary/10 text-primary border border-primary/30 ring-2 ring-primary/20"
                               : isFailed
-                                ? "bg-destructive/10 text-destructive"
-                                : "bg-muted text-muted-foreground/60"
+                                ? "bg-destructive/10 text-destructive border border-destructive/30"
+                                : "bg-muted text-muted-foreground border border-border/40"
                         }`}
                       >
                         <Icon className="h-4 w-4" />
                       </div>
 
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p
-                          className={`text-xs font-bold tracking-tight truncate ${
+                          className={`text-xs font-bold leading-none truncate ${
                             isCompleted || isCurrentActive ? "text-foreground" : "text-muted-foreground"
                           }`}
                         >
                           {stage.title}
                         </p>
                         {stage.detail && (
-                          <p className="truncate text-[11px] text-muted-foreground">
+                          <p className="mt-1 text-[11px] text-muted-foreground/80 leading-none truncate">
                             {stage.detail}
                           </p>
                         )}
                       </div>
                     </div>
 
-                    <div className="shrink-0">
-                      {isCompleted && (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500 animate-in fade-in zoom-in-75" />
-                      )}
-                      {isCurrentActive && (
-                        <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                      )}
-                      {isFailed && (
-                        <AlertCircle className="h-4 w-4 text-destructive animate-in fade-in" />
-                      )}
-                      {stage.status === "pending" && (
-                        <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/30" />
+                    <div className="shrink-0 flex items-center">
+                      {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                      {isCurrentActive && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                      {isFailed && <AlertCircle className="h-4 w-4 text-destructive" />}
+                      {!isCompleted && !isCurrentActive && !isFailed && (
+                        <div className="h-2 w-2 rounded-full bg-border mr-1" />
                       )}
                     </div>
                   </div>
@@ -188,7 +182,7 @@ export function BootstrapScreen({
               <div className="flex items-start gap-2.5">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-destructive">Lỗi khởi động API Sidecar:</p>
+                  <p className="text-xs font-bold text-destructive">{t("bootstrap.errorHeading")}</p>
                   <p className="mt-1 font-mono text-[11px] leading-relaxed text-destructive/90 break-words">
                     {error}
                   </p>
@@ -197,18 +191,18 @@ export function BootstrapScreen({
 
               {isStartupTimeout && (
                 <div className="space-y-2 text-xs text-muted-foreground border-t border-destructive/20 pt-3">
-                  <p className="font-semibold text-foreground">Hướng dẫn xử lý / Troubleshooting:</p>
+                  <p className="font-semibold text-foreground">{t("bootstrap.troubleshootingHeading")}</p>
                   <div className="space-y-1 text-xs">
-                    <p className="font-semibold text-foreground">macOS:</p>
-                    <p className="text-[11px]">macOS may be blocking the bundled API binary. Run:</p>
+                    <p className="font-semibold text-foreground">{t("bootstrap.macosGuideTitle")}</p>
+                    <p className="text-[11px]">{t("bootstrap.macosGuideText")}</p>
                     <pre className="rounded bg-muted p-2 text-xs font-mono text-foreground select-all">
                       xattr -cr /Applications/VoidMelody.app
                     </pre>
                   </div>
                   <div className="space-y-1 text-xs pt-1">
-                    <p className="font-semibold text-foreground">Windows / Linux:</p>
+                    <p className="font-semibold text-foreground">{t("bootstrap.windowsGuideTitle")}</p>
                     <p className="text-[11px]">
-                      Ensure antivirus is not locking temp files and close any background instances, then click Restart API.
+                      {t("bootstrap.windowsGuideText")}
                     </p>
                   </div>
                 </div>
@@ -221,7 +215,7 @@ export function BootstrapScreen({
                   className="w-full gap-2 rounded-xl font-bold"
                 >
                   <RotateCcw className="h-4 w-4" />
-                  Restart API / Thử lại
+                  {t("bootstrap.restartBtn")}
                 </Button>
               )}
             </div>
@@ -237,7 +231,7 @@ export function BootstrapScreen({
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showLogs ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  <span>{showLogs ? "Ẩn log tiến trình" : "Xem log chi tiết (Console)"}</span>
+                  <span>{showLogs ? t("bootstrap.hideLogs") : t("bootstrap.viewLogs")}</span>
                 </button>
 
                 {showLogs && (
@@ -247,7 +241,7 @@ export function BootstrapScreen({
                     className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
                   >
                     {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-                    <span>{copied ? "Đã chép" : "Sao chép"}</span>
+                    <span>{copied ? t("bootstrap.copiedLogs") : t("bootstrap.copyLogs")}</span>
                   </button>
                 )}
               </div>
