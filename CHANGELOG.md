@@ -4,6 +4,22 @@ All notable changes to VoidMelody Desktop are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-08-24
+
+### Added
+
+- **VieNeu True Enrollment v2**: 1-time tensor feature extraction (`speaker_emb`, `ref_codes`) eliminating re-enrollment overhead during synthesis.
+- **Reference Analysis v2**: Energy percentile SNR estimation, noise floor (dBFS), stability subscores, and 1-click Auto Pick Best Segment.
+- **Conditional Denoising**: Auto / Off / On background noise reduction pipeline for reference audio samples.
+- **Calibration Audio & Similarity Scoring**: Automatic cosine similarity verification and calibration audio playback for enrolled profiles.
+- **Unified Audio Studio**: Modern shadcn/ui script composer with real-time emotion tagging, delivery controls, preflight check, and batch synthesis.
+- **Quick Switchers**: Dynamic Dark/Light theme toggle and instant Vietnamese/English language toggle in header.
+
+### Fixed
+
+- Fixed database migration schema synchronization for custom voice enrollment profiles.
+- Fixed preview audio playback and download formats in Voice Lab.
+
 ## [0.3.3] - 2026-08-24
 
 ### Added
