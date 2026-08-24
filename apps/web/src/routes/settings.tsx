@@ -53,7 +53,7 @@ function SettingsRoute() {
                 </div>
               </div>
 
-              <div className="w-full sm:w-[210px] shrink-0">
+              <div className="w-full sm:w-[220px] shrink-0">
                 <Select
                   value={locale}
                   onValueChange={(val) => setLocale(val as Locale)}
@@ -100,7 +100,7 @@ function SettingsRoute() {
                 </div>
               </div>
 
-              <div className="w-full sm:w-[210px] shrink-0">
+              <div className="w-full sm:w-[220px] shrink-0">
                 <Select
                   value={theme ?? "system"}
                   onValueChange={setTheme}
