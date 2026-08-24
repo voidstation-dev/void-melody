@@ -1,4 +1,4 @@
-"""TTS Queue Manager backed by the Unified Provider-Aware Scheduler."""
+"""Unified Provider-Aware Scheduler coordinating dedicated execution lanes."""
 
 from __future__ import annotations
 
@@ -7,29 +7,34 @@ import logging
 from typing import Any
 
 from app.config import settings
+from app.database import AsyncSessionLocal
+from app.models.tts_job import TTSJobModel
 from app.providers.capcut_provider import CapCutProvider
 from app.providers.vieneu_provider import VieneuProvider
 from app.scheduler.cancellation import cancellation_registry
 from app.scheduler.lanes import ExecutionLane
-from app.scheduler.policies import ProviderExecutionPolicy
-from app.services.job_recovery import requeue_interrupted_job
+from app.scheduler.policies import ProviderExecutionPolicy, get_default_policies
 from app.services.provider_circuit_breaker import ProviderCircuitBreaker
 from app.workers.tts_worker import execute_tts_job_step
 
 logger = logging.getLogger(__name__)
 
 
-class TTSQueueManager:
-    """Provider-aware queue manager maintaining isolated execution lanes."""
-
+class UnifiedScheduler:
     def __init__(
         self,
-        concurrency: int | None = None,
         *,
+        policies: dict[str, ProviderExecutionPolicy] | None = None,
         provider_registry: dict[str, Any] | None = None,
         circuit_breaker: ProviderCircuitBreaker | None = None,
         shutdown_grace_seconds: float | None = None,
-    ):
+    ) -> None:
+        self.policies = policies or get_default_policies()
+        self.shutdown_grace_seconds = (
+            settings.tts_queue_shutdown_grace_seconds
+            if shutdown_grace_seconds is None
+            else shutdown_grace_seconds
+        )
         self.circuit_breaker = circuit_breaker or ProviderCircuitBreaker(
             failure_threshold=settings.tts_circuit_breaker_failure_threshold,
             window_seconds=settings.tts_circuit_breaker_window_seconds,
@@ -43,82 +48,59 @@ class TTSQueueManager:
             ),
             "vieneu": VieneuProvider(),
         }
-        self.shutdown_grace_seconds = (
-            settings.tts_queue_shutdown_grace_seconds
-            if shutdown_grace_seconds is None
-            else shutdown_grace_seconds
-        )
 
-        self.lanes: dict[str, ExecutionLane] = {}
-        if concurrency is not None:
-            self.lanes["capcut"] = ExecutionLane(
+        # Create isolated execution lanes
+        self.lanes: dict[str, ExecutionLane] = {
+            "capcut": ExecutionLane(
                 name="capcut",
-                policy=ProviderExecutionPolicy(
+                policy=self.policies.get(
                     "capcut",
-                    concurrency,
-                    settings.capcut_chunk_concurrency,
+                    ProviderExecutionPolicy("capcut", settings.capcut_job_concurrency, settings.capcut_chunk_concurrency),
                 ),
                 worker_executor=self._execute_tts_job,
                 shutdown_grace_seconds=self.shutdown_grace_seconds,
-            )
-        else:
-            self.lanes["capcut"] = ExecutionLane(
-                name="capcut",
-                policy=ProviderExecutionPolicy(
-                    "capcut",
-                    settings.capcut_job_concurrency,
-                    settings.capcut_chunk_concurrency,
-                ),
-                worker_executor=self._execute_tts_job,
-                shutdown_grace_seconds=self.shutdown_grace_seconds,
-            )
-            self.lanes["vieneu"] = ExecutionLane(
+            ),
+            "vieneu": ExecutionLane(
                 name="vieneu",
-                policy=ProviderExecutionPolicy(
+                policy=self.policies.get(
                     "vieneu",
-                    settings.vieneu_job_concurrency,
-                    settings.vieneu_chunk_concurrency,
+                    ProviderExecutionPolicy("vieneu", settings.vieneu_job_concurrency, settings.vieneu_chunk_concurrency),
                 ),
                 worker_executor=self._execute_tts_job,
                 shutdown_grace_seconds=self.shutdown_grace_seconds,
-            )
+            ),
+        }
 
-        self._accepting_jobs = False
-
-    @property
-    def accepting_jobs(self) -> bool:
-        return self._accepting_jobs
-
-    @accepting_jobs.setter
-    def accepting_jobs(self, val: bool) -> None:
-        self._accepting_jobs = val
-        for lane in self.lanes.values():
-            lane.accepting_jobs = val
+        self.accepting_jobs = False
 
     @property
     def concurrency(self) -> int:
         return sum(lane.policy.job_concurrency for lane in self.lanes.values())
 
+    @concurrency.setter
+    def concurrency(self, value: int) -> None:
+        # Compatibility setter for legacy tests modifying concurrency
+        if "capcut" in self.lanes:
+            self.lanes["capcut"].policy = ProviderExecutionPolicy(
+                "capcut", value, self.lanes["capcut"].policy.chunk_concurrency
+            )
+
     @property
     def queue(self) -> Any:
+        # Compatibility property returning default lane queue for tests that inspect queue
         return self.lanes["capcut"].queue
 
     @property
     def workers(self) -> list[asyncio.Task]:
-        all_workers: list[asyncio.Task] = []
+        # Compatibility property returning all active workers across lanes
+        all_workers = []
         for lane in self.lanes.values():
             all_workers.extend(lane.workers)
         return all_workers
 
     @property
-    def delayed_tasks(self) -> set[asyncio.Task]:
-        all_tasks: set[asyncio.Task] = set()
-        for lane in self.lanes.values():
-            all_tasks.update(lane.delayed_tasks)
-        return all_tasks
-
-    @property
     def enqueued_ids(self) -> set[str]:
+        # Compatibility property returning all enqueued ids across lanes
         all_ids: set[str] = set()
         for lane in self.lanes.values():
             all_ids.update(lane.enqueued_ids)
@@ -126,13 +108,13 @@ class TTSQueueManager:
 
     async def start(self) -> None:
         self.accepting_jobs = True
-        logger.info("Starting TTSQueueManager execution lanes")
+        logger.info("Starting UnifiedScheduler lanes")
         for lane in self.lanes.values():
             await lane.start()
 
     async def stop(self) -> None:
         self.accepting_jobs = False
-        logger.info("Stopping TTSQueueManager execution lanes")
+        logger.info("Stopping UnifiedScheduler lanes")
         for lane in self.lanes.values():
             await lane.stop()
 
@@ -143,16 +125,23 @@ class TTSQueueManager:
         provider_id: str | None = None,
     ) -> bool:
         if not self.accepting_jobs:
-            raise RuntimeError("Queue manager is not accepting jobs")
+            raise RuntimeError("UnifiedScheduler is not accepting jobs")
 
-        lane_name = "capcut"
-        if provider_id and provider_id in self.lanes:
-            lane_name = provider_id
+        resolved_provider = provider_id
+        if not resolved_provider:
+            # Lookup provider_id from database if not passed
+            async with AsyncSessionLocal() as session:
+                job = await session.get(TTSJobModel, job_id)
+                if job:
+                    resolved_provider = job.provider_id
 
-        # Register in-memory cancellation
+        lane_name = resolved_provider if resolved_provider in self.lanes else "capcut"
+        lane = self.lanes[lane_name]
+
+        # Register in-memory cancellation event
         await cancellation_registry.register(job_id)
 
-        return await self.lanes[lane_name].enqueue(job_id, batch_position=batch_position)
+        return await lane.enqueue(job_id, batch_position=batch_position)
 
     async def enqueue_after(
         self,
@@ -162,15 +151,16 @@ class TTSQueueManager:
         batch_position: int = 0,
         provider_id: str | None = None,
     ) -> None:
-        lane_name = "capcut"
-        if provider_id and provider_id in self.lanes:
-            lane_name = provider_id
-
-        await self.lanes[lane_name].enqueue_after(
+        lane_name = provider_id if provider_id in self.lanes else "capcut"
+        lane = self.lanes[lane_name]
+        await lane.enqueue_after(
             job_id,
             delay_seconds=delay_seconds,
             batch_position=batch_position,
         )
+
+    async def cancel(self, job_id: str) -> bool:
+        return await cancellation_registry.cancel(job_id)
 
     def health_snapshot(self) -> dict[str, object]:
         total_workers = sum(lane.policy.job_concurrency for lane in self.lanes.values())
@@ -179,13 +169,17 @@ class TTSQueueManager:
         )
         total_depth = sum(lane.queue.qsize() for lane in self.lanes.values())
 
+        lane_snapshots = {
+            name: lane.health_snapshot() for name, lane in self.lanes.items()
+        }
+
         return {
             "accepting_jobs": self.accepting_jobs,
             "worker_count": total_workers,
             "workers_alive": alive_workers,
             "queue_depth": total_depth,
             "circuit_breaker": self.circuit_breaker.snapshot(),
-            "lanes": {name: lane.health_snapshot() for name, lane in self.lanes.items()},
+            "lanes": lane_snapshots,
         }
 
     async def _execute_tts_job(self, job_id: str, worker_id: int) -> None:
@@ -195,11 +189,8 @@ class TTSQueueManager:
                 provider_registry=self.provider_registry,
                 worker_id=worker_id,
             )
-        except asyncio.CancelledError:
-            await asyncio.shield(requeue_interrupted_job(job_id))
-            raise
         finally:
             await cancellation_registry.unregister(job_id)
 
 
-queue_manager = TTSQueueManager()
+unified_scheduler = UnifiedScheduler()

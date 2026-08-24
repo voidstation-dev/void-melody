@@ -18,6 +18,10 @@ data/voices/*
 !data/previews/.gitkeep
 !data/raw-responses/.gitkeep
 !data/voices/.gitkeep
+data/models/*
+data/cache/*
+!data/models/.gitkeep
+!data/cache/.gitkeep
 .env
 .DS_Store
 apps/api/build/

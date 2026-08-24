@@ -1,7 +1,8 @@
-"""Resolve preset and custom voice IDs into one queue-safe descriptor."""
+"""Resolve preset and custom voice IDs into one queue-safe descriptor with LRU caching."""
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,6 +23,8 @@ class ResolvedVoice:
     source: str  # "preset" | "custom"
     status: str
     voice_revision: str = "unknown"
+    reference_audio_path: str | None = None
+    prompt_text: str | None = None
 
 
 class VoiceResolutionError(ValueError):
@@ -29,6 +32,20 @@ class VoiceResolutionError(ValueError):
         super().__init__(message)
         self.code = code
         self.message = message
+
+
+# In-memory LRU cache for custom voice resolution (TTL 60s, max 100 entries)
+_custom_voice_cache: dict[str, tuple[float, ResolvedVoice]] = {}
+_CACHE_TTL_SECONDS = 60.0
+_MAX_CACHE_SIZE = 100
+
+
+def invalidate_voice_cache(voice_id: str | None = None) -> None:
+    """Invalidate cached custom voice resolutions."""
+    if voice_id:
+        _custom_voice_cache.pop(voice_id, None)
+    else:
+        _custom_voice_cache.clear()
 
 
 async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice:
@@ -46,6 +63,14 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
             status="ready",
             voice_revision="preset:vieneu-v3turbo",
         )
+
+    # Check in-memory cache for custom voice
+    now = time.monotonic()
+    if voice_type in _custom_voice_cache:
+        cached_time, cached_resolved = _custom_voice_cache[voice_type]
+        if now - cached_time < _CACHE_TTL_SECONDS:
+            if cached_resolved.reference_audio_path and Path(cached_resolved.reference_audio_path).is_file():
+                return cached_resolved
 
     custom = await session.scalar(
         select(CustomVoiceModel).where(CustomVoiceModel.id == voice_type)
@@ -66,7 +91,7 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
             "Selected custom voice reference audio is missing.",
         )
 
-    return ResolvedVoice(
+    resolved = ResolvedVoice(
         voice_type=custom.id,
         display_name=custom.display_name,
         language_code="vi-VN",
@@ -79,4 +104,14 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
             if custom.updated_at
             else f"reference:{Path(custom.reference_audio_path).stat().st_mtime_ns}"
         ),
+        reference_audio_path=custom.reference_audio_path,
+        prompt_text=custom.transcript,
     )
+
+    # Store in LRU cache
+    if len(_custom_voice_cache) >= _MAX_CACHE_SIZE:
+        oldest_key = min(_custom_voice_cache.keys(), key=lambda k: _custom_voice_cache[k][0])
+        _custom_voice_cache.pop(oldest_key, None)
+    _custom_voice_cache[voice_type] = (now, resolved)
+
+    return resolved

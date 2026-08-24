@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import random
+import re
+import shutil
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,8 +12,11 @@ from typing import Any
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.exceptions import TTSJobError
+from app.media.cache import compute_segment_fingerprint, lookup_cache, store_cache
+from app.media.pipeline import concat_audio_parts, probe_audio_duration, transcode_audio
 from app.models.tts_job import TTSJobModel
 from app.providers.capcut_provider import CapCutProvider
+from app.scheduler.cancellation import cancellation_registry
 from app.services.audio_cleanup import cleanup_job_artifacts
 from app.services.audio_storage import download_audio, validate_audio_file
 from app.services.chunk_executor import (
@@ -29,8 +34,9 @@ from app.services.retry_policy import (
     map_provider_error,
 )
 from app.services.tts_service import claim_job
-from app.utils.audio_utils import get_audio_duration
+from app.services.voice_resolver import resolve_voice
 from app.utils.text_utils import split_text_into_chunks
+from app.utils.timings import JobTimings
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +47,49 @@ async def process_chunk(
     text: str,
     provider: Any,
     job: JobSnapshot,
+    timings: JobTimings | None = None,
 ) -> ChunkResult:
+    destination = settings.audio_storage_dir / f"{job.id}_part{index}.mp3"
+    fingerprint = compute_segment_fingerprint(
+        provider_id=job.provider_id,
+        text=text,
+        voice_type=job.voice_type,
+        resource_id=job.resource_id,
+        rate=job.rate,
+        style=job.style,
+        voice_revision=job.voice_revision,
+    )
+
+    # 1. Check Generic Audio Segment Cache
+    cached_entry = await lookup_cache(fingerprint, session_factory=AsyncSessionLocal)
+    if cached_entry is not None and cached_entry.audio_path:
+        cached_path = Path(cached_entry.audio_path)
+        if cached_path.is_file():
+            await asyncio.to_thread(shutil.copy2, str(cached_path), str(destination))
+            if timings:
+                timings.cache_hit = True
+            return ChunkResult(
+                index=index,
+                path=destination,
+                raw_response={"cached": True, "fingerprint": fingerprint},
+                mime_type=cached_entry.mime_type or "audio/mpeg",
+                size=cached_entry.file_size or destination.stat().st_size,
+            )
+
+    # 2. Cache miss: synthesize via provider
     try:
-        result = await provider.synthesize(
-            text=text,
-            voice_type=job.voice_type,
-            resource_id=job.resource_id,
-            rate=job.rate,
-            style=job.style,
-        )
+        synth_kwargs: dict[str, Any] = {
+            "text": text,
+            "voice_type": job.voice_type,
+            "resource_id": job.resource_id,
+            "rate": job.rate,
+            "style": job.style,
+        }
+        if job.provider_id == "vieneu":
+            synth_kwargs["ref_audio"] = job.reference_audio_path
+            synth_kwargs["prompt_text"] = job.prompt_text
+
+        result = await provider.synthesize(**synth_kwargs)
     except Exception as exc:
         raise map_provider_error(exc) from exc
 
@@ -60,12 +100,11 @@ async def process_chunk(
             retryable=False,
         )
 
-    destination = settings.audio_storage_dir / f"{job.id}_part{index}.mp3"
     try:
         if result.local_paths and len(result.local_paths) > 0:
-            import shutil
-
-            shutil.move(str(result.local_paths[0]), str(destination))
+            local_src = Path(result.local_paths[0])
+            if local_src != destination:
+                await asyncio.to_thread(shutil.move, str(local_src), str(destination))
             mime_type = "audio/mpeg"
             size = destination.stat().st_size
         else:
@@ -76,6 +115,24 @@ async def process_chunk(
             )
     except Exception as exc:
         raise map_download_error(exc) from exc
+
+    # 3. Store valid segment into cache
+    try:
+        await store_cache(
+            fingerprint=fingerprint,
+            provider_id=job.provider_id,
+            voice_key=job.voice_type,
+            text=text,
+            source_audio_path=destination,
+            rate=job.rate,
+            style=job.style,
+            voice_revision=job.voice_revision,
+            mime_type=mime_type,
+            session_factory=AsyncSessionLocal,
+        )
+    except Exception:
+        logger.debug("Failed saving segment to cache for fingerprint %s", fingerprint, exc_info=True)
+
     return ChunkResult(
         index=index,
         path=destination,
@@ -152,7 +209,7 @@ async def execute_tts_job_step(
     provider_registry: dict[str, Any] | None = None,
     worker_id: int = 0,
 ) -> None:
-    started_monotonic = time.monotonic()
+    timings = JobTimings(job_id=job_id)
     async with AsyncSessionLocal() as session:
         if not await claim_job(session, job_id):
             return
@@ -160,11 +217,13 @@ async def execute_tts_job_step(
         if not job:
             return
 
+        timings.provider = job.provider_id
         active_provider = None
         if provider_registry:
             active_provider = provider_registry.get(job.provider_id)
         if not active_provider:
             active_provider = CapCutProvider(catalog_path=settings.capcut_catalog_path)
+
         downloaded_files: list[Path] = []
         final_destination = settings.audio_storage_dir / f"{job.id}.mp3"
         raw_responses: list[dict | None] = []
@@ -183,6 +242,18 @@ async def execute_tts_job_step(
         )
 
         try:
+            # Resolve voice metadata once per job to snapshot reference audio/prompt
+            resolved_ref_audio = None
+            resolved_prompt = None
+            voice_rev = "v1"
+            try:
+                resolved_voice = await resolve_voice(session, job.voice_type)
+                resolved_ref_audio = resolved_voice.reference_audio_path
+                resolved_prompt = resolved_voice.prompt_text
+                voice_rev = resolved_voice.voice_revision
+            except Exception:
+                logger.debug("Voice resolution snapshot skipped for preset: %s", job.voice_type)
+
             chunks = split_text_into_chunks(job.text) or [""]
             ensure_chunk_limit(
                 chunks,
@@ -195,10 +266,14 @@ async def execute_tts_job_step(
                 resource_id=job.resource_id,
                 style=job.style,
                 rate=(1.0 if settings.tts_apply_rate_with_ffmpeg else job.rate),
+                provider_id=job.provider_id,
+                reference_audio_path=resolved_ref_audio,
+                prompt_text=resolved_prompt,
+                voice_revision=voice_rev,
             )
             raw_responses = [None] * len(chunks)
             progress_reporter = ProgressReporter(
-                commit_interval_seconds=(settings.tts_progress_commit_interval_seconds),
+                commit_interval_seconds=settings.tts_progress_commit_interval_seconds,
                 commit_step_percent=settings.tts_progress_commit_step_percent,
             )
 
@@ -208,16 +283,26 @@ async def execute_tts_job_step(
                     text=text,
                     provider=active_provider,
                     job=snapshot,
+                    timings=timings,
                 )
 
+            # In-memory check first (0ms latency, zero DB queries!)
             async def check_cancelled() -> bool:
-                await session.refresh(job, ["cancel_requested"])
+                if cancellation_registry.is_cancelled(job.id):
+                    return True
                 return job.cancel_requested
+
+            # Determine chunk concurrency from lane policy
+            chunk_conc = (
+                settings.vieneu_chunk_concurrency
+                if job.provider_id == "vieneu"
+                else settings.capcut_chunk_concurrency
+            )
 
             completed = 0
             async for result in execute_chunks_bounded(
                 chunks,
-                concurrency=settings.tts_chunk_concurrency,
+                concurrency=chunk_conc,
                 process_chunk=run_chunk,
                 is_cancelled=check_cancelled,
             ):
@@ -245,6 +330,7 @@ async def execute_tts_job_step(
                 mime_type="audio/mpeg",
             )
 
+            from app.utils.audio_utils import get_audio_duration
             audio_duration = await get_audio_duration(final_destination)
 
             job.status = "completed"
@@ -254,50 +340,35 @@ async def execute_tts_job_step(
             job.audio_duration = audio_duration
             job.progress = 100
             job.completed_at = datetime.now(timezone.utc)
-            
+
+            # Handle Auto-export asynchronously if configured
             if job.export_path:
                 try:
-                    import shutil
                     export_dir = Path(job.export_path)
                     export_dir.mkdir(parents=True, exist_ok=True)
-                    
+
                     if job.source_file_name:
                         base_name = Path(job.source_file_name).stem
                     else:
                         first_line = job.text.split("\n")[0][:30].strip()
-                        import re
                         safe_name = re.sub(r'[^a-zA-Z0-9\-_ ]', '', first_line).strip()
                         base_name = safe_name or f"melody-{job.id}"
-                        
+
                     format_ext = job.export_format or "mp3"
                     export_file = export_dir / f"{base_name}.{format_ext}"
-                    
-                    if format_ext == "mp3":
-                        shutil.copy2(final_destination, export_file)
-                    else:
-                        ffmpeg_binary = settings.ffmpeg_binary_path
-                        command = [
-                            ffmpeg_binary,
-                            "-y",
-                            "-i",
-                            str(final_destination),
-                            "-c:a",
-                            "aac",
-                            "-b:a",
-                            "256k",
-                            str(export_file),
-                        ]
-                        process = await asyncio.create_subprocess_exec(
-                            *command,
-                            stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.PIPE,
-                        )
-                        _, stderr = await process.communicate()
-                        if process.returncode != 0:
-                            logger.error(f"Auto-export to {format_ext} failed: {stderr}")
-                except Exception as e:
-                    logger.error(f"Auto-export failed for {job.id}: {e}")
 
+                    if format_ext == "mp3":
+                        await asyncio.to_thread(shutil.copy2, str(final_destination), str(export_file))
+                    else:
+                        await transcode_audio(
+                            input_path=final_destination,
+                            output_path=export_file,
+                            format=format_ext,
+                        )
+                except Exception as e:
+                    logger.error("Auto-export failed for %s: %s", job.id, e)
+
+            timings.finish()
             logger.info(
                 "TTS job completed",
                 extra={
@@ -309,18 +380,17 @@ async def execute_tts_job_step(
                     "voice_type": job.voice_type,
                     "text_length": len(job.text),
                     "status": "completed",
-                    "duration_ms": int((time.monotonic() - started_monotonic) * 1000),
+                    "duration_ms": timings.total_ms,
+                    "cache_hit": timings.cache_hit,
                 },
             )
 
         except Exception as exc:  # noqa: BLE001
-            import asyncio
-
             if (
                 isinstance(exc, asyncio.CancelledError)
                 or getattr(exc, "args", [None])[0] == "Job was cancelled by user"
+                or cancellation_registry.is_cancelled(job.id)
             ):
-                # Handle cancellation
                 for part in downloaded_files:
                     part.unlink(missing_ok=True)
                 job.status = "cancelled"
@@ -365,6 +435,7 @@ async def execute_tts_job_step(
                     job.id,
                     delay_seconds=delay,
                     batch_position=job.batch_position or 0,
+                    provider_id=job.provider_id,
                 )
                 logger.warning(
                     "TTS job scheduled for retry",
@@ -376,9 +447,7 @@ async def execute_tts_job_step(
                         "voice_type": job.voice_type,
                         "text_length": len(job.text),
                         "status": "queued",
-                        "duration_ms": int(
-                            (time.monotonic() - started_monotonic) * 1000
-                        ),
+                        "duration_ms": timings.finish().total_ms,
                         "error_code": error.code,
                     },
                 )
@@ -405,7 +474,7 @@ async def execute_tts_job_step(
                     "voice_type": job.voice_type,
                     "text_length": len(job.text),
                     "status": "failed",
-                    "duration_ms": int((time.monotonic() - started_monotonic) * 1000),
+                    "duration_ms": timings.finish().total_ms,
                     "error_code": error.code,
                 },
             )

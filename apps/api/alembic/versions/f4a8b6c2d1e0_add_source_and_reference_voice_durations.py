@@ -14,14 +14,19 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "tts_custom_voices",
-        sa.Column("source_duration_seconds", sa.Float(), nullable=True),
-    )
-    op.add_column(
-        "tts_custom_voices",
-        sa.Column("reference_duration_seconds", sa.Float(), nullable=True),
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = [col['name'] for col in inspector.get_columns('tts_custom_voices')]
+    if "source_duration_seconds" not in columns:
+        op.add_column(
+            "tts_custom_voices",
+            sa.Column("source_duration_seconds", sa.Float(), nullable=True),
+        )
+    if "reference_duration_seconds" not in columns:
+        op.add_column(
+            "tts_custom_voices",
+            sa.Column("reference_duration_seconds", sa.Float(), nullable=True),
+        )
     op.execute(
         """
         UPDATE tts_custom_voices
