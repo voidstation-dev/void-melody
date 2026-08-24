@@ -1,16 +1,18 @@
-"""Resolve preset and custom voice IDs into one queue-safe descriptor with LRU caching."""
-
-from __future__ import annotations
-
+import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
+import numpy as np
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.custom_voice import CustomVoiceModel
 from app.services.voice_catalog import voice_catalog
+from app.services.voice_profile_artifacts import load_enrollment_artifact
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -25,6 +27,10 @@ class ResolvedVoice:
     voice_revision: str = "unknown"
     reference_audio_path: str | None = None
     prompt_text: str | None = None
+    profile_format_version: str = "reference-v1"
+    speaker_emb: np.ndarray | None = None
+    ref_codes: np.ndarray | None = None
+    clone_mode: str = "fidelity"
 
 
 class VoiceResolutionError(ValueError):
@@ -91,6 +97,17 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
             "Selected custom voice reference audio is missing.",
         )
 
+    speaker_emb: np.ndarray | None = None
+    ref_codes: np.ndarray | None = None
+    format_version = custom.profile_format_version or "reference-v1"
+
+    if custom.enrollment_artifact_path and Path(custom.enrollment_artifact_path).is_file():
+        try:
+            speaker_emb, ref_codes, _ = load_enrollment_artifact(Path(custom.enrollment_artifact_path))
+            format_version = "vieneu-enrollment-v2"
+        except Exception as exc:
+            logger.warning("Failed loading v2 artifact for voice %s, fallback to v1: %s", custom.id, exc)
+
     resolved = ResolvedVoice(
         voice_type=custom.id,
         display_name=custom.display_name,
@@ -106,6 +123,10 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
         ),
         reference_audio_path=custom.reference_audio_path,
         prompt_text=custom.transcript,
+        profile_format_version=format_version,
+        speaker_emb=speaker_emb,
+        ref_codes=ref_codes,
+        clone_mode=custom.clone_mode or "fidelity",
     )
 
     # Store in LRU cache

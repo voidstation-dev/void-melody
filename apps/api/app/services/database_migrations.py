@@ -88,6 +88,18 @@ POST_BASELINE_COLUMNS = {
 POST_BASELINE_CUSTOM_VOICE_COLUMNS = {
     "source_duration_seconds",
     "reference_duration_seconds",
+    "profile_format_version",
+    "enrollment_artifact_path",
+    "cleaned_reference_audio_path",
+    "calibration_audio_path",
+    "engine_version",
+    "reference_fingerprint",
+    "denoise_mode",
+    "denoise_applied",
+    "clone_mode",
+    "speaker_similarity_score",
+    "calibration_quality_score",
+    "enrollment_created_at",
 }
 
 
@@ -232,6 +244,7 @@ def _adopt_legacy_schema(
 
 
 OPTIMIZATION_PREVIOUS_REVISION = "b7e3d2f1a9c4"
+ENROLLMENT_V2_PREVIOUS_REVISION = "e8f2c1b9a7d3"
 
 
 def _run_database_migrations(
@@ -261,6 +274,9 @@ def _run_database_migrations(
             if has_custom_voices and has_emotional_script_tables and has_audio_cache_table and has_post_baseline:
                 if current_revision != head_revision:
                     command.stamp(config, head_revision)
+            elif has_custom_voices and has_emotional_script_tables and has_audio_cache_table:
+                if current_revision != ENROLLMENT_V2_PREVIOUS_REVISION and current_revision != head_revision:
+                    command.stamp(config, ENROLLMENT_V2_PREVIOUS_REVISION)
             elif has_custom_voices and has_emotional_script_tables and has_post_baseline:
                 if current_revision != OPTIMIZATION_PREVIOUS_REVISION and current_revision != head_revision:
                     command.stamp(config, OPTIMIZATION_PREVIOUS_REVISION)

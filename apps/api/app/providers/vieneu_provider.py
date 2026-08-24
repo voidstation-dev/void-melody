@@ -46,21 +46,31 @@ class VieneuProvider:
         logger.info("VieneuProvider synthesizing %s", voice_type)
         engine = await self.manager.get_engine()
         
+        use_ref_codes = True
         if ref_audio is None and prompt_text is None:
-            voice_id, ref_audio, prompt_text = await self._resolve_custom_voice(voice_type)
+            resolved_tup = await self._resolve_custom_voice(voice_type)
+            voice_spec, ref_audio, prompt_text = resolved_tup[0], resolved_tup[1], resolved_tup[2]
+            if len(resolved_tup) > 3:
+                use_ref_codes = resolved_tup[3]
         else:
-            voice_id = None
+            voice_spec = None
+
+        infer_kwargs = {
+            "text": text,
+            "voice": voice_spec,
+            "ref_audio": ref_audio,
+            "prompt_text": prompt_text,
+            "style": style or "tu_nhien",
+            "apply_watermark": False,
+        }
+        if isinstance(voice_spec, dict):
+            infer_kwargs["use_ref_codes"] = use_ref_codes
 
         # inference is cpu bound, run in thread behind semaphore
         async with self._inference_semaphore:
             wav = await asyncio.to_thread(
                 engine.infer,
-                text=text,
-                voice=voice_id,
-                ref_audio=ref_audio,
-                prompt_text=prompt_text,
-                style=style or "tu_nhien",
-                apply_watermark=False,
+                **infer_kwargs,
             )
 
         fd, wav_path_str = tempfile.mkstemp(suffix=".wav")
@@ -118,16 +128,24 @@ class VieneuProvider:
         del rate  # VieNeu v3 Turbo has no native rate control in this path.
         logger.info("VieneuProvider synthesizing script unit for %s", voice_type)
         engine = await self.manager.get_engine()
-        voice_id, ref_audio, prompt_text = await self._resolve_custom_voice(voice_type)
+        resolved_tup = await self._resolve_custom_voice(voice_type)
+        voice_spec, ref_audio, prompt_text = resolved_tup[0], resolved_tup[1], resolved_tup[2]
+        use_ref_codes = resolved_tup[3] if len(resolved_tup) > 3 else True
+
+        infer_kwargs = {
+            "text": text,
+            "voice": voice_spec,
+            "ref_audio": ref_audio,
+            "prompt_text": prompt_text,
+            "apply_watermark": False,
+        }
+        if isinstance(voice_spec, dict):
+            infer_kwargs["use_ref_codes"] = use_ref_codes
 
         async with self._inference_semaphore:
             wav = await asyncio.to_thread(
                 engine.infer,
-                text=text,
-                voice=voice_id,
-                ref_audio=ref_audio,
-                prompt_text=prompt_text,
-                apply_watermark=False,
+                **infer_kwargs,
             )
 
         fd, wav_path_str = tempfile.mkstemp(suffix=".wav")
@@ -210,17 +228,18 @@ class VieneuProvider:
             stderr=asyncio.subprocess.DEVNULL,
         )
 
-        voice_id, ref_audio, prompt_text = await self._resolve_custom_voice(voice_type)
+        voice_spec, ref_audio, prompt_text, use_ref_codes = await self._resolve_custom_voice(voice_type)
 
         async def feed_pcm():
             try:
                 # The infer_stream method is a generator, so we must advance it in a thread.
                 gen = engine.infer_stream(
                     text=text,
-                    voice=voice_id,
+                    voice=voice_spec,
                     ref_audio=ref_audio,
                     prompt_text=prompt_text,
                     style=style or "tu_nhien",
+                    use_ref_codes=use_ref_codes,
                     apply_watermark=False,
                 )
 
@@ -267,20 +286,32 @@ class VieneuProvider:
                 pass
             await process.wait()
 
-    async def _resolve_custom_voice(self, voice_type: str) -> tuple[str | None, str | None, str | None]:
+    async def _resolve_custom_voice(
+        self, voice_type: str
+    ) -> tuple[str | dict | None, str | None, str | None, bool]:
         try:
             uuid.UUID(voice_type)
         except ValueError:
-            return voice_type, None, None
+            return voice_type, None, None, True
 
         from app.services.voice_resolver import resolve_voice
 
         try:
             async with AsyncSessionLocal() as session:
                 resolved = await resolve_voice(session, voice_type)
-                if resolved and resolved.reference_audio_path:
-                    return None, resolved.reference_audio_path, resolved.prompt_text
+                if resolved:
+                    if resolved.speaker_emb is not None:
+                        # V2 enrolled voice: zero prepare_reference in synthesis!
+                        use_ref = (resolved.clone_mode == "fidelity")
+                        voice_spec = {
+                            "speaker_emb": resolved.speaker_emb,
+                            "codes": resolved.ref_codes,
+                        }
+                        return voice_spec, None, resolved.prompt_text, use_ref
+                    if resolved.reference_audio_path:
+                        # V1 fallback
+                        return None, resolved.reference_audio_path, resolved.prompt_text, True
         except Exception:
             logger.debug("Failed resolving voice %s via resolver, fallback to type", voice_type)
 
-        return voice_type, None, None
+        return voice_type, None, None, True

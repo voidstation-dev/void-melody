@@ -19,6 +19,14 @@ class CustomVoiceResponse(BaseModel):
     selected_end_seconds: float | None = None
     quality_score: int | None = None
     consent_version: str = "voice-lab-v1"
+    profile_format_version: str = "reference-v1"
+    engine_version: str | None = None
+    denoise_mode: str = "auto"
+    denoise_applied: bool | None = None
+    clone_mode: str = "fidelity"
+    speaker_similarity_score: float | None = None
+    calibration_quality_score: int | None = None
+    calibration_available: bool = False
     updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -62,3 +70,10 @@ class VoiceAnalysisResponse(BaseModel):
     quality_score: int
     waveform_peaks: list[float]
     warnings: list[str]
+    estimated_snr_db: float | None = None
+    noise_floor_dbfs: float | None = None
+    silence_ratio: float | None = None
+    level_stability: float | None = None
+    recommended_start_seconds: float | None = None
+    recommended_end_seconds: float | None = None
+    metrics: dict[str, int] | None = None

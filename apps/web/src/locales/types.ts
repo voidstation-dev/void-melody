@@ -250,6 +250,19 @@ export type TranslationSchema = {
     viewInVoices: string;
     voiceLibrary: string;
     voiceLabDesc: string;
+    autoBestSegment: string;
+    denoiseModeLabel: string;
+    denoiseAuto: string;
+    denoiseOff: string;
+    denoiseOn: string;
+    cloneModeLabel: string;
+    cloneFidelity: string;
+    cloneStability: string;
+    similarityLabel: string;
+    calibrationAudioLabel: string;
+    snrLabel: string;
+    noiseFloorLabel: string;
+    stabilityLabel: string;
   };
   voices: {
     title: string;

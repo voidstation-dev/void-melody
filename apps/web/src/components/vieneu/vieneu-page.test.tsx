@@ -79,4 +79,10 @@ describe("VieneuPage", () => {
     expect(screen.getAllByText("sample.wav").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/analysis pending/i)).toBeInTheDocument();
   });
+
+  it("renders denoise mode and clone mode selectors in step 3", () => {
+    renderVieneu();
+    expect(screen.getByLabelText(/denoise mode/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/voice clone mode/i)).toBeInTheDocument();
+  });
 });

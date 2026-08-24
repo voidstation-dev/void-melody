@@ -34,6 +34,8 @@ import {
   DEFAULT_WAVEFORM_PEAKS,
 } from "@/constants";
 
+import { getVoiceCalibrationAudioUrl } from "@/lib/voice-lab-api";
+
 function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
@@ -122,6 +124,8 @@ export function VieneuPage({
     start: number;
     end: number;
   } | null>(null);
+  const [denoiseMode, setDenoiseMode] = useState<"auto" | "off" | "on">("auto");
+  const [cloneMode, setCloneMode] = useState<"fidelity" | "stability">("fidelity");
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -164,6 +168,14 @@ export function VieneuPage({
     if (!audio || !selectedEnd || selectedEnd <= selectedStart) return;
     audio.currentTime = selectedStart;
     void audio.play();
+  };
+
+  const handleAutoPickBestSegment = () => {
+    if (!analysis) return;
+    const start = analysis.recommended_start_seconds ?? analysis.selected_start_seconds ?? 0;
+    const end = analysis.recommended_end_seconds ?? analysis.selected_end_seconds ?? Math.min(sourceDuration, 6);
+    setSelectedSegment({ start, end });
+    toast.success(`${t("voiceLab.autoBestSegment")}: ${start.toFixed(1)}s – ${end.toFixed(1)}s`);
   };
 
   const handleAudioTimeUpdate = (event: SyntheticEvent<HTMLAudioElement>) => {
@@ -509,12 +521,22 @@ export function VieneuPage({
                           <span className="font-semibold">
                             {t("voiceLab.referenceSegment")}
                           </span>
-                          <span className="font-bold text-primary">
-                            {selectedEnd - selectedStart > 0
-                              ? `${(selectedEnd - selectedStart).toFixed(1)}s`
-                              : "—"}{" "}
-                            · 3–8s
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary">
+                              {selectedEnd - selectedStart > 0
+                                ? `${(selectedEnd - selectedStart).toFixed(1)}s`
+                                : "—"}{" "}
+                              · 3–8s
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleAutoPickBestSegment}
+                              className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] font-bold text-primary hover:bg-primary/20 transition-colors"
+                            >
+                              <Sparkles className="h-3 w-3" />
+                              {t("voiceLab.autoBestSegment")}
+                            </button>
+                          </div>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
                           <span>0.0s</span>
@@ -612,6 +634,27 @@ export function VieneuPage({
                         </div>
                       ))}
                     </div>
+
+                    {/* V2 Metrics Detail (SNR, Noise Floor, Stability) */}
+                    {analysis && (
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                        <div className="rounded-lg bg-muted/30 border border-border/40 p-2 text-center">
+                          <span className="text-[10px] text-muted-foreground block">{t("voiceLab.snrLabel")}</span>
+                          <span className="font-bold text-xs">{analysis.estimated_snr_db ?? "—"} dB</span>
+                        </div>
+                        <div className="rounded-lg bg-muted/30 border border-border/40 p-2 text-center">
+                          <span className="text-[10px] text-muted-foreground block">{t("voiceLab.noiseFloorLabel")}</span>
+                          <span className="font-bold text-xs">{analysis.noise_floor_dbfs ?? "—"} dBFS</span>
+                        </div>
+                        <div className="rounded-lg bg-muted/30 border border-border/40 p-2 text-center">
+                          <span className="text-[10px] text-muted-foreground block">{t("voiceLab.stabilityLabel")}</span>
+                          <span className="font-bold text-xs">
+                            {analysis.level_stability != null ? `${Math.round(analysis.level_stability * 100)}%` : "—"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {analysis?.warnings.map((warning) => (
                       <p
                         key={warning}
@@ -649,6 +692,34 @@ export function VieneuPage({
                     />
                   </label>
                 </div>
+
+                {/* V2 Options: Denoise & Clone Mode */}
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label className="text-xs font-semibold">
+                    {t("voiceLab.denoiseModeLabel")}
+                    <select
+                      value={denoiseMode}
+                      onChange={(e) => setDenoiseMode(e.target.value as "auto" | "off" | "on")}
+                      className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs cursor-pointer outline-none focus:border-primary"
+                    >
+                      <option value="auto">{t("voiceLab.denoiseAuto")}</option>
+                      <option value="off">{t("voiceLab.denoiseOff")}</option>
+                      <option value="on">{t("voiceLab.denoiseOn")}</option>
+                    </select>
+                  </label>
+                  <label className="text-xs font-semibold">
+                    {t("voiceLab.cloneModeLabel")}
+                    <select
+                      value={cloneMode}
+                      onChange={(e) => setCloneMode(e.target.value as "fidelity" | "stability")}
+                      className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs cursor-pointer outline-none focus:border-primary"
+                    >
+                      <option value="fidelity">{t("voiceLab.cloneFidelity")}</option>
+                      <option value="stability">{t("voiceLab.cloneStability")}</option>
+                    </select>
+                  </label>
+                </div>
+
                 <div className="mt-4 flex items-center justify-between rounded-xl border border-border bg-muted/30 p-3 text-xs">
                   <span className="font-semibold">
                     {t("voiceLab.engineLabel")}
@@ -676,6 +747,10 @@ export function VieneuPage({
                       displayName: voiceName,
                       consentGiven: consent,
                       analysis: cloneAnalysis,
+                      startSeconds: selectedStart,
+                      endSeconds: selectedEnd,
+                      denoiseMode,
+                      cloneMode,
                     })
                   }
                   disabled={
@@ -781,6 +856,39 @@ export function VieneuPage({
                     {t("voiceLab.transcriptPlaceholderAuto")}
                   </span>
                 </div>
+
+                {/* Similarity score */}
+                {profile?.speaker_similarity_score != null && (
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <span className="text-muted-foreground">{t("voiceLab.similarityLabel")}</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      {Math.round(profile.speaker_similarity_score * 100)}%
+                    </span>
+                  </div>
+                )}
+
+                {/* Calibration audio player */}
+                {profile && profile.calibration_available && (
+                  <div className="rounded-xl border border-primary/20 bg-primary/[0.04] p-3.5 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="flex items-center gap-1.5 text-primary">
+                        <Volume2 className="h-4 w-4" />
+                        {t("voiceLab.calibrationAudioLabel")}
+                      </span>
+                      {profile.calibration_quality_score != null && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                          {profile.calibration_quality_score}/100
+                        </span>
+                      )}
+                    </div>
+                    <audio
+                      className="w-full h-8 mt-1"
+                      controls
+                      src={getVoiceCalibrationAudioUrl(profile.id)}
+                    />
+                  </div>
+                )}
+
                 {selectedProfile.isLoading && (
                   <p className="text-xs text-muted-foreground">
                     {t("voiceLab.loadingProfile")}

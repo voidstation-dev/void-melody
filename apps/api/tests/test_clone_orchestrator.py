@@ -28,8 +28,16 @@ async def test_clone_orchestrator_serializes_and_saves_reference_profile(async_s
     )
 
     assert voice.status == "ready"
-    assert voice.reference_audio_path == str(reference)
-    assert stages == ["validating", "creating", "preparing_reference", "saving", "ready"]
+    assert voice.reference_audio_path.endswith("reference.wav")
+    assert stages == [
+        "validating",
+        "creating",
+        "preparing_reference",
+        "enrolling",
+        "calibrating",
+        "saving",
+        "ready",
+    ]
 
 
 @pytest.mark.asyncio

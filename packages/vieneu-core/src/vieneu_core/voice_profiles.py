@@ -36,6 +36,25 @@ class VoiceProfileResult:
     format_version: str = "reference-v1"
 
 
+@dataclass(frozen=True)
+class EnrolledVoiceProfileResult:
+    profile_id: str
+    reference_audio_path: Path
+    enrollment_artifact_path: Path
+    strategy: str = "enrolled"
+    engine_id: str = "v3turbo"
+    format_version: str = "vieneu-enrollment-v2"
+    cleaned_reference_audio_path: Path | None = None
+    calibration_audio_path: Path | None = None
+    engine_version: str | None = None
+    reference_fingerprint: str | None = None
+    denoise_mode: str = "auto"
+    denoise_applied: bool | None = None
+    clone_mode: str = "fidelity"
+    speaker_similarity_score: float | None = None
+    calibration_quality_score: int | None = None
+
+
 def create_reference_profile(
     request: VoiceProfileRequest,
     *,
