@@ -4,6 +4,14 @@ import { LicenseSettings } from "@/components/settings/license-settings"
 import { useTheme } from "next-themes"
 import { useTranslation } from "@/hooks/use-translation"
 import { Locale } from "@/locales"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Globe, Palette, Moon, Sun, Laptop } from "lucide-react"
 
 export const Route = createFileRoute("/settings")({
   component: SettingsRoute,
@@ -16,8 +24,8 @@ function SettingsRoute() {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="mb-6 shrink-0">
-        <h1 className="text-2xl font-bold">{t("settings.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("settings.subtitle")}</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("settings.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("settings.subtitle")}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 pr-2 pb-6">
@@ -26,49 +34,102 @@ function SettingsRoute() {
           <LicenseSettings />
 
           {/* Language Selection Section */}
-          <section aria-labelledby="language-heading" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <section
+            aria-labelledby="language-heading"
+            className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs hover:border-border transition-colors"
+          >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 id="language-heading" className="font-bold text-base text-foreground">
-                  {t("settings.languageHeading")}
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("settings.languageDesc")}
-                </p>
+              <div className="flex items-start gap-3.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Globe className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h2 id="language-heading" className="font-bold text-sm sm:text-base text-foreground">
+                    {t("settings.languageHeading")}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {t("settings.languageDesc")}
+                  </p>
+                </div>
               </div>
-              <select
-                aria-label={t("settings.languageLabel")}
-                value={locale}
-                onChange={(e) => setLocale(e.target.value as Locale)}
-                className="min-h-10 rounded-xl border border-border bg-background px-3.5 py-1.5 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
-              >
-                <option value="vi">{t("settings.langVi")}</option>
-                <option value="en">{t("settings.langEn")}</option>
-              </select>
+
+              <div className="w-full sm:w-[210px] shrink-0">
+                <Select
+                  value={locale}
+                  onValueChange={(val) => setLocale(val as Locale)}
+                >
+                  <SelectTrigger aria-label={t("settings.languageLabel")}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="vi">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">🇻🇳</span>
+                        <span>{t("settings.langVi")}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="en">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">🇺🇸</span>
+                        <span>{t("settings.langEn")}</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </section>
 
           {/* Appearance Section */}
-          <section aria-labelledby="appearance-heading" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <section
+            aria-labelledby="appearance-heading"
+            className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs hover:border-border transition-colors"
+          >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 id="appearance-heading" className="font-bold text-base text-foreground">
-                  {t("settings.appearanceHeading")}
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("settings.appearanceDesc")}
-                </p>
+              <div className="flex items-start gap-3.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Palette className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h2 id="appearance-heading" className="font-bold text-sm sm:text-base text-foreground">
+                    {t("settings.appearanceHeading")}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {t("settings.appearanceDesc")}
+                  </p>
+                </div>
               </div>
-              <select
-                aria-label={t("settings.themeLabel")}
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-                className="min-h-10 rounded-xl border border-border bg-background px-3.5 py-1.5 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
-              >
-                <option value="dark">{t("settings.themeDark")}</option>
-                <option value="light">{t("settings.themeLight")}</option>
-                <option value="system">{t("settings.themeSystem")}</option>
-              </select>
+
+              <div className="w-full sm:w-[210px] shrink-0">
+                <Select
+                  value={theme ?? "system"}
+                  onValueChange={setTheme}
+                >
+                  <SelectTrigger aria-label={t("settings.themeLabel")}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="dark">
+                      <div className="flex items-center gap-2">
+                        <Moon className="h-3.5 w-3.5 text-primary" />
+                        <span>{t("settings.themeDark")}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="light">
+                      <div className="flex items-center gap-2">
+                        <Sun className="h-3.5 w-3.5 text-amber-500" />
+                        <span>{t("settings.themeLight")}</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="system">
+                      <div className="flex items-center gap-2">
+                        <Laptop className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{t("settings.themeSystem")}</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </section>
 

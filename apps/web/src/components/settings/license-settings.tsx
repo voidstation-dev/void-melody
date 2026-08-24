@@ -1,8 +1,9 @@
 
 import React from "react";
-import { KeyRound, CheckCircle2, LogOut, ShieldCheck } from "lucide-react";
+import { KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/hooks/use-translation";
+import { Button } from "@/components/ui/button";
 
 function maskKey(key: string | null): string {
   if (!key) return "—";
@@ -23,41 +24,51 @@ export function LicenseSettings() {
   };
 
   return (
-    <section aria-labelledby="license-heading" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 id="license-heading" className="font-bold text-base text-foreground">
-              {t("auth.licenseStatus")}
-            </h2>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              {t("auth.licenseActive")}
-            </span>
+    <section
+      aria-labelledby="license-heading"
+      className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs hover:border-border transition-colors"
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3.5 min-w-0">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <ShieldCheck className="h-4.5 w-4.5" />
           </div>
-          
-          <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-            <p>
-              <span className="font-medium text-foreground">{t("auth.licenseOwner")}:</span>{" "}
-              {licenseInfo?.ownerName ?? "Phong Vũ"} ({licenseInfo?.tier ?? "Lifetime Pro License"})
-            </p>
-            <p className="flex items-center gap-1.5">
-              <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
-                {maskKey(licenseKey)}
-              </code>
-            </p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 id="license-heading" className="font-bold text-sm sm:text-base text-foreground">
+                {t("auth.licenseStatus")}
+              </h2>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                {t("auth.licenseActive")}
+              </span>
+            </div>
+
+            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+              <p>
+                <span className="font-medium text-foreground">{t("auth.licenseOwner")}:</span>{" "}
+                {licenseInfo?.ownerName ?? "Phong Vũ"} ({licenseInfo?.tier ?? "Lifetime Pro License"})
+              </p>
+              <div className="flex items-center gap-1.5">
+                <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+                  {maskKey(licenseKey)}
+                </code>
+              </div>
+            </div>
           </div>
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={handleLogout}
-          className="inline-flex min-h-10 shrink-0 touch-manipulation items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-2 text-xs font-bold text-destructive hover:bg-destructive/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2"
+          className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <LogOut className="h-3.5 w-3.5" />
           <span>{t("auth.logoutBtn")}</span>
-        </button>
+        </Button>
       </div>
     </section>
   );
