@@ -1,4 +1,5 @@
 import { BrandMark } from "@/components/ui/brand-logo"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export function AppHeader() {
   return (
@@ -6,6 +7,10 @@ export function AppHeader() {
       <div className="flex items-center gap-2.5">
         <BrandMark className="h-8 w-8" />
         <span className="text-xl font-extrabold tracking-tight">Melody</span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <ThemeToggle />
       </div>
     </header>
   );
