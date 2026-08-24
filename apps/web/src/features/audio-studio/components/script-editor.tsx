@@ -83,9 +83,9 @@ export function ScriptEditor({
         />
 
         {/* Editor Area */}
-        <div className="relative flex-1 min-h-[220px] w-full pt-3">
+        <div className="relative flex-1 min-h-[260px] lg:min-h-[300px] w-full my-2">
           {!hasText && (
-            <div className="pointer-events-none absolute inset-0 text-sm sm:text-base leading-relaxed text-muted-foreground/40 select-none pt-3">
+            <div className="pointer-events-none absolute inset-0 text-sm sm:text-base leading-relaxed text-muted-foreground/40 select-none p-1">
               <p className="font-semibold text-foreground/50">
                 Nhập hoặc dán nội dung kịch bản vào đây…
               </p>
@@ -102,7 +102,7 @@ export function ScriptEditor({
             onChange={(e) => onChange(e.target.value)}
             disabled={disabled}
             maxLength={500000}
-            className="h-full min-h-[220px] w-full resize-none bg-transparent text-sm sm:text-base leading-relaxed text-foreground focus:outline-none disabled:opacity-50 font-normal custom-scrollbar"
+            className="absolute inset-0 h-full w-full resize-none bg-transparent text-sm sm:text-base leading-relaxed text-foreground focus:outline-none disabled:opacity-50 font-normal custom-scrollbar p-1 pb-8"
             placeholder=""
             autoFocus
           />
