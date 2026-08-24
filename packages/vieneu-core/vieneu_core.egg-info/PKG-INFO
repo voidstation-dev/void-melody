@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: vieneu-core
-Version: 0.1.0
-Summary: Framework-agnostic contracts, capabilities, errors, and fixtures for the VieNeu-TTS integration. Does not depend on FastAPI, SQLAlchemy, Next.js, Tauri, or VoidMelody app state.
-Requires-Python: >=3.10
-Requires-Dist: huggingface_hub>=0.20

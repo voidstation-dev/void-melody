@@ -1,6 +1,5 @@
-"use client";
 import { useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearch } from "@tanstack/react-router";
 import { TextComposer } from "./text-composer";
 import { VoiceSettingsPanel } from "./voice-settings-panel";
 import { useVoices } from "@/hooks/use-voices";
@@ -19,8 +18,8 @@ import { useTranslation } from "@/hooks/use-translation";
 
 export function TTSStudio() {
   const { t } = useTranslation();
-  const searchParams = useSearchParams();
-  const voiceParam = searchParams.get("voice");
+  const search = useSearch({ strict: false }) as { voice?: string };
+  const voiceParam = typeof search?.voice === "string" ? search.voice : undefined;
   const [text, setText] = useState("");
   const [prevVoiceParam, setPrevVoiceParam] = useState(voiceParam);
   const [selectedVoice, setSelectedVoice] = useState(voiceParam || "BV421_vivn_streaming");

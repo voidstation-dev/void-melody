@@ -32,17 +32,18 @@ describe("CustomVoiceCard", () => {
       </I18nProvider>,
     )
 
-    fireEvent.click(screen.getByRole("button", { name: /thao tác khác cho custom-1/i }))
-    fireEvent.click(screen.getByRole("menuitem", { name: /xóa/i }))
-
-    expect(screen.getByRole("alertdialog")).toHaveTextContent('Xóa giọng "Adam"?')
     expect(screen.getByText("VieNeu")).toBeInTheDocument()
     expect(screen.getByText("Chất lượng 92/100")).toBeInTheDocument()
     expect(screen.getByText("Sẵn sàng")).toBeInTheDocument()
     expect(screen.getByTestId("voice-waveform")).toBeInTheDocument()
-    expect(screen.getByRole("article")).toHaveClass("min-h-[300px]")
+    expect(screen.getByRole("article")).toHaveClass("min-h-[220px]")
     expect(screen.getByRole("article")).toHaveClass("p-4")
     expect(screen.getByRole("heading", { name: "Adam" })).toHaveClass("text-2xl")
+
+    fireEvent.click(screen.getByRole("button", { name: /thao tác khác cho custom-1/i }))
+    fireEvent.click(screen.getByRole("menuitem", { name: /xóa/i }))
+
+    expect(screen.getByRole("alertdialog")).toHaveTextContent('Xóa giọng "Adam"?')
     fireEvent.click(screen.getByRole("button", { name: "Xóa giọng" }))
     expect(onDelete).toHaveBeenCalledWith("custom-1")
   })

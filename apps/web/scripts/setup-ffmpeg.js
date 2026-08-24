@@ -1,7 +1,11 @@
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
-const { pipeline } = require('stream/promises');
+import fs from 'node:fs';
+import path from 'node:path';
+import https from 'node:https';
+import { pipeline } from 'node:stream/promises';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const targetDir = path.join(__dirname, '../src-tauri/bin');
 fs.mkdirSync(targetDir, { recursive: true });
@@ -80,31 +84,29 @@ async function main() {
   } else if (process.platform === 'linux') {
     fs.copyFileSync(targetPath, path.join(targetDir, 'ffmpeg-x86_64-unknown-linux-gnu'));
   }
+
+  const voiceJsonSrc = path.join(__dirname, '../../../vendor/capcut-tts-api/Voice.json');
+  const voiceJsonDest = path.join(targetDir, 'Voice.json');
+  if (fs.existsSync(voiceJsonSrc)) {
+    fs.copyFileSync(voiceJsonSrc, voiceJsonDest);
+    console.log(`Successfully copied Voice.json to ${voiceJsonDest}`);
+  } else {
+    console.warn(`Warning: Voice.json not found at ${voiceJsonSrc}`);
+  }
+
+  // Create dummy files for the *other* platform's ffmpeg name so the Tauri
+  // bundler can always resolve both `ffmpeg` and `ffmpeg.exe` resources.
+  const dummyFiles = ['ffmpeg', 'ffmpeg.exe'];
+  dummyFiles.forEach((file) => {
+    const filePath = path.join(targetDir, file);
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, '');
+      console.log(`Created dummy file for missing platform binary: ${file}`);
+    }
+  });
 }
 
 main().catch((err) => {
   console.error('Failed to fetch static ffmpeg.', err);
   process.exit(1);
-});
-
-const voiceJsonSrc = path.join(__dirname, '../../../vendor/capcut-tts-api/Voice.json');
-const voiceJsonDest = path.join(targetDir, 'Voice.json');
-if (fs.existsSync(voiceJsonSrc)) {
-  fs.copyFileSync(voiceJsonSrc, voiceJsonDest);
-  console.log(`Successfully copied Voice.json to ${voiceJsonDest}`);
-} else {
-  console.warn(`Warning: Voice.json not found at ${voiceJsonSrc}`);
-}
-
-// Create dummy files for the *other* platform's ffmpeg name so the Tauri
-// bundler can always resolve both `ffmpeg` and `ffmpeg.exe` resources. The
-// runner only downloads the binary for its own platform; the unused platform
-// placeholder stays empty and is never executed at runtime.
-const dummyFiles = ['ffmpeg', 'ffmpeg.exe'];
-dummyFiles.forEach((file) => {
-  const filePath = path.join(targetDir, file);
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, '');
-    console.log(`Created dummy file for missing platform binary: ${file}`);
-  }
 });

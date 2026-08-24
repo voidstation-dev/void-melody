@@ -1,9 +1,8 @@
-"use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { getRuntimeVersion } from "@/lib/runtime-version";
 import { useTranslation } from "@/hooks/use-translation";
+import { BrandMark } from "@/components/ui/brand-logo";
 import {
   Mic,
   FileText,
@@ -15,7 +14,6 @@ import {
 } from "lucide-react";
 
 export function AppSidebar() {
-  const pathname = usePathname();
   const { t } = useTranslation();
   const [version, setVersion] = useState("dev");
 
@@ -24,21 +22,22 @@ export function AppSidebar() {
   }, []);
 
   const navItem = (
-    href: string,
+    to: string,
     label: string,
     Icon: React.ComponentType<{ className?: string }>,
-    active?: boolean,
   ) => {
-    const isActive = active !== undefined ? active : pathname === href;
     return (
       <Link
-        key={href}
-        href={href}
-        className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
-          isActive
-            ? "bg-primary/10 text-primary font-bold shadow-xs"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-        }`}
+        key={to}
+        to={to}
+        activeOptions={{ exact: to === "/" }}
+        activeProps={{
+          className: "bg-primary/10 text-primary font-bold shadow-xs",
+        }}
+        inactiveProps={{
+          className: "text-muted-foreground hover:bg-muted hover:text-foreground",
+        }}
+        className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all"
       >
         <Icon className="h-4 w-4" />
         <span>{label}</span>
@@ -62,9 +61,7 @@ export function AppSidebar() {
       <div className="p-4 border-t border-border mt-auto">
         <div className="flex flex-col gap-1 rounded-2xl bg-muted/50 p-4 border border-border/50">
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
-              <Flame className="w-4 h-4" />
-            </div>
+            <BrandMark className="h-6 w-6" />
             <span className="font-bold text-sm text-foreground">Melody</span>
           </div>
           <p className="text-[10px] text-muted-foreground font-medium tracking-wide mt-2">

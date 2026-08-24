@@ -1,4 +1,3 @@
-"use client";
 
 import { RefreshCw } from "lucide-react";
 import { useTauri } from "@/contexts/tauri-provider";

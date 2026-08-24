@@ -1,5 +1,3 @@
-"use client"
-
 import { Loader2, Pause, Play, RefreshCcw } from "lucide-react"
 import { useVoicePreview } from "@/hooks/use-voice-preview"
 import { useTranslation } from "@/hooks/use-translation"
@@ -11,10 +9,20 @@ type VoicePreviewButtonProps = {
   onPlayStart?: (voiceId: string) => void
   variant?: "preset" | "custom"
   compact?: boolean
+  size?: "default" | "sm"
   className?: string
 }
 
-export function VoicePreviewButton({ voiceId, sampleText, label: voiceLabel = voiceId, onPlayStart, variant = "preset", compact = false, className = "" }: VoicePreviewButtonProps) {
+export function VoicePreviewButton({
+  voiceId,
+  sampleText,
+  label: voiceLabel = voiceId,
+  onPlayStart,
+  variant = "preset",
+  compact = false,
+  size = "default",
+  className = "",
+}: VoicePreviewButtonProps) {
   const { t } = useTranslation()
   const preview = useVoicePreview(voiceId)
   const actionLabel = preview.isPlaying ? t("voices.playingBtn") : t("voices.previewBtn")
@@ -22,16 +30,23 @@ export function VoicePreviewButton({ voiceId, sampleText, label: voiceLabel = vo
     ? preview.isPlaying
       ? "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600"
       : variant === "custom"
-        ? "bg-[#df604e] text-white shadow-sm hover:bg-[#c95242]"
+        ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
         : "bg-foreground text-background shadow-sm hover:bg-foreground/90"
     : preview.isPlaying
       ? "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600"
       : variant === "custom"
         ? "border border-border bg-muted/50 text-foreground hover:bg-muted"
         : "border border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/60"
+
+  const sizeClass = compact
+    ? size === "sm"
+      ? "h-9 w-9"
+      : "h-16 w-16"
+    : "min-h-9 px-3 py-2 text-xs"
+
   const buttonClassName = compact
-    ? `inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 ${tone}`
-    : `inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 ${tone}`
+    ? `inline-flex ${sizeClass} shrink-0 items-center justify-center rounded-full p-0 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 ${tone}`
+    : `inline-flex ${sizeClass} items-center justify-center gap-1.5 rounded-xl font-bold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 ${tone}`
 
   return (
     <div className={`flex min-w-0 flex-col items-start gap-1 ${className}`}>

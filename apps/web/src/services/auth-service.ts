@@ -40,7 +40,7 @@ export async function verifyLicenseKey(
   }
 
   // Check if an external verification endpoint is configured
-  const authApiUrl = process.env.NEXT_PUBLIC_AUTH_API_URL;
+  const authApiUrl = import.meta.env.VITE_AUTH_API_URL;
   if (authApiUrl) {
     try {
       const res = await fetch(`${authApiUrl}/v1/license/verify`, {

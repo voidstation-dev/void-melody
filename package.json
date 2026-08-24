@@ -1,12 +1,12 @@
 {
   "name": "voidmelody-monorepo",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "packageManager": "pnpm@10.11.0",
   "scripts": {
     "dev:web": "cd apps/web && pnpm dev",
     "setup:vendor": "node scripts/setup-vendor.mjs",
-    "setup:api": "pnpm setup:vendor && cd apps/api && uv sync --reinstall-package capcut-tts-api",
+    "setup:api": "pnpm setup:vendor && cd apps/api && uv sync --reinstall-package capcut-tts-api --reinstall-package vieneu-core --reinstall-package vieneu",
     "setup:desktop": "pnpm install --frozen-lockfile && pnpm setup:api && pnpm build:deps",
     "dev:api": "cd apps/api && uv run python -m uvicorn app.main:app --reload --port 8000",
     "build:deps": "cd apps/web && node scripts/setup-ffmpeg.js && cd ../api && uv run python build.py",

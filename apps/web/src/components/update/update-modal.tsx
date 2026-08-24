@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useRef } from "react";
 import { AlertCircle, Download } from "lucide-react";

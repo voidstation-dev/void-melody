@@ -1,5 +1,3 @@
-"use client";
-
 import {
   createContext,
   useCallback,
@@ -8,11 +6,15 @@ import {
   useMemo,
   useRef,
   useState,
-} from "react";
-import { Command, type Child } from "@tauri-apps/plugin-shell";
-import { appDataDir, resolveResource } from "@tauri-apps/api/path";
-import { Loader2 } from "lucide-react";
-import { setApiConnection } from "@/lib/api-client";
+} from "react"
+import { Command, type Child } from "@tauri-apps/plugin-shell"
+import { appDataDir, resolveResource } from "@tauri-apps/api/path"
+import { setApiConnection } from "@/lib/api-client"
+import {
+  BootstrapScreen,
+  type BootstrapStage,
+  type BootstrapStageId,
+} from "@/components/bootstrap/bootstrap-screen"
 
 type TauriContextValue = {
   isDesktop: boolean;
@@ -41,20 +43,48 @@ export function useTauri() {
   return context;
 }
 
+const INITIAL_STAGES: BootstrapStage[] = [
+  { id: "desktop", title: "Tauri Desktop Shell", detail: "Kiểm tra môi trường ứng dụng", status: "pending" },
+  { id: "storage", title: "Storage & Audio Binaries", detail: "Đường dẫn AppData & FFmpeg", status: "pending" },
+  { id: "sidecar", title: "Melody API Engine", detail: "Tiến trình Python Backend", status: "pending" },
+  { id: "models", title: "VieNeu Neural Voice Models", detail: "Mô hình AI Voice & Tokenizer", status: "pending" },
+  { id: "server", title: "HTTP Service & Gateway", detail: "Cổng kết nối máy chủ cục bộ", status: "pending" },
+];
+
 export function TauriProvider({ children }: { children: React.ReactNode }) {
   const [isDesktop, setIsDesktop] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stages, setStages] = useState<BootstrapStage[]>(INITIAL_STAGES);
+  const [progressPercent, setProgressPercent] = useState(10);
+  const [currentStatusText, setCurrentStatusText] = useState("Đang chuẩn bị môi trường...");
+  const [liveLogs, setLiveLogs] = useState("");
+
   const mountedRef = useRef(false);
   const sidecarProcessRef = useRef<Child | null>(null);
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const shutdownPromiseRef = useRef<Promise<void> | null>(null);
   const restartPromiseRef = useRef<Promise<void> | null>(null);
 
+  const updateStage = useCallback((id: BootstrapStageId, status: BootstrapStage["status"], detail?: string) => {
+    setStages((prev) =>
+      prev.map((stage) =>
+        stage.id === id
+          ? { ...stage, status, ...(detail !== undefined ? { detail } : {}) }
+          : stage,
+      ),
+    );
+  }, []);
+
   const startSidecar = useCallback(() => {
     if (startPromiseRef.current) return startPromiseRef.current;
 
     const start = (async () => {
+      updateStage("desktop", "completed", "Tauri 2 Shell sẵn sàng");
+      updateStage("storage", "active", "Đang phân giải AppData & Voice.json...");
+      setProgressPercent(20);
+      setCurrentStatusText("Đang kiểm tra thư mục lưu trữ...");
+
       const apiToken = crypto.randomUUID();
       const [dataDir, catalogPath] = await Promise.all([
         appDataDir(),
@@ -62,6 +92,10 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       console.log("Starting sidecar with:", { dataDir, catalogPath });
+      updateStage("storage", "completed", "AppData & Catalog sẵn sàng");
+      updateStage("sidecar", "active", "Đang khởi tạo tiến trình Python...");
+      setProgressPercent(35);
+      setCurrentStatusText("Khởi chạy tiến trình Python API...");
 
       const sidecar = Command.sidecar("bin/melody-api", [], {
         env: {
@@ -87,18 +121,25 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         rejectReady = reject;
       });
 
-      // If the sidecar never prints a port (e.g. macOS Gatekeeper quarantines
-      // the bundled binary and blocks its launch silently), the ready promise
-      // would never settle and the UI would hang on "Starting local
-      // environment..." forever. Time out so the user gets actionable guidance.
       const startupTimeoutMs = 30_000;
       let startupTimer: ReturnType<typeof setTimeout>;
+
       const rejectStartup = (reason: Error) => {
         if (didResolve || didReject || !mountedRef.current) return;
         didReject = true;
         clearTimeout(startupTimer);
         rejectReady?.(reason);
       };
+
+      const resetActivityTimer = (timeoutMs = 60_000) => {
+        if (didResolve || didReject || !mountedRef.current) return;
+        clearTimeout(startupTimer);
+        startupTimer = setTimeout(
+          () => rejectStartup(new Error("Local API did not start in time")),
+          timeoutMs,
+        );
+      };
+
       startupTimer = setTimeout(
         () => rejectStartup(new Error("Local API did not start in time")),
         startupTimeoutMs,
@@ -120,7 +161,9 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
           .slice(-2_000);
 
       const probeHealth = async (url: string) => {
-        for (let attempt = 0; attempt < 15; attempt++) {
+        updateStage("server", "active", `Đang xác thực ${url}...`);
+        setCurrentStatusText(`Đang kết nối ${url}...`);
+        for (let attempt = 0; attempt < 30; attempt++) {
           try {
             const response = await fetch(`${url}/api/v1/health/live`, {
               method: "GET",
@@ -130,6 +173,10 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
               clearTimeout(startupTimer);
               console.log(`Successfully connected to API at ${url}`);
               setApiConnection(url, apiToken);
+              updateStage("models", "completed", "VieNeu AI Models sẵn sàng");
+              updateStage("server", "completed", `Đã kết nối (${url})`);
+              setProgressPercent(100);
+              setCurrentStatusText("Môi trường đã sẵn sàng!");
               setIsReady(true);
               resolveReady?.();
               return true;
@@ -145,12 +192,40 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
       const handleOutput = (line: string, source: "STDOUT" | "STDERR") => {
         console.log(`[API ${source}]:`, line);
+        resetActivityTimer();
+
+        if (mountedRef.current) {
+          setLiveLogs((prev) => {
+            const updated = prev ? `${prev}\n${line}` : line;
+            return updated.length > 8000 ? updated.slice(-8000) : updated;
+          });
+        }
+
         if (didResolve || didReject || !mountedRef.current) return;
         const normalizedLine = `${outputBuffers[source]}${line}`.replace(
           /\u001b\[[0-?]*[ -/]*[@-~]/g,
           "",
         );
         outputBuffers[source] = normalizedLine.slice(-1024);
+
+        // Parse download / caching progress
+        const fetchMatch = normalizedLine.match(/Fetching\s+(\d+)\s+files:\s*(\d+)%/i);
+        if (fetchMatch) {
+          const percent = Number(fetchMatch[2]);
+          const scaledPercent = Math.min(85, Math.max(45, 45 + Math.round(percent * 0.4)));
+          setProgressPercent(scaledPercent);
+          updateStage("models", "active", `Đang tải files model (${percent}%)`);
+          setCurrentStatusText(`Đang tải AI Voice Models (${percent}%)...`);
+        } else if (/downloading|hf_hub_download|huggingface/i.test(normalizedLine)) {
+          updateStage("models", "active", "Đang nạp file mô hình AI...");
+          setProgressPercent((prev) => Math.max(prev, 55));
+          setCurrentStatusText("Đang đồng bộ hóa VieNeu AI Model cache...");
+        } else if (/Uvicorn running|Application startup complete|Listening on/i.test(normalizedLine)) {
+          updateStage("models", "completed", "VieNeu AI Models sẵn sàng");
+          updateStage("server", "active", "Đang kiểm tra cổng API...");
+          setProgressPercent(90);
+        }
+
         // Ignore HTTP access log lines like `INFO: 127.0.0.1:55140 - "GET ..."`
         if (
           /-\s+"[A-Z]+\s+/.test(normalizedLine) ||
@@ -159,6 +234,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
           )
         )
           return;
+
         const match =
           normalizedLine.match(
             /(?:running on|listening on|server started at port|port:?)\s*(?:https?:\/\/)?(?:127\.0\.0\.1|localhost|0\.0\.0\.0)?:?(\d{4,5})/i,
@@ -209,6 +285,10 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Sidecar provider unmounted during startup");
       }
       sidecarProcessRef.current = process;
+      updateStage("sidecar", "completed", `Process PID: ${process.pid}`);
+      updateStage("models", "active", "Đang kiểm tra AI models...");
+      setProgressPercent(45);
+      setCurrentStatusText("Đang kiểm tra mô hình VieNeu AI...");
 
       return readyPromise;
     })();
@@ -216,7 +296,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       startPromiseRef.current = null;
     });
     return startPromiseRef.current;
-  }, []);
+  }, [updateStage]);
 
   const shutdownSidecar = useCallback(async () => {
     if (!hasTauriRuntime()) return;
@@ -244,6 +324,11 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     if (restartPromiseRef.current) return restartPromiseRef.current;
 
     setError(null);
+    setStages(INITIAL_STAGES);
+    setProgressPercent(10);
+    setCurrentStatusText("Đang khởi động lại môi trường...");
+    setLiveLogs("");
+
     const restart = (async () => {
       await shutdownSidecar();
       await startSidecar();
@@ -294,50 +379,16 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     [isDesktop, isReady, restartSidecar, shutdownSidecar],
   );
 
-  if (error) {
-    const isStartupTimeout = error.includes("did not start in time");
+  if (error || !isReady) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 p-8 text-center text-destructive">
-        <h2 className="text-xl font-bold">Failed to start local API</h2>
-        <p className="font-mono text-sm">{error}</p>
-        <button
-          type="button"
-          onClick={handleRestart}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-        >
-          Restart API / Thử lại
-        </button>
-        {isStartupTimeout && (
-          <div className="max-w-md text-sm text-muted-foreground text-left space-y-2 mt-2">
-            <div>
-              <p className="font-semibold text-foreground">macOS:</p>
-              <p className="mb-1 text-xs">
-                macOS may be blocking the bundled API binary. Run:
-              </p>
-              <pre className="rounded bg-muted p-2 text-xs">
-                xattr -cr /Applications/VoidMelody.app
-              </pre>
-            </div>
-            <div>
-              <p className="font-semibold text-foreground">Windows / Linux:</p>
-              <p className="text-xs">
-                Ensure antivirus is not locking temp files and close any background instances, then click Restart API.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (!isReady) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
-        <Loader2 className="h-10 w-10 text-primary motion-safe:animate-spin" />
-        <p className="text-sm font-medium text-muted-foreground">
-          Starting local environment...
-        </p>
-      </div>
+      <BootstrapScreen
+        stages={stages}
+        progressPercent={progressPercent}
+        currentStatusText={currentStatusText}
+        logs={liveLogs}
+        error={error}
+        onRestart={error ? handleRestart : undefined}
+      />
     );
   }
 

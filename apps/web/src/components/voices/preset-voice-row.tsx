@@ -1,11 +1,10 @@
-"use client"
-
-import Link from "next/link"
+import { Link } from "@tanstack/react-router"
 import { Voice } from "@/types/voice"
 import { useTranslation } from "@/hooks/use-translation"
 import { providerLabel } from "./voice-library-utils"
 import { VoicePreviewButton } from "./voice-preview-button"
 import { VoiceWaveform } from "./voice-waveform"
+import { Sparkles, ArrowRight, Radio } from "lucide-react"
 
 const styleLabels: Record<string, string> = {
   tu_nhien: "Tự nhiên",
@@ -26,36 +25,75 @@ export function PresetVoiceRow({ voice, onPlayStart }: { voice: Voice; onPlaySta
   const metadata = [providerLabel(voice.providerId), t("voices.presetMetaStyle"), t("voices.presetMetaPopularity")]
 
   return (
-    <article className="group flex min-h-[300px] flex-col rounded-[1.25rem] border border-border/80 border-l-4 border-l-[#df604e] bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted-foreground">{t("voices.presetBadge")} · {voice.languageCode || "vi-VN"}</p>
-          <h3 className="mt-4 text-2xl font-black tracking-[-0.045em] text-foreground">{voice.displayName}</h3>
-          <p className="mt-2 text-sm leading-5 text-muted-foreground">{t("voices.presetDescription")}</p>
-          {voiceProfileLine(voice) && <p className="mt-3 inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-foreground/80">{voiceProfileLine(voice)}</p>}
+    <article className="group relative flex min-h-[220px] flex-col justify-between rounded-2xl border border-border/70 bg-card p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md motion-reduce:transform-none">
+      {/* Top Section */}
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-primary">
+                <Sparkles className="h-2.5 w-2.5" />
+                {t("voices.presetBadge")}
+              </span>
+              <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+                {voice.languageCode || "vi-VN"}
+              </span>
+            </div>
+
+            <h3 className="mt-2 text-2xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors truncate">
+              {voice.displayName}
+            </h3>
+          </div>
+
+          {voiceProfileLine(voice) && (
+            <span className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 px-2 py-1 text-[11px] font-bold text-foreground/80">
+              <Radio className="h-3 w-3 text-primary" />
+              {voiceProfileLine(voice)}
+            </span>
+          )}
         </div>
-        <span aria-hidden="true" className="pt-1 text-xl leading-none tracking-[0.2em] text-muted-foreground/70">•••</span>
       </div>
 
-      <div className="mt-auto">
-        <div className="mt-6 flex items-center gap-4">
-             <VoicePreviewButton voiceId={voice.voiceType} label={voice.displayName} sampleText={sampleText} onPlayStart={onPlayStart} compact />
+      {/* Audio Player Strip */}
+      <div className="my-3 flex items-center gap-2.5 rounded-xl border border-border/50 bg-muted/20 px-2.5 py-2 transition-colors group-hover:bg-muted/40">
+        <VoicePreviewButton
+          voiceId={voice.voiceType}
+          label={voice.displayName}
+          sampleText={sampleText}
+          onPlayStart={onPlayStart}
+          compact
+          size="sm"
+        />
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden">
           <VoiceWaveform accent="coral" />
-          <span className="ml-auto text-sm font-medium tabular-nums text-muted-foreground">{t("voices.previewDuration")}</span>
+          <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+            {t("voices.previewDuration")}
+          </span>
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-muted-foreground">
-          {metadata.map((item, index) => <span key={item} className={index > 0 ? "relative pl-3 before:absolute before:left-0 before:top-1/2 before:h-1 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-muted-foreground/50" : undefined}>{item}</span>)}
+      </div>
+
+      {/* Footer Strip */}
+      <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-2.5">
+        <div className="flex flex-wrap items-center gap-x-2 text-[11px] font-medium text-muted-foreground">
+          {metadata.map((item, index) => (
+            <span
+              key={item}
+              className={index > 0 ? "relative pl-2.5 before:absolute before:left-0 before:top-1/2 before:h-1 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-muted-foreground/30" : undefined}
+            >
+              {item}
+            </span>
+          ))}
         </div>
-        <div className="mt-4 flex items-center justify-between gap-4 border-t border-border pt-4">
-          <Link
-            href={`/?voice=${encodeURIComponent(voice.voiceType)}`}
-            className="inline-flex items-center text-base font-black tracking-tight text-foreground transition-colors hover:text-[#df604e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            title={t("voices.useVoiceTitle")}
-          >
-            {t("voices.useVoice")} <span className="ml-2 text-[#df604e]">→</span>
-          </Link>
-          <span className="text-xs font-medium text-muted-foreground">{t("voices.previewHint")}</span>
-        </div>
+
+        <Link
+          to="/"
+          search={{ voice: voice.voiceType }}
+          className="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          title={t("voices.useVoiceTitle")}
+        >
+          <span>{t("voices.useVoice")}</span>
+          <ArrowRight className="h-3.5 w-3.5 text-primary transition-transform group-hover:translate-x-0.5" />
+        </Link>
       </div>
     </article>
   )

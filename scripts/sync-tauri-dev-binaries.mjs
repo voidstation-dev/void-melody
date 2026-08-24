@@ -58,9 +58,40 @@ function syncBinary(sourceName, destinationName, currentRevision) {
     assertSidecarFresh(metadata, currentRevision)
   }
   fs.mkdirSync(tauriDebugDir, { recursive: true })
-  fs.copyFileSync(source, destination)
-  if (process.platform !== "win32") fs.chmodSync(destination, 0o755)
-  console.log(`Synced ${sourceName} -> target/debug/${destinationName}`)
+  try {
+    if (fs.existsSync(destination)) {
+      const sourceStat = fs.statSync(source)
+      const destStat = fs.statSync(destination)
+      if (sourceStat.size === destStat.size && sourceStat.mtimeMs <= destStat.mtimeMs) {
+        console.log(`Up to date: ${sourceName} -> target/debug/${destinationName}`)
+        return
+      }
+    }
+    fs.copyFileSync(source, destination)
+    if (process.platform !== "win32") fs.chmodSync(destination, 0o755)
+    console.log(`Synced ${sourceName} -> target/debug/${destinationName}`)
+  } catch (err) {
+    if (err.code === "EBUSY" || err.code === "EPERM") {
+      if (fs.existsSync(destination)) {
+        const sourceStat = fs.statSync(source)
+        const destStat = fs.statSync(destination)
+        if (sourceStat.size === destStat.size) {
+          console.warn(
+            `[sync-tauri-dev-binaries] Warning: ${destinationName} is currently locked by a running process, but matching binary already exists. Skipping copy.`,
+          )
+          return
+        }
+      }
+      const processName = path.parse(destinationName).name
+      throw new Error(
+        `Cannot overwrite ${destinationName} (resource busy or locked).\n` +
+          `An instance of ${processName} is likely still running in the background.\n` +
+          `Terminate the process (e.g. Stop-Process -Name "${processName}" in PowerShell) and retry.`,
+        { cause: err },
+      )
+    }
+    throw err
+  }
 }
 
 const extension = process.platform === "win32" ? ".exe" : ""

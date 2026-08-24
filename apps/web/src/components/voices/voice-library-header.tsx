@@ -1,6 +1,4 @@
-"use client"
-
-import Link from "next/link"
+import { Link } from "@tanstack/react-router"
 import { ChevronDown, Plus, Search } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
 
@@ -64,7 +62,7 @@ export function VoiceLibraryHeader({ search, provider, language, providers, lang
           <FilterSelect id="voice-library-language" label={t("voices.languageFilter")} value={language} options={languages} onChange={onLanguageChange} />
         </div>
         <Link
-          href="/vieneu"
+          to="/vieneu"
           className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-2xs transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Plus className="h-4 w-4" />

@@ -1,4 +1,3 @@
-"use client";
 import { createContext, ReactNode } from "react";
 import { TTSJob } from "@/types/tts-job";
 import { useQuery, useQueryClient } from "@tanstack/react-query";

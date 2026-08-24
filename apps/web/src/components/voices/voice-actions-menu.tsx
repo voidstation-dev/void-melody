@@ -1,6 +1,4 @@
-"use client"
-
-import Link from "next/link"
+import { Link } from "@tanstack/react-router"
 import { MoreHorizontal, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "@/hooks/use-translation"
@@ -43,7 +41,7 @@ export function VoiceActionsMenu({ voiceId, onDelete, disabled = false }: VoiceA
       </button>
       {open && (
         <div role="menu" className="absolute right-0 top-10 z-20 min-w-36 rounded-xl border border-border bg-popover p-1.5 shadow-lg">
-          <Link role="menuitem" href={`/?voice=${encodeURIComponent(voiceId)}`} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 text-xs font-semibold hover:bg-muted focus-visible:bg-muted focus-visible:outline-none">{t("voices.useVoice")}</Link>
+          <Link role="menuitem" to="/" search={{ voice: voiceId }} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 text-xs font-semibold hover:bg-muted focus-visible:bg-muted focus-visible:outline-none">{t("voices.useVoice")}</Link>
           <button role="menuitem" type="button" onClick={() => { setOpen(false); onDelete() }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 focus-visible:outline-none"><Trash2 className="h-3.5 w-3.5" />{t("voices.deleteVoice")}</button>
         </div>
       )}

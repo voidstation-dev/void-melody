@@ -1,4 +1,3 @@
-"use client"
 
 import { RefreshCcw } from "lucide-react"
 import { Voice } from "@/types/voice"

@@ -1,49 +1,95 @@
-"use client"
-
-import { useEffect, useRef } from "react"
+import { AlertTriangle, Loader2, Trash2 } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
-type VoiceDeleteDialogProps = { open: boolean; voiceName: string; pending?: boolean; onCancel: () => void; onConfirm: () => void }
+type VoiceDeleteDialogProps = {
+  open: boolean
+  voiceName: string
+  pending?: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}
 
-export function VoiceDeleteDialog({ open, voiceName, pending = false, onCancel, onConfirm }: VoiceDeleteDialogProps) {
+export function VoiceDeleteDialog({
+  open,
+  voiceName,
+  pending = false,
+  onCancel,
+  onConfirm,
+}: VoiceDeleteDialogProps) {
   const { t } = useTranslation()
-  const cancelRef = useRef<HTMLButtonElement | null>(null)
-  const dialogRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    if (!open) return
-    cancelRef.current?.focus()
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !pending) onCancel()
-      if (event.key === "Tab") {
-        const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>("button, a[href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])") ?? []).filter((element) => !element.hasAttribute("disabled"))
-        if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault()
-          last.focus()
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault()
-          first.focus()
-        }
-      }
-    }
-    document.addEventListener("keydown", onKeyDown)
-    return () => document.removeEventListener("keydown", onKeyDown)
-  }, [open, onCancel, pending])
-
-  if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4" role="presentation">
-      <div ref={dialogRef} role="alertdialog" aria-modal="true" aria-labelledby="voice-delete-title" aria-describedby="voice-delete-description" className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl">
-        <h2 id="voice-delete-title" className="text-lg font-black tracking-tight">{t("voices.deleteDialogTitle", { name: voiceName })}</h2>
-        <p id="voice-delete-description" className="mt-2 text-sm leading-6 text-muted-foreground">{t("voices.deleteDialogDescription")}</p>
-        <div className="mt-6 flex justify-end gap-2">
-          <button ref={cancelRef} type="button" disabled={pending} onClick={onCancel} className="min-h-9 rounded-xl border border-border px-3.5 text-xs font-bold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{t("common.cancel")}</button>
-          <button type="button" disabled={pending} onClick={onConfirm} className="min-h-9 rounded-xl bg-destructive px-3.5 text-xs font-bold text-destructive-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive disabled:cursor-wait disabled:opacity-50">{pending ? t("voices.deletingVoice") : t("voices.confirmDeleteAction")}</button>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen && !pending) onCancel() }}>
+      <DialogContent
+        role="alertdialog"
+        showCloseButton={false}
+        className="w-full max-w-md rounded-3xl border border-destructive/20 bg-card p-6 shadow-2xl sm:p-7"
+      >
+        {/* Warning Icon Badge */}
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive ring-8 ring-destructive/5">
+          <Trash2 className="h-6 w-6" />
         </div>
-      </div>
-    </div>
+
+        {/* Title & Description */}
+        <DialogHeader className="gap-1.5 text-left">
+          <DialogTitle id="voice-delete-title" className="text-xl font-black tracking-tight text-foreground sm:text-2xl">
+            {t("voices.deleteDialogTitle", { name: voiceName })}
+          </DialogTitle>
+          <DialogDescription id="voice-delete-description" className="text-sm leading-relaxed text-muted-foreground">
+            {t("voices.deleteDialogDescription")}
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Extra Warning Notice */}
+        <div className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <p className="text-xs font-semibold leading-relaxed text-destructive/90">
+            Hồ sơ giọng và các mẫu âm thanh mẫu liên quan sẽ bị xóa vĩnh viễn khỏi thiết bị.
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        <DialogFooter className="mt-2 -mx-0 -mb-0 flex-row justify-end gap-2.5 border-t-0 bg-transparent p-0">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={onCancel}
+            className="rounded-xl px-4 font-bold"
+          >
+            {t("common.cancel")}
+          </Button>
+
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={pending}
+            onClick={onConfirm}
+            className="gap-1.5 rounded-xl px-4 font-bold shadow-xs shadow-destructive/20"
+          >
+            {pending ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>{t("voices.deletingVoice")}</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{t("voices.confirmDeleteAction")}</span>
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

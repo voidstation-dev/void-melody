@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import { CustomVoice } from "@/types/voice"
 import { useTranslation } from "@/hooks/use-translation"
@@ -8,6 +6,7 @@ import { VoiceActionsMenu } from "./voice-actions-menu"
 import { VoiceDeleteDialog } from "./voice-delete-dialog"
 import { VoicePreviewButton } from "./voice-preview-button"
 import { VoiceWaveform } from "./voice-waveform"
+import { UserCheck, ArrowRight } from "lucide-react"
 
 type CustomVoiceCardProps = { voice: CustomVoice; onDelete: (voiceId: string) => void; deleting?: boolean }
 
@@ -23,51 +22,68 @@ export function CustomVoiceCard({ voice, onDelete, deleting = false }: CustomVoi
   ].filter(Boolean) as string[]
 
   return (
-    <article className="group relative flex min-h-[300px] flex-col rounded-[1.25rem] border-2 border-blue-500 bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none sm:p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#df604e]">{t("voices.customEyebrow")}</p>
-          <h3 className="mt-4 text-2xl font-black tracking-[-0.045em] text-foreground">{voice.display_name}</h3>
-          <p className="mt-2 text-sm leading-5 text-muted-foreground">{t("voices.customDescription")}</p>
+    <article className="group relative flex min-h-[220px] flex-col justify-between rounded-2xl border border-primary/20 bg-card p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md motion-reduce:transform-none">
+      {/* Top Section */}
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                <UserCheck className="h-2.5 w-2.5" />
+                {t("voices.customEyebrow")}
+              </span>
+            </div>
+
+            <h3 className="mt-2 text-2xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors truncate">
+              {voice.display_name}
+            </h3>
+          </div>
+
+          <VoiceActionsMenu voiceId={voice.id} onDelete={() => setDeleteOpen(true)} disabled={deleting} />
         </div>
-        <VoiceActionsMenu voiceId={voice.id} onDelete={() => setDeleteOpen(true)} disabled={deleting} />
       </div>
 
-      <div className="mt-auto">
-        <div className="mt-6 flex items-center gap-4">
-          <VoicePreviewButton
-            voiceId={voice.id}
-            label={voice.display_name}
-            sampleText={voice.transcript || t("voices.sampleText", { name: voice.display_name })}
-            variant="custom"
-            compact
-          />
+      {/* Audio Player Strip */}
+      <div className="my-3 flex items-center gap-2.5 rounded-xl border border-border/50 bg-muted/20 px-2.5 py-2 transition-colors group-hover:bg-muted/40">
+        <VoicePreviewButton
+          voiceId={voice.id}
+          label={voice.display_name}
+          sampleText={voice.transcript || t("voices.sampleText", { name: voice.display_name })}
+          variant="custom"
+          compact
+          size="sm"
+        />
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden">
           <VoiceWaveform accent="coral" />
-          <span className="ml-auto text-sm font-medium tabular-nums text-muted-foreground">{durationLabel}</span>
+          <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+            {durationLabel}
+          </span>
         </div>
+      </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-muted-foreground">
+      {/* Footer Strip */}
+      <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-2.5">
+        <div className="flex flex-wrap items-center gap-x-2 text-[11px] font-medium text-muted-foreground">
           {metadata.map((item, index) => (
             <span
               key={item}
-              className={index > 0 ? "relative pl-3 before:absolute before:left-0 before:top-1/2 before:h-1 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-muted-foreground/50" : undefined}
+              className={index > 0 ? "relative pl-2.5 before:absolute before:left-0 before:top-1/2 before:h-1 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-muted-foreground/30" : undefined}
             >
               {item}
             </span>
           ))}
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-4 border-t border-border pt-4">
-          <a
-            href={`/?voice=${encodeURIComponent(voice.id)}`}
-            className="inline-flex items-center text-base font-black tracking-tight text-foreground transition-colors hover:text-[#df604e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            title={t("voices.useVoiceTitle")}
-          >
-            {t("voices.useVoice")} <span className="ml-2 text-[#df604e]">→</span>
-          </a>
-          <span className="text-xs font-medium text-muted-foreground">{t("voices.customReadyHint")}</span>
-        </div>
+        <a
+          href={`/?voice=${encodeURIComponent(voice.id)}`}
+          className="shrink-0 inline-flex items-center gap-1 text-xs font-bold text-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          title={t("voices.useVoiceTitle")}
+        >
+          <span>{t("voices.useVoice")}</span>
+          <ArrowRight className="h-3.5 w-3.5 text-primary transition-transform group-hover:translate-x-0.5" />
+        </a>
       </div>
+
       <VoiceDeleteDialog open={deleteOpen} voiceName={voice.display_name} pending={deleting} onCancel={() => setDeleteOpen(false)} onConfirm={() => onDelete(voice.id)} />
     </article>
   )

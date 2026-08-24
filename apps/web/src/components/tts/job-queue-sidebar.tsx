@@ -1,4 +1,3 @@
-"use client";
 import { useQueue } from "@/hooks/use-queue";
 import { Loader2, CheckCircle2, XCircle, Clock, Play, Pause, Trash2, RotateCcw, Layers, CornerUpLeft, RefreshCw, Rewind, FastForward, Download } from "lucide-react";
 import { TTSJob } from "@/types/tts-job";

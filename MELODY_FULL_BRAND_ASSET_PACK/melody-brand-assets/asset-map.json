@@ -1,0 +1,7 @@
+{
+  "web_public_source": "web/",
+  "tauri_icons_source": "tauri/icons/",
+  "brand_source": "brand/",
+  "recommended_web_target": "apps/web/public/",
+  "recommended_tauri_target": "apps/web/src-tauri/icons/"
+}

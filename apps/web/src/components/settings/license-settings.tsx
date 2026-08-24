@@ -1,4 +1,3 @@
-"use client";
 
 import React from "react";
 import { KeyRound, CheckCircle2, LogOut, ShieldCheck } from "lucide-react";

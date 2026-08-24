@@ -4,6 +4,20 @@ All notable changes to VoidMelody Desktop are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-08-24
+
+### Added
+
+- Integrated official Melody brand asset pack with high-resolution multi-format icons and PWA manifest.
+- Added theme-adaptive brand marks for seamless contrast across Light and Dark modes.
+- Modernized web application architecture with Vite and TanStack Router with instant intent-based prefetching.
+- Optimized multi-tier client query caching for fast navigation across all views.
+
+### Fixed
+
+- Enhanced desktop sidecar binary synchronization with resilient file lock handling and smart cache validation.
+- Fixed washed out / blurry desktop icon on Windows taskbar with high-contrast squircle container badge.
+
 ## [0.3.2] - 2026-08-23
 
 ### Fixed

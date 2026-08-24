@@ -1,8 +1,0 @@
-1:"$Sreact.fragment"
-2:I[17066,["/_next/static/chunks/1_uwj-59cz2z2.js","/_next/static/chunks/15yk7vbiufgyt.js","/_next/static/chunks/0np101gbc6-p4.js","/_next/static/chunks/0bvbh4x1apoy4.js"],"AppHeader"]
-3:I[59068,["/_next/static/chunks/1_uwj-59cz2z2.js","/_next/static/chunks/15yk7vbiufgyt.js","/_next/static/chunks/0np101gbc6-p4.js","/_next/static/chunks/0bvbh4x1apoy4.js"],"AppSidebar"]
-4:I[24676,["/_next/static/chunks/1_uwj-59cz2z2.js","/_next/static/chunks/15yk7vbiufgyt.js","/_next/static/chunks/0np101gbc6-p4.js","/_next/static/chunks/0bvbh4x1apoy4.js"],"EmotionalScriptPage"]
-5:I[20497,["/_next/static/chunks/1_uwj-59cz2z2.js","/_next/static/chunks/15yk7vbiufgyt.js","/_next/static/chunks/0np101gbc6-p4.js"],"OutletBoundary"]
-6:"$Sreact.suspense"
-0:{"rsc":["$","$1","c",{"children":[["$","div",null,{"className":"flex h-dvh min-h-0 flex-col bg-background text-foreground font-sans overflow-hidden","children":[["$","div",null,{"className":"shrink-0","children":["$","$L2",null,{}]}],["$","div",null,{"className":"flex min-h-0 flex-1 overflow-hidden","children":[["$","$L3",null,{}],["$","main",null,{"className":"min-h-0 min-w-0 flex-1 bg-muted/30 p-6 overflow-hidden flex flex-col","children":["$","$L4",null,{}]}]]}]]}],[["$","script","script-0",{"src":"/_next/static/chunks/0bvbh4x1apoy4.js","async":true}]],["$","$L5",null,{"children":["$","$6",null,{"name":"Next.MetadataOutlet","children":"$@7"}]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"q2sb_R9-84zj-acRmIxpJ"}
-7:null

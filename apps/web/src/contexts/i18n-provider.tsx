@@ -1,4 +1,3 @@
-"use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { Locale, TranslationKey, defaultLocale, getTranslation } from "@/locales";

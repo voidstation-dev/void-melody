@@ -126,7 +126,7 @@ async def list_voices(
     q: str | None = Query(default=None),
     provider_id: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=50, ge=1, le=100),
+    page_size: int = Query(default=500, ge=1, le=1000),
 ):
     raw_voices = voice_catalog.list_voices(language=language)
 

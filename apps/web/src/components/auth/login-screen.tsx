@@ -1,4 +1,3 @@
-"use client";
 
 import React, { useState } from "react";
 import { KeyRound, Sparkles, Loader2, AlertCircle, ClipboardPaste, X, Globe, Radio } from "lucide-react";
@@ -6,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/hooks/use-translation";
 import { Locale } from "@/locales";
 import { DEFAULT_DEV_KEY } from "@/constants";
+import { BrandMark } from "@/components/ui/brand-logo";
 
 export function LoginScreen() {
   const { login, isLoading } = useAuth();
@@ -68,8 +68,8 @@ export function LoginScreen() {
         <div className="overflow-hidden rounded-3xl border border-border/80 bg-card/90 p-6 sm:p-8 shadow-xl backdrop-blur-md">
           {/* Brand Logo & Icon */}
           <div className="flex flex-col items-center text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner ring-1 ring-primary/20">
-              <Radio className="h-7 w-7" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-card shadow-md ring-1 ring-border/60 overflow-hidden p-2">
+              <BrandMark className="h-full w-full" alt="Melody" />
             </div>
             <h1 className="mt-5 text-xl font-extrabold tracking-tight sm:text-2xl">
               {t("auth.title")}

@@ -1,4 +1,3 @@
-"use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -98,15 +97,11 @@ export function EmotionalScriptPage() {
 
   useEffect(() => {
     if (!render || render.status !== "completed" || !render.output_url) {
-      setAudioBlobUrl(null)
-      setAudioLoadError(null)
       return
     }
 
     let disposed = false
     let objectUrl: string | null = null
-    setAudioBlobUrl(null)
-    setAudioLoadError(null)
 
     void apiFetchBlob(render.output_url)
       .then((blob) => {
@@ -122,8 +117,10 @@ export function EmotionalScriptPage() {
     return () => {
       disposed = true
       if (objectUrl) URL.revokeObjectURL(objectUrl)
+      setAudioBlobUrl(null)
+      setAudioLoadError(null)
     }
-  }, [render?.id, render?.output_url, render?.status])
+  }, [render])
 
   const tagCounts = countDeliveryTags(text)
   const activeVoiceId = selectedVoice || voices[0]?.voiceType || ""

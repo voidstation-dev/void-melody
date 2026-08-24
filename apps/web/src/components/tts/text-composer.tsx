@@ -1,4 +1,3 @@
-"use client";
 import { FileText } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 

@@ -39,7 +39,7 @@ describe("PresetVoiceRow", () => {
     expect(screen.getByText("Tự nhiên")).toBeInTheDocument()
     expect(screen.getByText("Nữ · Bắc · Tự nhiên")).toBeInTheDocument()
     expect(screen.getByTestId("voice-waveform")).toBeInTheDocument()
-    expect(screen.getByRole("article")).toHaveClass("min-h-[300px]")
+    expect(screen.getByRole("article")).toHaveClass("min-h-[220px]")
     expect(screen.getByRole("article")).toHaveClass("p-4")
     expect(screen.getByRole("heading", { name: "Nhỏ Ngọt Ngào" })).toHaveClass("text-2xl")
     expect(screen.getByRole("link", { name: /dùng giọng/i })).toHaveAttribute(

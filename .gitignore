@@ -4,6 +4,8 @@ __pycache__
 *.pyc
 *.pyo
 *.egg-info/
+packages/*/build/
+packages/*/*.egg-info/
 .next
 dist
 build
