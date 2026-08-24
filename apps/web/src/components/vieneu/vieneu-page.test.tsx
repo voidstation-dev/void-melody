@@ -76,7 +76,7 @@ describe("VieneuPage", () => {
     const input = screen.getByLabelText(/voice sample file/i) as HTMLInputElement;
     const file = new File([new Uint8Array([1, 2, 3])], "sample.wav", { type: "audio/wav" });
     fireEvent.change(input, { target: { files: [file] } });
-    expect(screen.getByText("sample.wav")).toBeInTheDocument();
+    expect(screen.getAllByText("sample.wav").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/analysis pending/i)).toBeInTheDocument();
   });
 });

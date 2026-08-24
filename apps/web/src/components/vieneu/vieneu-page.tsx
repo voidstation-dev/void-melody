@@ -9,19 +9,24 @@ import {
 } from "react";
 import {
   Check,
+  Download,
   FileAudio,
+  Loader2,
+  Play,
   ShieldCheck,
   Sparkles,
   Upload,
   UserRoundPlus,
+  Volume2,
 } from "lucide-react";
 import { useVoiceCapabilities } from "@/hooks/use-voice-capabilities";
 import { useVoiceLab } from "@/hooks/use-voice-lab";
 import { useTTSJob } from "@/hooks/use-tts-job";
 import { useCustomVoice } from "@/hooks/use-custom-voice";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, apiFetchBlob } from "@/lib/api-client";
 import { BatchJobCreateResponse } from "@/types/tts-job";
 import { useTranslation } from "@/hooks/use-translation";
+import { toast } from "sonner";
 import {
   ACCEPTED_AUDIO_MIME_TYPES,
   ACCEPTED_AUDIO_EXTENSIONS,
@@ -228,6 +233,118 @@ export function VieneuPage({
       setPreviewJobId(response.jobs[0]?.id ?? null);
     } catch (error) {
       setPreviewError(readableError(error, t("voiceLab.errorQueuePreview")));
+    }
+  };
+  const [previewAudioBlobUrl, setPreviewAudioBlobUrl] = useState<string | null>(null);
+  const [isLoadingPreviewAudio, setIsLoadingPreviewAudio] = useState(false);
+  const [downloadingFormat, setDownloadingFormat] = useState<string | null>(null);
+  const [cloneProgress, setCloneProgress] = useState(0);
+  const [cloneStage, setCloneStage] = useState<string>("");
+
+  useEffect(() => {
+    if (!cloneMutation.isPending) {
+      if (cloneMutation.isSuccess) {
+        setCloneProgress(100);
+        setCloneStage("Hoàn tất khởi tạo hồ sơ giọng!");
+      } else {
+        setCloneProgress(0);
+        setCloneStage("");
+      }
+      return;
+    }
+
+    setCloneProgress(15);
+    setCloneStage("Đang tải lên tệp mẫu âm thanh...");
+
+    const t1 = setTimeout(() => {
+      setCloneProgress(40);
+      setCloneStage("Đang phân tích & chuẩn bị đoạn đối chiếu...");
+    }, 600);
+
+    const t2 = setTimeout(() => {
+      setCloneProgress(75);
+      setCloneStage("Đang trích xuất đặc trưng âm sắc (VieNeu Turbo)...");
+    }, 1800);
+
+    const t3 = setTimeout(() => {
+      setCloneProgress(92);
+      setCloneStage("Đang hoàn tất lưu trữ hồ sơ giọng...");
+    }, 3200);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [cloneMutation.isPending, cloneMutation.isSuccess]);
+
+  // Load preview audio blob reliably through apiFetchBlob
+  useEffect(() => {
+    if (previewJob?.status === "completed" && previewJob.id) {
+      let isSubscribed = true;
+      setIsLoadingPreviewAudio(true);
+      apiFetchBlob(`/api/v1/tts/jobs/${previewJob.id}/audio`)
+        .then((blob) => {
+          if (!isSubscribed) return;
+          const url = URL.createObjectURL(blob);
+          setPreviewAudioBlobUrl((prev) => {
+            if (prev && typeof URL.revokeObjectURL === "function") {
+              URL.revokeObjectURL(prev);
+            }
+            return url;
+          });
+        })
+        .catch((err) => {
+          console.error("Failed to load preview audio blob", err);
+          toast.error("Không thể tải file âm thanh nghe thử");
+        })
+        .finally(() => {
+          if (isSubscribed) setIsLoadingPreviewAudio(false);
+        });
+
+      return () => {
+        isSubscribed = false;
+      };
+    } else if (previewJob?.status === "processing" || previewJob?.status === "queued") {
+      setPreviewAudioBlobUrl(null);
+    }
+  }, [previewJob?.status, previewJob?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (previewAudioBlobUrl && typeof URL.revokeObjectURL === "function") {
+        URL.revokeObjectURL(previewAudioBlobUrl);
+      }
+    };
+  }, [previewAudioBlobUrl]);
+
+  const handleDownloadPreview = async (format: "wav" | "mp3" | "m4a") => {
+    if (!previewJob?.id) return;
+    setDownloadingFormat(format);
+    try {
+      const endpoint = format === "wav"
+        ? `/api/v1/tts/jobs/${previewJob.id}/audio?format=wav`
+        : format === "m4a"
+        ? `/api/v1/tts/jobs/${previewJob.id}/audio?format=m4a`
+        : `/api/v1/tts/jobs/${previewJob.id}/audio`;
+      const blob = await apiFetchBlob(endpoint);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const baseName = profile?.display_name ? `preview_${profile.display_name}` : `preview_${previewJob.id.slice(0, 8)}`;
+      a.download = `${baseName}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      if (typeof URL.revokeObjectURL === "function") {
+        URL.revokeObjectURL(url);
+      }
+      toast.success(`Đã tải file ${format.toUpperCase()} thành công`);
+    } catch (err) {
+      console.error("Failed to download audio", err);
+      toast.error("Không thể tải file âm thanh");
+    } finally {
+      setDownloadingFormat(null);
     }
   };
 
@@ -571,13 +688,36 @@ export function VieneuPage({
                   }
                   className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-opacity disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
                 >
-                  <UserRoundPlus className="h-4 w-4" />
+                  {cloneMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <UserRoundPlus className="h-4 w-4" />
+                  )}
                   <span>
                     {cloneMutation.isPending
                       ? t("voiceLab.creatingVoice")
                       : t("voiceLab.createVoiceBtn")}
                   </span>
                 </button>
+
+                {/* Progress bar during cloning */}
+                {cloneMutation.isPending && (
+                  <div className="mt-4 space-y-2 rounded-xl border border-primary/25 bg-primary/5 p-3.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="flex items-center justify-between text-xs font-bold text-primary">
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {cloneStage}
+                      </span>
+                      <span className="font-mono text-xs">{cloneProgress}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-primary/15">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                        style={{ width: `${cloneProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 {!cloneAvailable && (
                   <p className="mt-3 text-xs font-semibold text-amber-700 dark:text-amber-400">
                     {runtime?.reason ?? t("voiceLab.checkingCloneCapability")}
@@ -619,34 +759,30 @@ export function VieneuPage({
                   <span className="text-muted-foreground">
                     {t("voiceLab.referenceSourceLabel")}
                   </span>
-                  <span className="font-semibold">
-                    {file
-                      ? t("voiceLab.selectedSample")
-                      : initialVoiceId
-                        ? t("voiceLab.libraryProfile")
-                        : t("voiceLab.notSelected")}
+                  <span className="max-w-40 truncate font-semibold">
+                    {file?.name ?? t("voiceLab.noFileSelected")}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <span className="text-muted-foreground">
-                    {t("voiceLab.analysisStatusLabel")}
+                    {t("voiceLab.selectedDurationLabel")}
                   </span>
                   <span className="font-semibold">
-                    {analysis
-                      ? t("voiceLab.ready")
-                      : file
-                        ? t("voiceLab.pending")
-                        : t("voiceLab.waiting")}
+                    {selectedEnd > selectedStart
+                      ? `${(selectedEnd - selectedStart).toFixed(1)}s`
+                      : "—"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-b border-border pb-3">
                   <span className="text-muted-foreground">
-                    {t("voiceLab.engineLabel")}
+                    {t("voiceLab.referenceTranscriptLabel")}
                   </span>
-                  <span className="font-semibold">VieNeu v3 Turbo</span>
+                  <span className="max-w-40 truncate text-xs text-muted-foreground">
+                    {t("voiceLab.transcriptPlaceholderAuto")}
+                  </span>
                 </div>
-                {selectedProfile.isLoading && initialVoiceId && (
-                  <p className="rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
+                {selectedProfile.isLoading && (
+                  <p className="text-xs text-muted-foreground">
                     {t("voiceLab.loadingProfile")}
                   </p>
                 )}
@@ -682,51 +818,97 @@ export function VieneuPage({
                   </p>
                 )}
                 {previewJob && (
-                  <div className="rounded-xl border border-border p-4">
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      {t("voiceLab.previewTitle")}
-                    </p>
-                    <p className="mt-2 text-sm font-semibold">
+                  <div className="rounded-xl border border-border p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        {t("voiceLab.previewTitle")}
+                      </p>
+                      {(previewJob.status === "processing" || previewJob.status === "queued") && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-primary animate-pulse">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Đang tạo...
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-sm font-semibold">
                       {previewJob.status === "completed"
                         ? t("voiceLab.previewReadyDesc")
                         : previewJob.status === "failed"
-                          ? (previewJob.errorMessage ??
-                            t("voiceLab.analysisFailed"))
+                          ? (previewJob.errorMessage ?? t("voiceLab.analysisFailed"))
                           : `${t("voiceLab.generatingPreview")} ${previewJob.status}`}
                     </p>
-                    {previewJob.audioUrl && (
-                      <audio
-                        className="mt-3 w-full"
-                        controls
-                        src={previewJob.audioUrl}
-                      />
+
+                    {previewJob.status === "completed" && (
+                      <div>
+                        {isLoadingPreviewAudio ? (
+                          <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground bg-muted/20 rounded-xl border border-border/50">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <span>Đang nạp file âm thanh...</span>
+                          </div>
+                        ) : previewAudioBlobUrl ? (
+                          <audio
+                            className="mt-2 w-full rounded-lg"
+                            controls
+                            src={previewAudioBlobUrl}
+                            autoPlay
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (previewJob.id) {
+                                setIsLoadingPreviewAudio(true);
+                                apiFetchBlob(`/api/v1/tts/jobs/${previewJob.id}/audio`)
+                                  .then((blob) => {
+                                    setPreviewAudioBlobUrl(URL.createObjectURL(blob));
+                                  })
+                                  .catch(() => toast.error("Không thể tải audio"))
+                                  .finally(() => setIsLoadingPreviewAudio(false));
+                              }
+                            }}
+                            className="w-full rounded-lg border border-border bg-card py-2 text-xs font-bold hover:bg-muted"
+                          >
+                            Tải lại trình phát âm thanh
+                          </button>
+                        )}
+                      </div>
                     )}
-                    {previewJob.status === "completed" &&
-                      previewJob.downloadUrl && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <a
-                            href={`${previewJob.downloadUrl}?format=wav`}
-                            download
-                            className="rounded-lg border border-border px-3 py-2 text-xs font-bold hover:bg-muted transition-colors"
+
+                    {previewJob.status === "completed" && (
+                      <div className="pt-2 border-t border-border/60">
+                        <p className="text-[11px] font-bold text-muted-foreground mb-2">Tải file âm thanh:</p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleDownloadPreview("wav")}
+                            disabled={downloadingFormat !== null}
+                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-bold hover:bg-muted transition-colors inline-flex items-center gap-1 disabled:opacity-50"
                           >
+                            {downloadingFormat === "wav" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
                             WAV
-                          </a>
-                          <a
-                            href={`${previewJob.downloadUrl}?format=mp3`}
-                            download
-                            className="rounded-lg border border-border px-3 py-2 text-xs font-bold hover:bg-muted transition-colors"
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDownloadPreview("mp3")}
+                            disabled={downloadingFormat !== null}
+                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-bold hover:bg-muted transition-colors inline-flex items-center gap-1 disabled:opacity-50"
                           >
+                            {downloadingFormat === "mp3" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
                             MP3
-                          </a>
-                          <a
-                            href={`${previewJob.downloadUrl}?format=m4a`}
-                            download
-                            className="rounded-lg border border-border px-3 py-2 text-xs font-bold hover:bg-muted transition-colors"
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDownloadPreview("m4a")}
+                            disabled={downloadingFormat !== null}
+                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-bold hover:bg-muted transition-colors inline-flex items-center gap-1 disabled:opacity-50"
                           >
+                            {downloadingFormat === "m4a" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
                             M4A
-                          </a>
+                          </button>
                         </div>
-                      )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -778,9 +960,14 @@ export function VieneuPage({
                   previewJob?.status === "queued" ||
                   previewJob?.status === "processing"
                 }
-                className="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-40 hover:opacity-90 transition-opacity shadow-xs"
+                className="rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground disabled:opacity-40 hover:opacity-90 transition-opacity shadow-xs inline-flex items-center justify-center gap-1.5"
               >
-                {t("voiceLab.generatePreview")}
+                {(previewJob?.status === "queued" || previewJob?.status === "processing") && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                {previewJob?.status === "queued" || previewJob?.status === "processing"
+                  ? "Đang tổng hợp..."
+                  : t("voiceLab.generatePreview")}
               </button>
             </div>
           </section>
