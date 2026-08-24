@@ -85,15 +85,19 @@ async def readiness_check():
         "circuit_breaker": circuit_ok,
     }
     ready = all(checks.values())
+    content = {
+        "status": "ready" if ready else "degraded",
+        "service": "capvoice-api",
+        "checks": checks,
+        "queueDepth": queue["queue_depth"],
+        "workersAlive": queue["workers_alive"],
+        "voiceCount": voice_count,
+        "circuitBreaker": circuit,
+    }
+    if "lanes" in queue:
+        content["lanes"] = queue["lanes"]
+
     return JSONResponse(
         status_code=200 if ready else 503,
-        content={
-            "status": "ready" if ready else "degraded",
-            "service": "capvoice-api",
-            "checks": checks,
-            "queueDepth": queue["queue_depth"],
-            "workersAlive": queue["workers_alive"],
-            "voiceCount": voice_count,
-            "circuitBreaker": circuit,
-        },
+        content=content,
     )

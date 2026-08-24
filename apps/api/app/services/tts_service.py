@@ -1,5 +1,8 @@
+import base64
 import hashlib
 from collections.abc import Sequence
+from datetime import datetime
+from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import func, select, update
@@ -41,6 +44,7 @@ async def assert_batch_capacity(
     new_text_length: int,
     max_files: int,
     max_total_chars: int,
+    new_items_count: int = 1,
 ) -> None:
     result = await session.execute(
         select(
@@ -50,7 +54,7 @@ async def assert_batch_capacity(
     )
     file_count, total_chars = result.one()
 
-    if file_count + 1 > max_files:
+    if file_count + new_items_count > max_files:
         raise HTTPException(
             status_code=422,
             detail="BATCH_FILE_LIMIT_EXCEEDED",
@@ -181,8 +185,6 @@ async def create_tts_job_with_batch_limits(
     export_format: str | None = None,
 ) -> TTSJobModel:
     try:
-        # SQLite has no row-level locks. BEGIN IMMEDIATE serializes the
-        # aggregate capacity check and insert without blocking queue readers.
         await session.execute(sql_text("BEGIN IMMEDIATE"))
         await assert_batch_capacity(
             session,
@@ -220,6 +222,78 @@ async def create_tts_job_with_batch_limits(
         raise
 
 
+async def create_tts_jobs_batch(
+    session: AsyncSession,
+    *,
+    batch_id: str,
+    items: list[dict[str, Any]],
+    max_files: int = settings.tts_max_batch_files,
+    max_total_chars: int = settings.tts_max_batch_total_chars,
+) -> list[TTSJobModel]:
+    """Create all batch jobs in ONE single atomic transaction."""
+    if not items:
+        return []
+
+    total_new_chars = sum(len(item["text"].strip()) for item in items)
+    try:
+        await session.execute(sql_text("BEGIN IMMEDIATE"))
+        await assert_batch_capacity(
+            session,
+            batch_id=batch_id,
+            new_text_length=total_new_chars,
+            max_files=max_files,
+            max_total_chars=max_total_chars,
+            new_items_count=len(items),
+        )
+
+        jobs = [
+            _build_tts_job(
+                text=item["text"],
+                voice_type=item["voice_type"],
+                voice_display_name=item.get("voice_display_name", item["voice_type"]),
+                language_code=item.get("language_code", "vi-VN"),
+                resource_id=item.get("resource_id"),
+                rate=item.get("rate", 1.0),
+                kind=item.get("kind", "generation"),
+                batch_id=batch_id,
+                batch_position=item.get("batch_position", idx),
+                source_file_name=item.get("source_file_name"),
+                source_file_size=item.get("source_file_size"),
+                provider_id=item.get("provider_id", "capcut"),
+                backbone_id=item.get("backbone_id"),
+                style=item.get("style"),
+                voice_profile_id=item.get("voice_profile_id"),
+                request_metadata=item.get("request_metadata"),
+                export_path=item.get("export_path"),
+                export_format=item.get("export_format"),
+            )
+            for idx, item in enumerate(items)
+        ]
+
+        session.add_all(jobs)
+        await session.commit()
+        for job in jobs:
+            await session.refresh(job)
+        return jobs
+    except BaseException:
+        await session.rollback()
+        raise
+
+
+def encode_cursor(created_at: datetime, job_id: str) -> str:
+    raw = f"{created_at.isoformat()}|{job_id}"
+    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("utf-8")
+
+
+def decode_cursor(cursor_str: str) -> tuple[datetime, str] | None:
+    try:
+        decoded = base64.urlsafe_b64decode(cursor_str.encode("utf-8")).decode("utf-8")
+        iso_ts, job_id = decoded.split("|", 1)
+        return datetime.fromisoformat(iso_ts), job_id
+    except Exception:
+        return None
+
+
 async def get_job_by_id(session: AsyncSession, job_id: str) -> TTSJobModel | None:
     return await session.get(TTSJobModel, job_id)
 
@@ -230,16 +304,50 @@ async def list_jobs(
     status: str | None = None,
     page: int = 1,
     page_size: int = 20,
-) -> tuple[Sequence[TTSJobModel], int]:
-    stmt = select(TTSJobModel).order_by(TTSJobModel.created_at.desc())
+    cursor: str | None = None,
+) -> tuple[Sequence[TTSJobModel], int, str | None]:
+    """List jobs supporting both cursor-based pagination and classic offset pagination.
+
+    Returns:
+        (jobs, total_count, next_cursor)
+    """
+    stmt = select(TTSJobModel).order_by(
+        TTSJobModel.created_at.desc(), TTSJobModel.id.desc()
+    )
     if status:
         stmt = stmt.where(TTSJobModel.status == status)
 
+    if cursor:
+        cursor_data = decode_cursor(cursor)
+        if cursor_data:
+            c_time, c_id = cursor_data
+            stmt = stmt.where(
+                (TTSJobModel.created_at < c_time)
+                | ((TTSJobModel.created_at == c_time) & (TTSJobModel.id < c_id))
+            )
+        # Fetch 1 extra row to determine next cursor without COUNT query
+        stmt = stmt.limit(page_size + 1)
+        result = (await session.execute(stmt)).scalars().all()
+        has_next = len(result) > page_size
+        items = result[:page_size]
+        next_cursor = (
+            encode_cursor(items[-1].created_at, items[-1].id)
+            if has_next and items
+            else None
+        )
+        return items, len(items), next_cursor
+
+    # Offset pagination mode
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await session.execute(count_stmt)).scalar_one()
 
     offset = (page - 1) * page_size
     stmt = stmt.offset(offset).limit(page_size)
     jobs = (await session.execute(stmt)).scalars().all()
+    next_cursor = (
+        encode_cursor(jobs[-1].created_at, jobs[-1].id)
+        if jobs and (offset + len(jobs) < total)
+        else None
+    )
 
-    return jobs, total
+    return jobs, total, next_cursor

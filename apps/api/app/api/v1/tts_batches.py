@@ -14,7 +14,7 @@ from app.database import get_async_session
 from app.models.tts_job import TTSJobModel
 from app.schemas.tts import BatchJobCreateResponse, BatchStatusResponse
 from app.services.batch_manager import parse_batch_file
-from app.services.tts_service import create_tts_job_with_batch_limits
+from app.services.tts_service import create_tts_jobs_batch
 from app.services.voice_catalog import voice_catalog
 from app.services.voice_resolver import VoiceResolutionError, resolve_voice
 from app.utils.text_utils import slugify_vietnamese
@@ -45,34 +45,39 @@ async def create_batch(
         ) from exc
         
     batch_id = str(uuid.uuid4())
-    created_jobs = []
+    job_items_data = []
     
     from app.api.v1.tts_jobs import serialize_job
     
     for i, text in enumerate(items):
         if len(text) > settings.tts_max_text_chars:
-            continue  # skip too long items or we could raise an error. Let's just create what we can.
+            continue
             
-        job = await create_tts_job_with_batch_limits(
-            session,
-            text=text,
-            voice_type=voiceType,
-            voice_display_name=matched.display_name,
-            language_code=matched.language_code,
-            resource_id=matched.resource_id,
-            rate=rate,
-            batch_id=batch_id,
-            batch_position=i,
-            style=style,
-            provider_id=getattr(matched, "provider_id", "capcut"),
-            max_files=settings.tts_max_batch_files,
-            max_total_chars=settings.tts_max_batch_total_chars,
-        )
-        created_jobs.append(job)
-        await queue_manager.enqueue(job.id, batch_position=job.batch_position or 0)
+        job_items_data.append({
+            "text": text,
+            "voice_type": voiceType,
+            "voice_display_name": matched.display_name,
+            "language_code": matched.language_code,
+            "resource_id": matched.resource_id,
+            "rate": rate,
+            "batch_position": i,
+            "style": style,
+            "provider_id": getattr(matched, "provider_id", "capcut"),
+        })
         
-    if not created_jobs:
+    if not job_items_data:
         raise HTTPException(status_code=400, detail="No valid jobs could be created from the batch.")
+
+    created_jobs = await create_tts_jobs_batch(
+        session,
+        batch_id=batch_id,
+        items=job_items_data,
+        max_files=settings.tts_max_batch_files,
+        max_total_chars=settings.tts_max_batch_total_chars,
+    )
+
+    for job in created_jobs:
+        await queue_manager.enqueue(job.id, batch_position=job.batch_position or 0)
         
     return BatchJobCreateResponse(batchId=batch_id, jobs=[serialize_job(j) for j in created_jobs])
 

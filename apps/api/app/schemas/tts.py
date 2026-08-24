@@ -67,6 +67,7 @@ class TTSJobListResponse(BaseModel):
     page: int
     pageSize: int
     total: int
+    nextCursor: str | None = None
 
 
 class BatchStatusResponse(BaseModel):

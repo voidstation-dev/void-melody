@@ -70,7 +70,7 @@ export function BootstrapScreen({
   const isStartupTimeout = error?.includes("did not start in time")
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-6 select-none">
+    <div className="fixed inset-0 h-screen w-screen overflow-y-auto bg-background p-4 sm:p-6 select-none flex flex-col items-center justify-start sm:justify-center">
       {/* Ambient background decoration */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center opacity-25">
         <div className="h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
