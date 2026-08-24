@@ -59,11 +59,11 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 pt-5 space-y-4">
+      <CardContent className="p-4 pt-4 sm:p-5 sm:pt-5 space-y-4">
         {/* Pipeline Mode Banner */}
         <div
           className={cn(
-            "flex items-start gap-3.5 rounded-xl p-4 sm:p-4.5 pt-4.5 sm:pt-5 border transition-colors",
+            "flex items-start gap-3.5 rounded-xl p-4 sm:p-5 border transition-colors",
             isEmotional
               ? "bg-amber-500/5 border-amber-500/30 text-amber-950 dark:text-amber-100"
               : "bg-muted/40 border-border/60 text-foreground",
@@ -71,16 +71,16 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
         >
           <div
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl mt-0.5",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl mt-0.5",
               isEmotional
                 ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
                 : "bg-primary/10 text-primary",
             )}
           >
-            {isEmotional ? <Sparkles className="h-4.5 w-4.5" /> : <Volume2 className="h-4.5 w-4.5" />}
+            {isEmotional ? <Sparkles className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
           </div>
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 pt-0.5">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs sm:text-[13px] font-bold">
                 {isEmotional ? "Chế độ: Đa ngữ điệu & Cảm xúc" : "Chế độ: Đọc tiêu chuẩn"}
@@ -96,7 +96,7 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
                 {isEmotional ? "Expressive" : "Standard"}
               </span>
             </div>
-            <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-muted-foreground mt-1.5 leading-relaxed">
               {isEmotional
                 ? `Tự động phân đoạn và áp dụng ${stats.nativeCueCount} Native cues, ${stats.emotionCount} sắc thái cảm xúc`
                 : "Tổng hợp văn bản liền mạch theo cấu hình giọng và tốc độ đã chọn"}

@@ -196,7 +196,7 @@ export function JobQueueSidebar({ onReparse }: { onReparse?: (jobText: string, f
       </CardHeader>
 
       {/* Bounded Scrollable Queue List */}
-      <CardContent className="p-3 pt-4 sm:pt-5 max-h-[380px] sm:max-h-[440px] overflow-y-auto space-y-3 pr-1.5 divide-y-0">
+      <CardContent className="p-3.5 pt-4 sm:p-4 sm:pt-5 max-h-[380px] sm:max-h-[440px] overflow-y-auto space-y-3 pr-1.5 divide-y-0">
         {filteredQueue.length === 0 ? (
           <div className="py-6 text-center text-xs text-muted-foreground flex flex-col items-center gap-1">
             <Filter className="h-4 w-4 opacity-40 mb-0.5" />
