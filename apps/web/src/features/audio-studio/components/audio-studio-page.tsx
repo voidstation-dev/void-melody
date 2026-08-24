@@ -97,7 +97,7 @@ export function AudioStudioPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto w-full">
+    <div className="flex flex-1 flex-col space-y-6 max-w-[1600px] mx-auto w-full pb-12">
       {/* Studio Header */}
       <AudioStudioHeader lastSavedAt={lastSavedAt} />
 
