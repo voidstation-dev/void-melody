@@ -31,6 +31,12 @@ import { TextPreviewDialog } from "./text-preview-dialog";
 import { useTranslation } from "@/hooks/use-translation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -479,34 +485,34 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
 
           {/* Quick Actions */}
           {job.status === "completed" && job.audioUrl && (
-            <div className="relative group/dl flex items-center justify-center">
-              <button
-                className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500 transition-colors"
-                title={t("generate.downloadAudioTooltip")}
-              >
-                {downloadingFormat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              </button>
-              <div className="absolute top-full right-0 pt-1 opacity-0 group-hover/dl:opacity-100 transition-all pointer-events-none group-hover/dl:pointer-events-auto z-50">
-                <div className="bg-popover text-popover-foreground border border-border shadow-xl rounded-xl flex flex-col min-w-[96px] overflow-hidden p-1">
-                  <button
-                    onClick={() => handleDownloadClick("mp3")}
-                    disabled={downloadingFormat !== null}
-                    className="px-2.5 py-1.5 text-xs font-bold text-left rounded-lg hover:bg-muted text-foreground transition-colors disabled:opacity-50 flex items-center justify-between gap-2"
-                  >
-                    <span>MP3</span>
-                    <span className="text-[9px] font-medium text-muted-foreground">Audio</span>
-                  </button>
-                  <button
-                    onClick={() => handleDownloadClick("m4a")}
-                    disabled={downloadingFormat !== null}
-                    className="px-2.5 py-1.5 text-xs font-bold text-left rounded-lg hover:bg-muted text-foreground transition-colors disabled:opacity-50 flex items-center justify-between gap-2 mt-0.5"
-                  >
-                    <span>M4A</span>
-                    <span className="text-[9px] font-medium text-muted-foreground">AAC</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+                  title={t("generate.downloadAudioTooltip")}
+                >
+                  {downloadingFormat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[120px] p-1 rounded-xl shadow-xl z-50">
+                <DropdownMenuItem
+                  onClick={() => handleDownloadClick("mp3")}
+                  disabled={downloadingFormat !== null}
+                  className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-semibold cursor-pointer rounded-lg"
+                >
+                  <span className="font-bold">MP3</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">Audio</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleDownloadClick("m4a")}
+                  disabled={downloadingFormat !== null}
+                  className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-semibold cursor-pointer rounded-lg"
+                >
+                  <span className="font-bold">M4A</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">AAC</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {job.status === "failed" && (

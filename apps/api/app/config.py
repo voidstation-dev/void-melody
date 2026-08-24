@@ -6,6 +6,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Helper to get paths
 _data_dir = Path(os.environ.get("MELODY_DATA_DIR", "../../data"))
 _data_dir.mkdir(parents=True, exist_ok=True)
+(_data_dir / "audio").mkdir(parents=True, exist_ok=True)
+(_data_dir / "voices").mkdir(parents=True, exist_ok=True)
+(_data_dir / "previews").mkdir(parents=True, exist_ok=True)
+(_data_dir / "raw-responses").mkdir(parents=True, exist_ok=True)
 _catalog_path = Path(
     os.environ.get("MELODY_CATALOG_PATH", "../../vendor/capcut-tts-api/Voice.json")
 )

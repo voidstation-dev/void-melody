@@ -60,7 +60,7 @@ export function CustomVoiceCard({ voice, onDelete, deleting = false }: CustomVoi
         <VoicePreviewButton
           voiceId={voice.id}
           label={voice.display_name}
-          sampleText={voice.transcript || t("voices.sampleText", { name: voice.display_name })}
+          sampleText={t("voices.sampleText", { name: voice.display_name })}
           variant="custom"
           compact
           size="sm"

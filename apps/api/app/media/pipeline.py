@@ -51,10 +51,52 @@ async def concat_audio_parts(
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(f"{destination.stem}.tmp{destination.suffix or '.mp3'}")
 
-    if len(parts) == 1 and rate == 1.0 and output_format == "mp3":
+    if len(parts) == 1:
+        if rate == 1.0 and output_format == "mp3":
+            try:
+                parts[0].replace(temporary)
+                size = validate_audio_file(temporary, mime_type="audio/mpeg")
+                temporary.replace(destination)
+                duration = await probe_audio_duration(destination)
+                return size, duration
+            finally:
+                temporary.unlink(missing_ok=True)
+
+        command = [
+            settings.ffmpeg_binary_path,
+            "-y",
+            "-i",
+            str(parts[0].resolve()),
+        ]
+        if rate != 1.0:
+            command.extend(["-filter:a", f"atempo={rate}", "-q:a", "2"])
+        else:
+            command.extend(["-c", "copy"])
+
+        if output_format == "wav":
+            command.extend(["-f", "wav", str(temporary.absolute())])
+            mime_type = "audio/wav"
+        else:
+            command.extend(["-f", "mp3", str(temporary.absolute())])
+            mime_type = "audio/mpeg"
+
         try:
-            parts[0].replace(temporary)
-            size = validate_audio_file(temporary, mime_type="audio/mpeg")
+            async with _get_ffmpeg_semaphore():
+                process = await asyncio.create_subprocess_exec(
+                    *command,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                _, stderr = await process.communicate()
+
+            if process.returncode != 0:
+                raise TTSJobError(
+                    code="FFMPEG_FAILED",
+                    message="FFmpeg processing failed: " + stderr.decode("utf-8", errors="ignore"),
+                    retryable=False,
+                )
+
+            size = validate_audio_file(temporary, mime_type=mime_type)
             temporary.replace(destination)
             duration = await probe_audio_duration(destination)
             return size, duration
@@ -64,7 +106,8 @@ async def concat_audio_parts(
     list_file = destination.with_name(f"{destination.stem}_concat_list.txt")
     with list_file.open("w", encoding="utf-8") as output:
         for part in parts:
-            output.write(f"file '{part.absolute()}'\n")
+            escaped_path = str(part.resolve().as_posix()).replace("'", "'\\''")
+            output.write(f"file '{escaped_path}'\n")
 
     ffmpeg_binary = settings.ffmpeg_binary_path
     command = [

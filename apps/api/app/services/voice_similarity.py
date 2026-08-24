@@ -14,7 +14,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-CALIBRATION_SENTENCE = "Xin chào, đây là giọng đọc mẫu được tạo từ hệ thống."
+CALIBRATION_SENTENCE = "Xin chào, đây là voice clone được tạo từ Void Melody."
 
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:

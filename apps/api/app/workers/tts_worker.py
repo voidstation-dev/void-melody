@@ -50,6 +50,7 @@ async def process_chunk(
     timings: JobTimings | None = None,
 ) -> ChunkResult:
     destination = settings.audio_storage_dir / f"{job.id}_part{index}.mp3"
+    destination.parent.mkdir(parents=True, exist_ok=True)
     fingerprint = compute_segment_fingerprint(
         provider_id=job.provider_id,
         text=text,
@@ -148,10 +149,47 @@ async def combine_audio_parts(
     destination: Path,
     rate: float,
 ) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(f"{destination}.tmp")
-    if len(parts) == 1 and rate == 1.0:
+    if len(parts) == 1:
+        if rate == 1.0:
+            try:
+                parts[0].replace(temporary)
+                validate_audio_file(temporary, mime_type="audio/mpeg")
+                temporary.replace(destination)
+            finally:
+                temporary.unlink(missing_ok=True)
+            return
+
+        command = [
+            settings.ffmpeg_binary_path,
+            "-y",
+            "-i",
+            str(parts[0].resolve()),
+            "-filter:a",
+            f"atempo={rate}",
+            "-q:a",
+            "2",
+            "-f",
+            "mp3",
+            str(temporary.absolute()),
+        ]
         try:
-            parts[0].replace(temporary)
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await process.communicate()
+            if process.returncode != 0:
+                raise TTSJobError(
+                    code="FFMPEG_FAILED",
+                    message=(
+                        "FFmpeg processing failed: "
+                        + stderr.decode("utf-8", errors="ignore")
+                    ),
+                    retryable=False,
+                )
             validate_audio_file(temporary, mime_type="audio/mpeg")
             temporary.replace(destination)
         finally:
@@ -161,7 +199,8 @@ async def combine_audio_parts(
     list_file = destination.with_name(f"{destination.stem}_list.txt")
     with list_file.open("w", encoding="utf-8") as output:
         for part in parts:
-            output.write(f"file '{part.absolute()}'\n")
+            escaped_path = str(part.resolve().as_posix()).replace("'", "'\\''")
+            output.write(f"file '{escaped_path}'\n")
 
     ffmpeg_binary = settings.ffmpeg_binary_path
     command = [
