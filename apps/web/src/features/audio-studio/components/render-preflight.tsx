@@ -34,6 +34,48 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
       </CardHeader>
 
       <CardContent className="space-y-4 pt-4">
+        {/* Mode Indicator Banner */}
+        <div
+          className={cn(
+            "flex items-center gap-2.5 rounded-xl px-3 py-2 border text-xs font-semibold",
+            stats.emotionCount > 0 || stats.nativeCueCount > 0
+              ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+              : "bg-slate-900 border-slate-800 text-slate-300",
+          )}
+        >
+          <div
+            className={cn(
+              "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg",
+              stats.emotionCount > 0 || stats.nativeCueCount > 0
+                ? "bg-amber-500/20 text-amber-400"
+                : "bg-slate-800 text-slate-400",
+            )}
+          >
+            {stats.emotionCount > 0 || stats.nativeCueCount > 0 ? (
+              <Sparkles className="h-3.5 w-3.5" />
+            ) : (
+              <FileText className="h-3.5 w-3.5" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold">
+                {stats.emotionCount > 0 || stats.nativeCueCount > 0
+                  ? "Chế độ: Đa ngữ điệu & Cảm xúc"
+                  : "Chế độ: Đọc chuẩn (Standard TTS)"}
+              </span>
+              <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">
+                {stats.emotionCount > 0 || stats.nativeCueCount > 0 ? "Expressive" : "Direct"}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-normal truncate">
+              {stats.emotionCount > 0 || stats.nativeCueCount > 0
+                ? `Đang kích hoạt ${stats.emotionCount + stats.nativeCueCount} điểm nhấn biểu cảm`
+                : "Đọc toàn bộ văn bản liền mạch theo cấu hình giọng"}
+            </p>
+          </div>
+        </div>
+
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-900/80 p-2.5 border border-slate-800/80">
           <div className="flex flex-col">

@@ -99,7 +99,7 @@ export function AudioStudioPage() {
   return (
     <div className="flex flex-1 flex-col space-y-6 max-w-[1600px] mx-auto w-full pb-12">
       {/* Studio Header */}
-      <AudioStudioHeader lastSavedAt={lastSavedAt} />
+      <AudioStudioHeader lastSavedAt={lastSavedAt} cueCount={analysis.totalCueCount} />
 
       {/* Main Studio Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
