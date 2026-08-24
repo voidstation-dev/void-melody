@@ -119,21 +119,32 @@ if __name__ == "__main__":
     import uvicorn
 
     if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(line_buffering=True)
+        sys.stdout.reconfigure(line_buffering=True, write_through=True)
     if hasattr(sys.stderr, "reconfigure"):
-        sys.stderr.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True, write_through=True)
 
     # Required for PyInstaller multi-processing support
     multiprocessing.freeze_support()
-    logging.getLogger(__name__).info(
-        "Uvicorn starting on http://%s:%s",
-        settings.api_host,
-        settings.api_port,
-    )
-    uvicorn.run(
+
+    config = uvicorn.Config(
         app,
         host=settings.api_host,
         port=settings.api_port,
         reload=False,
         log_level="info",
     )
+    server = uvicorn.Server(config)
+
+    original_startup = server.startup
+
+    async def custom_startup(sockets=None):
+        await original_startup(sockets=sockets)
+        for s in getattr(server, "servers", []):
+            for sock in getattr(s, "sockets", []):
+                addr = sock.getsockname()
+                if isinstance(addr, tuple) and len(addr) >= 2:
+                    print(f"Listening on {addr[0]}:{addr[1]}", flush=True)
+                    print(f"Uvicorn running on http://{addr[0]}:{addr[1]}", flush=True)
+
+    server.startup = custom_startup
+    server.run()

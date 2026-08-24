@@ -121,7 +121,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         rejectReady = reject;
       });
 
-      const startupTimeoutMs = 30_000;
+      const startupTimeoutMs = 60_000;
       let startupTimer: ReturnType<typeof setTimeout>;
 
       const rejectStartup = (reason: Error) => {
@@ -163,7 +163,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       const probeHealth = async (url: string) => {
         updateStage("server", "active", `Đang xác thực ${url}...`);
         setCurrentStatusText(`Đang kết nối ${url}...`);
-        for (let attempt = 0; attempt < 30; attempt++) {
+        for (let attempt = 0; attempt < 60; attempt++) {
           try {
             const response = await fetch(`${url}/api/v1/health/live`, {
               method: "GET",
