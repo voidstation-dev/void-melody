@@ -94,8 +94,8 @@ export function useAudioStudio(initialVoiceId?: string) {
 
   // Real-time reactive preflight report
   const preflight: PreflightReport = useMemo(
-    () => evaluatePreflight(analysis, effectiveVoiceId, selectedVoiceProvider),
-    [analysis, effectiveVoiceId, selectedVoiceProvider],
+    () => evaluatePreflight(analysis, effectiveVoiceId, selectedVoiceProvider, selectedVoice?.displayName),
+    [analysis, effectiveVoiceId, selectedVoiceProvider, selectedVoice?.displayName],
   )
 
   // Insert tag token into textarea at current cursor position

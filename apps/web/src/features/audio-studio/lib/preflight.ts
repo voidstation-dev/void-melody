@@ -4,6 +4,7 @@ export function evaluatePreflight(
   analysis: ScriptAnalysisResult,
   selectedVoiceId?: string,
   selectedVoiceProvider = "vieneu",
+  selectedVoiceDisplayName?: string,
 ): PreflightReport {
   const checks: PreflightCheck[] = []
 
@@ -38,10 +39,18 @@ export function evaluatePreflight(
       detail: "Vui lòng chọn một giọng đọc từ danh sách.",
     })
   } else {
+    const voiceLabel = selectedVoiceDisplayName || selectedVoiceId
+    const providerLabel =
+      selectedVoiceProvider === "vieneu"
+        ? "VieNeu AI"
+        : selectedVoiceProvider === "capcut"
+          ? "CapCut Cloud"
+          : selectedVoiceProvider
     checks.push({
       id: "voice-selected",
       severity: "success",
-      message: `Giọng đọc: ${selectedVoiceId} (${selectedVoiceProvider})`,
+      message: `Giọng đọc: ${voiceLabel}`,
+      detail: `Engine: ${providerLabel}`,
     })
   }
 

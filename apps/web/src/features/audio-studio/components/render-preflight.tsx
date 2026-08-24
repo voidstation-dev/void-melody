@@ -1,5 +1,16 @@
-import { CheckCircle2, AlertTriangle, AlertCircle, Info, FileText, Sparkles, Layers } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  Info,
+  Sparkles,
+  ShieldCheck,
+  Volume2,
+  AlignLeft,
+  Smile,
+  Zap,
+} from "lucide-react"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import type { PreflightReport } from "../types"
 import { cn } from "@/lib/utils"
 
@@ -8,92 +19,136 @@ interface RenderPreflightProps {
 }
 
 export function RenderPreflight({ report }: RenderPreflightProps) {
-  const { stats, checks } = report
+  const { stats, checks, canGenerate } = report
+  const isEmotional = stats.emotionCount > 0 || stats.nativeCueCount > 0
 
   return (
-    <Card className="border-border bg-slate-950 text-slate-100 shadow-md">
-      <CardHeader className="pb-3 border-b border-slate-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/20 text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
+    <Card className="border border-border/80 bg-card text-card-foreground shadow-sm rounded-2xl overflow-hidden transition-all duration-200">
+      {/* Header */}
+      <CardHeader className="p-4 pb-3 border-b border-border/60 bg-muted/20">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <ShieldCheck className="h-4 w-4" />
             </div>
-            <CardTitle className="text-xs font-black uppercase tracking-wider text-slate-200">
-              Kiểm tra kết xuất (Preflight)
-            </CardTitle>
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                Kiểm tra kết xuất
+              </h3>
+              <p className="text-[10px] text-muted-foreground">Preflight Verification</p>
+            </div>
           </div>
-          <span
+
+          {/* Status Badge */}
+          <div
             className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide",
-              report.canGenerate ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400",
+              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold border transition-colors",
+              canGenerate
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
             )}
           >
-            {report.canGenerate ? "Sẵn sàng" : "Chưa hoàn tất"}
-          </span>
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                canGenerate ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
+              )}
+            />
+            <span>{canGenerate ? "Sẵn sàng" : "Chưa hoàn tất"}</span>
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 pt-4">
-        {/* Mode Indicator Banner */}
+      <CardContent className="p-4 space-y-3.5">
+        {/* Pipeline Mode Banner */}
         <div
           className={cn(
-            "flex items-center gap-2.5 rounded-xl px-3 py-2 border text-xs font-semibold",
-            stats.emotionCount > 0 || stats.nativeCueCount > 0
-              ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
-              : "bg-slate-900 border-slate-800 text-slate-300",
+            "flex items-start gap-3 rounded-xl p-3 border transition-colors",
+            isEmotional
+              ? "bg-amber-500/5 border-amber-500/30 text-amber-950 dark:text-amber-100"
+              : "bg-muted/40 border-border/60 text-foreground",
           )}
         >
           <div
             className={cn(
-              "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg",
-              stats.emotionCount > 0 || stats.nativeCueCount > 0
-                ? "bg-amber-500/20 text-amber-400"
-                : "bg-slate-800 text-slate-400",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg mt-0.5",
+              isEmotional
+                ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                : "bg-primary/10 text-primary",
             )}
           >
-            {stats.emotionCount > 0 || stats.nativeCueCount > 0 ? (
-              <Sparkles className="h-3.5 w-3.5" />
-            ) : (
-              <FileText className="h-3.5 w-3.5" />
-            )}
+            {isEmotional ? <Sparkles className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </div>
+
           <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold">
-                {stats.emotionCount > 0 || stats.nativeCueCount > 0
-                  ? "Chế độ: Đa ngữ điệu & Cảm xúc"
-                  : "Chế độ: Đọc chuẩn (Standard TTS)"}
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs font-bold">
+                {isEmotional ? "Chế độ: Đa ngữ điệu & Cảm xúc" : "Chế độ: Đọc tiêu chuẩn"}
               </span>
-              <span className="text-[9px] uppercase tracking-wider opacity-75 font-mono">
-                {stats.emotionCount > 0 || stats.nativeCueCount > 0 ? "Expressive" : "Direct"}
+              <span
+                className={cn(
+                  "text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md font-mono",
+                  isEmotional
+                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {isEmotional ? "Expressive" : "Standard"}
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 font-normal truncate">
-              {stats.emotionCount > 0 || stats.nativeCueCount > 0
-                ? `Đang kích hoạt ${stats.emotionCount + stats.nativeCueCount} điểm nhấn biểu cảm`
-                : "Đọc toàn bộ văn bản liền mạch theo cấu hình giọng"}
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+              {isEmotional
+                ? `Tự động phân đoạn và áp dụng ${stats.nativeCueCount} Native cues, ${stats.emotionCount} sắc thái cảm xúc`
+                : "Tổng hợp văn bản liền mạch theo cấu hình giọng và tốc độ đã chọn"}
             </p>
           </div>
         </div>
 
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-900/80 p-2.5 border border-slate-800/80">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold text-slate-400">Đoạn văn</span>
-            <span className="text-base font-black text-slate-100">{stats.segmentCount}</span>
+        <div className="grid grid-cols-3 divide-x divide-border/60 rounded-xl bg-muted/30 border border-border/60 p-2 text-center">
+          <div className="flex flex-col items-center justify-center px-1">
+            <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground mb-0.5">
+              <AlignLeft className="h-3 w-3" />
+              <span>Đoạn văn</span>
+            </div>
+            <span className="text-sm font-extrabold text-foreground">{stats.segmentCount}</span>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold text-slate-400">Native cues</span>
-            <span className="text-base font-black text-emerald-400">{stats.nativeCueCount}</span>
+
+          <div className="flex flex-col items-center justify-center px-1">
+            <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground mb-0.5">
+              <Zap className={cn("h-3 w-3", stats.nativeCueCount > 0 && "text-emerald-500")} />
+              <span>Native cues</span>
+            </div>
+            <span
+              className={cn(
+                "text-sm font-extrabold",
+                stats.nativeCueCount > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-foreground",
+              )}
+            >
+              {stats.nativeCueCount}
+            </span>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold text-slate-400">Cảm xúc</span>
-            <span className="text-base font-black text-amber-400">{stats.emotionCount}</span>
+
+          <div className="flex flex-col items-center justify-center px-1">
+            <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground mb-0.5">
+              <Smile className={cn("h-3 w-3", stats.emotionCount > 0 && "text-amber-500")} />
+              <span>Cảm xúc</span>
+            </div>
+            <span
+              className={cn(
+                "text-sm font-extrabold",
+                stats.emotionCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground",
+              )}
+            >
+              {stats.emotionCount}
+            </span>
           </div>
         </div>
 
-        {/* Status Checklist */}
-        <div className="space-y-2 text-xs">
+        {/* Detailed Status Checklist */}
+        <div className="space-y-1.5 pt-1">
           {checks.map((check) => {
             const Icon =
               check.severity === "success"
@@ -104,22 +159,25 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
                     ? AlertCircle
                     : Info
 
-            const textColor =
+            const iconColor =
               check.severity === "success"
-                ? "text-emerald-400"
+                ? "text-emerald-500"
                 : check.severity === "warning"
-                  ? "text-amber-400"
+                  ? "text-amber-500"
                   : check.severity === "error"
-                    ? "text-rose-400"
-                    : "text-sky-400"
+                    ? "text-rose-500"
+                    : "text-primary"
 
             return (
-              <div key={check.id} className="flex items-start gap-2 text-[11px] leading-relaxed">
-                <Icon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", textColor)} />
-                <div className="min-w-0">
-                  <p className={cn("font-semibold", textColor)}>{check.message}</p>
+              <div
+                key={check.id}
+                className="flex items-start gap-2.5 rounded-lg p-2 bg-background/50 border border-border/40 text-xs transition-colors hover:bg-muted/30"
+              >
+                <Icon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", iconColor)} />
+                <div className="min-w-0 flex-1 leading-tight">
+                  <p className="font-semibold text-foreground/90">{check.message}</p>
                   {check.detail && (
-                    <p className="text-[10px] text-slate-400 mt-0.5">{check.detail}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{check.detail}</p>
                   )}
                 </div>
               </div>
