@@ -196,7 +196,7 @@ export function JobQueueSidebar({ onReparse }: { onReparse?: (jobText: string, f
       </CardHeader>
 
       {/* Bounded Scrollable Queue List */}
-      <CardContent className="p-3 max-h-[380px] sm:max-h-[440px] overflow-y-auto space-y-2.5 pr-1.5 divide-y-0">
+      <CardContent className="p-3 pt-4 sm:pt-5 max-h-[380px] sm:max-h-[440px] overflow-y-auto space-y-3 pr-1.5 divide-y-0">
         {filteredQueue.length === 0 ? (
           <div className="py-6 text-center text-xs text-muted-foreground flex flex-col items-center gap-1">
             <Filter className="h-4 w-4 opacity-40 mb-0.5" />
@@ -236,6 +236,7 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
   const seekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isCustomVoice = job.providerId === "vieneu" || (job.voiceType && job.voiceType.startsWith("custom_"));
+  const speedText = typeof job.rate === "number" ? `${job.rate}x` : "1.0x";
 
   // Auto-expand when active or starts playing
   useEffect(() => {
@@ -414,10 +415,10 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
           )}
         </div>
 
-        {/* Center: Voice Name + 1-Line Preview */}
+        {/* Center: Voice Name + Speed + 1-Line Preview */}
         <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setIsExpanded((prev) => !prev)}>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-bold text-foreground truncate max-w-[140px] sm:max-w-[200px]">
+            <span className="text-xs font-bold text-foreground truncate max-w-[130px] sm:max-w-[180px]">
               {job.voiceDisplayName || job.voiceType}
             </span>
             {isCustomVoice && (
@@ -425,6 +426,12 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
                 Clone
               </span>
             )}
+            <span
+              className="shrink-0 rounded-md bg-muted/80 px-1.5 py-0.2 text-[9px] font-mono font-bold text-muted-foreground border border-border/50"
+              title="Tốc độ đọc"
+            >
+              {speedText}
+            </span>
             {job.status === "processing" && (
               <span className="text-[10px] font-bold text-primary font-mono">
                 {job.progress && job.progress > 0 ? `${Math.round(job.progress)}%` : "Đang tạo..."}

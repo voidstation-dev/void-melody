@@ -59,11 +59,11 @@ export function RenderPreflight({ report }: RenderPreflightProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 space-y-3.5">
+      <CardContent className="p-4 pt-5 space-y-4">
         {/* Pipeline Mode Banner */}
         <div
           className={cn(
-            "flex items-start gap-3.5 rounded-xl p-4 sm:p-4.5 border transition-colors",
+            "flex items-start gap-3.5 rounded-xl p-4 sm:p-4.5 pt-4.5 sm:pt-5 border transition-colors",
             isEmotional
               ? "bg-amber-500/5 border-amber-500/30 text-amber-950 dark:text-amber-100"
               : "bg-muted/40 border-border/60 text-foreground",
