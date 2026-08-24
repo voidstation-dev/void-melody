@@ -40,7 +40,26 @@ class CustomVoiceModel(Base):
     selected_end_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     analysis_warnings: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profile_format_version: Mapped[str] = mapped_column(
+        String(30), default="reference-v1", server_default="reference-v1", nullable=False
+    )
+    enrollment_artifact_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    cleaned_reference_audio_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    calibration_audio_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    engine_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    reference_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    denoise_mode: Mapped[str] = mapped_column(
+        String(20), default="auto", server_default="auto", nullable=False
+    )
+    denoise_applied: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    clone_mode: Mapped[str] = mapped_column(
+        String(20), default="fidelity", server_default="fidelity", nullable=False
+    )
+    speaker_similarity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    calibration_quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    enrollment_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
+

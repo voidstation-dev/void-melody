@@ -44,6 +44,13 @@ class VoiceAnalysis:
     warnings: list[str]
     source_duration_seconds: float | None = None
     reference_duration_seconds: float | None = None
+    estimated_snr_db: float | None = None
+    noise_floor_dbfs: float | None = None
+    silence_ratio: float | None = None
+    level_stability: float | None = None
+    recommended_start_seconds: float | None = None
+    recommended_end_seconds: float | None = None
+    metrics: dict[str, int] | None = None
 
 
 def normalized_extension(filename: str | None) -> str | None:
@@ -53,28 +60,74 @@ def normalized_extension(filename: str | None) -> str | None:
     return extension if extension in SUPPORTED_EXTENSIONS else None
 
 
+def choose_best_reference_segment(
+    levels: list[float],
+    *,
+    sample_rate: int = 10,
+    window_seconds: float | None = None,
+    min_seconds: float = 5.0,
+    max_seconds: float = 8.0,
+) -> tuple[float, float, float]:
+    """Find the highest quality 5.0 - 8.0s segment using prefix sums.
+
+    Returns: (start_seconds, end_seconds, segment_quality_0_to_1)
+    """
+    n = len(levels)
+    if n == 0 or sample_rate <= 0:
+        return 0.0, 0.0, 0.0
+
+    total_duration = n / sample_rate
+    effective_min = window_seconds if window_seconds is not None else min_seconds
+    if total_duration <= effective_min:
+        return 0.0, total_duration, 0.8
+
+    speech_flags = [1 if lvl > 0.02 else 0 for lvl in levels]
+    speech_prefix = [0] * (n + 1)
+    energy_prefix = [0.0] * (n + 1)
+    for i in range(n):
+        speech_prefix[i + 1] = speech_prefix[i] + speech_flags[i]
+        energy_prefix[i + 1] = energy_prefix[i] + levels[i]
+
+    if window_seconds is not None:
+        candidate_durations = [min(window_seconds, MAX_REFERENCE_SECONDS)]
+    else:
+        candidate_durations = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
+
+    best_start = 0
+    best_dur = min(total_duration, candidate_durations[0])
+    best_score = float("-inf")
+
+    for dur in candidate_durations:
+        win = int(round(dur * sample_rate))
+        if win > n:
+            continue
+        for start in range(0, n - win + 1):
+            speech_cnt = speech_prefix[start + win] - speech_prefix[start]
+            speech_cov = speech_cnt / win
+            energy_sum = energy_prefix[start + win] - energy_prefix[start]
+            avg_energy = energy_sum / win
+
+            sweet_spot_bonus = 0.15 if (window_seconds is None and 5.5 <= dur <= 7.0) else 0.0
+            score = (speech_cov * 2.0) + avg_energy + sweet_spot_bonus
+            if score > best_score:
+                best_score = score
+                best_start = start
+                best_dur = dur
+
+    norm_score = max(0.0, min(1.0, (best_score + 0.2) / 3.0))
+    start_sec = round(best_start / sample_rate, 3)
+    end_sec = round(min(total_duration, start_sec + best_dur), 3)
+    return start_sec, end_sec, norm_score
+
+
 def choose_reference_segment(
     speech_levels: list[float], *, sample_rate: int, window_seconds: float = 6
 ) -> tuple[float, float]:
-    """Pick the highest-energy speech-dense window without exceeding 8 sec."""
-
-    if not speech_levels or sample_rate <= 0:
-        return (0.0, 0.0)
-    window = max(1, min(int(window_seconds * sample_rate), int(MAX_REFERENCE_SECONDS * sample_rate)))
-    if len(speech_levels) <= window:
-        return (0.0, len(speech_levels) / sample_rate)
-
-    best_start = 0
-    best_score = float("-inf")
-    for start in range(0, len(speech_levels) - window + 1):
-        window_values = speech_levels[start : start + window]
-        speech_density = sum(value > 0.02 for value in window_values) / window
-        energy = sum(window_values) / window
-        score = speech_density * 2.0 + energy
-        if score > best_score:
-            best_score = score
-            best_start = start
-    return (best_start / sample_rate, (best_start + window) / sample_rate)
+    """Backward-compatible wrapper picking best segment."""
+    start, end, _ = choose_best_reference_segment(
+        speech_levels, sample_rate=sample_rate, window_seconds=window_seconds
+    )
+    return start, end
 
 
 def _normalize_with_ffmpeg(source: Path, destination: Path) -> None:
@@ -100,7 +153,9 @@ def _normalize_with_ffmpeg(source: Path, destination: Path) -> None:
         raise VoiceAnalysisError("INVALID_AUDIO", "The file could not be decoded as audio.")
 
 
-def _read_levels(path: Path) -> tuple[float, list[float], float, float, float]:
+def _read_levels(
+    path: Path,
+) -> tuple[float, list[float], float, float, float, float, float, float, float]:
     try:
         with wave.open(str(path), "rb") as source:
             sample_rate = source.getframerate()
@@ -116,6 +171,7 @@ def _read_levels(path: Path) -> tuple[float, list[float], float, float, float]:
     if not samples or sample_rate <= 0:
         raise VoiceAnalysisError("INVALID_AUDIO", "The audio file is empty.")
 
+    # 100ms analysis window
     window_size = max(1, sample_rate // 10)
     levels: list[float] = []
     clipped = 0
@@ -129,11 +185,47 @@ def _read_levels(path: Path) -> tuple[float, list[float], float, float, float]:
         levels.append(rms)
 
     duration = len(samples) / sample_rate
-    speech_ratio = sum(level > 0.02 for level in levels) / max(1, len(levels))
-    rms = math.sqrt(sum((value / 32768.0) ** 2 for value in samples) / len(samples))
-    noise_db = 20 * math.log10(max(rms * 0.2, 1e-6))
+    active_speech_levels = [lvl for lvl in levels if lvl > 0.02]
+    speech_ratio = len(active_speech_levels) / max(1, len(levels))
+    silence_ratio = 1.0 - speech_ratio
     clipping_ratio = clipped / len(samples)
-    return duration, levels, speech_ratio, noise_db, clipping_ratio
+
+    # Noise floor & SNR via percentile estimates
+    sorted_levels = sorted(levels)
+    noise_idx = max(0, int(len(sorted_levels) * 0.10))
+    noise_floor_rms = max(1e-5, sorted_levels[noise_idx])
+    noise_floor_dbfs = 20.0 * math.log10(noise_floor_rms)
+
+    if active_speech_levels:
+        sorted_active = sorted(active_speech_levels)
+        speech_idx = max(0, int(len(sorted_active) * 0.85))
+        speech_level_rms = sorted_active[speech_idx]
+        speech_level_dbfs = 20.0 * math.log10(max(1e-5, speech_level_rms))
+        estimated_snr_db = max(0.0, speech_level_dbfs - noise_floor_dbfs)
+
+        mean_active = sum(active_speech_levels) / len(active_speech_levels)
+        variance = sum((lvl - mean_active) ** 2 for lvl in active_speech_levels) / len(active_speech_levels)
+        std_dev = math.sqrt(variance)
+        level_stability = max(0.0, min(1.0, 1.0 - (std_dev / max(1e-4, mean_active))))
+    else:
+        estimated_snr_db = 0.0
+        level_stability = 0.0
+
+    # General noise_level_db for backward compatibility
+    overall_rms = math.sqrt(sum((v / 32768.0) ** 2 for v in samples) / len(samples))
+    noise_db = 20.0 * math.log10(max(overall_rms * 0.2, 1e-6))
+
+    return (
+        duration,
+        levels,
+        speech_ratio,
+        noise_db,
+        clipping_ratio,
+        estimated_snr_db,
+        noise_floor_dbfs,
+        silence_ratio,
+        level_stability,
+    )
 
 
 def _waveform_peaks(path: Path, bucket_count: int = 48) -> list[float]:
@@ -152,21 +244,60 @@ def analyze_audio_file(source: Path) -> VoiceAnalysis:
     normalized = source.with_name(f"{uuid.uuid4().hex}.normalized.wav")
     try:
         _normalize_with_ffmpeg(source, normalized)
-        duration, levels, speech_ratio, noise_db, clipping_ratio = _read_levels(normalized)
+        (
+            duration,
+            levels,
+            speech_ratio,
+            noise_db,
+            clipping_ratio,
+            estimated_snr_db,
+            noise_floor_dbfs,
+            silence_ratio,
+            level_stability,
+        ) = _read_levels(normalized)
+
         if duration < MIN_REFERENCE_SECONDS:
             raise VoiceAnalysisError(
                 "TOO_SHORT",
                 "Audio must be at least three seconds long.",
             )
-        start, end = choose_reference_segment(levels, sample_rate=10)
+
+        start, end, segment_score_norm = choose_best_reference_segment(levels, sample_rate=10)
+
         warnings: list[str] = []
         if speech_ratio < 0.25:
             warnings.append("Little speech was detected in this sample.")
         if clipping_ratio > 0.01:
             warnings.append("The sample contains clipped audio.")
+        if estimated_snr_db < 15.0:
+            warnings.append("High background noise detected; denoise cleanup is recommended.")
         if duration > MAX_REFERENCE_SECONDS:
             warnings.append("A shorter speech-dense segment will be used for cloning.")
-        quality = round(max(0, min(100, speech_ratio * 70 + max(0, 1 + noise_db / 60) * 25 - clipping_ratio * 500)))
+
+        # Subscores calculation
+        speech_score = round(max(0, min(100, speech_ratio * 125)))
+        noise_score = round(max(0, min(100, (estimated_snr_db / 32.0) * 100)))
+        clipping_score = round(max(0, min(100, (1.0 - clipping_ratio * 50.0) * 100)))
+        stability_score = round(max(0, min(100, level_stability * 100)))
+        segment_score = round(max(0, min(100, segment_score_norm * 100)))
+
+        overall_quality = round(
+            0.35 * speech_score
+            + 0.25 * noise_score
+            + 0.15 * clipping_score
+            + 0.15 * stability_score
+            + 0.10 * segment_score
+        )
+        quality_score = max(0, min(100, overall_quality))
+
+        metrics = {
+            "speech_score": speech_score,
+            "noise_score": noise_score,
+            "clipping_score": clipping_score,
+            "stability_score": stability_score,
+            "segment_score": segment_score,
+        }
+
         return VoiceAnalysis(
             duration_seconds=round(duration, 3),
             selected_start_seconds=round(start, 3),
@@ -174,11 +305,18 @@ def analyze_audio_file(source: Path) -> VoiceAnalysis:
             speech_ratio=round(speech_ratio, 3),
             noise_level_db=round(noise_db, 2),
             clipping_ratio=round(clipping_ratio, 5),
-            quality_score=quality,
+            quality_score=quality_score,
             waveform_peaks=_waveform_peaks(normalized),
             warnings=warnings,
             source_duration_seconds=round(duration, 3),
             reference_duration_seconds=round(min(end, duration) - start, 3),
+            estimated_snr_db=round(estimated_snr_db, 1),
+            noise_floor_dbfs=round(noise_floor_dbfs, 1),
+            silence_ratio=round(silence_ratio, 3),
+            level_stability=round(level_stability, 3),
+            recommended_start_seconds=round(start, 3),
+            recommended_end_seconds=round(min(end, duration), 3),
+            metrics=metrics,
         )
     finally:
         normalized.unlink(missing_ok=True)

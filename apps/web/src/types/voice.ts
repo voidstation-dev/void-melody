@@ -46,6 +46,19 @@ export type VoiceAnalysis = {
   quality_score: number
   waveform_peaks: number[]
   warnings: string[]
+  estimated_snr_db?: number | null
+  noise_floor_dbfs?: number | null
+  silence_ratio?: number | null
+  level_stability?: number | null
+  recommended_start_seconds?: number | null
+  recommended_end_seconds?: number | null
+  metrics?: {
+    speech_score?: number
+    noise_score?: number
+    clipping_score?: number
+    stability_score?: number
+    segment_score?: number
+  } | null
 }
 
 export type CustomVoice = {
@@ -65,6 +78,19 @@ export type CustomVoice = {
   selected_end_seconds?: number | null
   quality_score?: number | null
   consent_version: string
+  profile_format_version?: string | null
+  enrollment_artifact_path?: string | null
+  cleaned_reference_audio_path?: string | null
+  calibration_audio_path?: string | null
+  engine_version?: string | null
+  reference_fingerprint?: string | null
+  denoise_mode?: "auto" | "off" | "on" | string | null
+  denoise_applied?: boolean | null
+  clone_mode?: "fidelity" | "stability" | string | null
+  speaker_similarity_score?: number | null
+  calibration_quality_score?: number | null
+  calibration_available?: boolean | null
+  enrollment_created_at?: string | null
 }
 
 export type VoiceListResponse = {

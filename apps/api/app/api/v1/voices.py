@@ -175,6 +175,8 @@ async def clone_voice(
     consent_given: bool = Form(...),
     selected_start_seconds: float | None = Form(default=None),
     selected_end_seconds: float | None = Form(default=None),
+    denoise_mode: str = Form(default="auto"),
+    clone_mode: str = Form(default="fidelity"),
     session: AsyncSession = Depends(get_async_session)  # noqa: B008
 ):
     if not settings.voice_lab_enabled:
@@ -205,8 +207,6 @@ async def clone_voice(
         )
 
     temp_path = None
-    segment_path = None
-    final_path = None
 
     try:
         temp_path = await save_upload_to_temp(
@@ -214,7 +214,6 @@ async def clone_voice(
             directory=settings.custom_voices_dir / ".uploads",
             max_bytes=settings.tts_audio_max_bytes,
         )
-        # Check duration
         duration = await get_audio_duration(temp_path)
         if duration is None:
             raise HTTPException(
@@ -241,38 +240,33 @@ async def clone_voice(
             )
 
         settings.custom_voices_dir.mkdir(parents=True, exist_ok=True)
-        voice_id = str(uuid.uuid4())
-        reference_path = temp_path
-        if selection is not None:
-            segment_path = settings.custom_voices_dir / ".uploads" / f"{voice_id}.reference.wav"
-            await extract_reference_segment_async(
-                temp_path,
-                segment_path,
-                start_seconds=selection[0],
-                end_seconds=selection[1],
-            )
-            reference_path = segment_path
         reference_duration = (
             selection[1] - selection[0] if selection is not None else duration
         )
-        final_path = settings.custom_voices_dir / f"{voice_id}{'.wav' if segment_path else extension}"
-        reference_path.replace(final_path)
-        if reference_path == temp_path:
-            temp_path = None
-        else:
-            segment_path = None
+
+        analysis = None
         try:
-            db_voice = await CloneOrchestrator(preflight=preflight_clone_reference).create(
+            analysis = await analyze_audio_file_async(temp_path)
+        except Exception as exc:
+            logger.debug("Analysis calculation failed: %s", exc)
+
+        try:
+            db_voice = await CloneOrchestrator().create(
                 session=session,
                 display_name=display_name,
                 transcript=transcript,
                 consent_given=consent_given,
-                reference_audio_path=final_path,
+                source_audio_path=temp_path,
                 duration_seconds=reference_duration or 0.0,
                 source_duration_seconds=duration or 0.0,
                 reference_duration_seconds=reference_duration or 0.0,
                 selected_start_seconds=selection[0] if selection else 0.0,
                 selected_end_seconds=selection[1] if selection else duration,
+                quality_score=analysis.quality_score if analysis else None,
+                warnings=analysis.warnings if analysis else None,
+                denoise_mode=denoise_mode,
+                clone_mode=clone_mode,
+                analysis=analysis,
                 progress=lambda stage_name: logger.debug("Voice profile stage=%s", stage_name),
             )
         except CloneOrchestrationError as exc:
@@ -288,33 +282,31 @@ async def clone_voice(
                 detail={"code": exc.code, "message": exc.message},
             ) from exc
 
-        return db_voice
+        return _serialize_custom_voice(db_voice)
 
     except VoiceAnalysisError as exc:
-        if temp_path is not None:
-            temp_path.unlink(missing_ok=True)
-        if segment_path is not None:
-            segment_path.unlink(missing_ok=True)
-        if final_path is not None and final_path.exists():
-            final_path.unlink(missing_ok=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": exc.code, "message": exc.message},
         ) from exc
     except Exception as exc:
         logger.exception("Voice profile persistence failed")
-        if temp_path is not None:
-            temp_path.unlink(missing_ok=True)
-        if segment_path is not None:
-            segment_path.unlink(missing_ok=True)
-        if final_path is not None and final_path.exists():
-            final_path.unlink(missing_ok=True)
         if isinstance(exc, HTTPException):
             raise
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save the voice profile. Please try again.",
         )
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+
+def _serialize_custom_voice(voice: CustomVoiceModel) -> CustomVoiceResponse:
+    res = CustomVoiceResponse.model_validate(voice)
+    calib_path = getattr(voice, "calibration_audio_path", None)
+    res.calibration_available = bool(calib_path and Path(calib_path).is_file())
+    return res
 
 
 @router.get("/tts/voices/custom", response_model=CustomVoiceListResponse)
@@ -341,7 +333,8 @@ async def list_custom_voices(
         select(func.count(CustomVoiceModel.id)).where(*filters)
     )
 
-    return CustomVoiceListResponse(items=voices, total=total or 0)
+    items = [_serialize_custom_voice(v) for v in voices]
+    return CustomVoiceListResponse(items=items, total=total or 0)
 
 
 @router.get("/tts/voices/custom/{voice_id}", response_model=CustomVoiceResponse)
@@ -354,7 +347,23 @@ async def get_custom_voice(
     )
     if not voice:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Custom voice not found.")
-    return voice
+    return _serialize_custom_voice(voice)
+
+
+@router.get("/tts/voices/custom/{voice_id}/calibration/audio")
+async def get_custom_voice_calibration_audio(
+    voice_id: str,
+    session: AsyncSession = Depends(get_async_session),  # noqa: B008
+):
+    voice = await session.scalar(
+        select(CustomVoiceModel).where(CustomVoiceModel.id == voice_id)
+    )
+    if not voice or not voice.calibration_audio_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration audio not found.")
+    calib_path = Path(voice.calibration_audio_path)
+    if not calib_path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration audio file is missing.")
+    return FileResponse(path=str(calib_path), media_type="audio/wav")
 
 
 @router.delete("/tts/voices/custom/{voice_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -387,9 +396,11 @@ async def delete_custom_voice(
             },
         )
 
-    # Delete audio file
-    if voice.reference_audio_path:
-        Path(voice.reference_audio_path).unlink(missing_ok=True)
+    from app.services.voice_artifact_cleanup import delete_voice_profile_directory
+    from app.services.voice_resolver import invalidate_voice_cache
+
+    delete_voice_profile_directory(voice_id, settings.custom_voices_dir)
+    invalidate_voice_cache(voice_id)
 
     await session.delete(voice)
     await session.commit()
