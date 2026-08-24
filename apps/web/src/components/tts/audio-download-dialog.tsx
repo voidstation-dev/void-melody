@@ -99,7 +99,14 @@ export function AudioDownloadDialog({
     });
   };
 
-  const isCustomVoice = job.providerId === "vieneu" || (job.voiceType && job.voiceType.startsWith("custom_"));
+  const isUUID = (str?: string | null) =>
+    Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+
+  const isCustomVoice = Boolean(
+    job.voiceType &&
+      (job.voiceType.startsWith("custom_") || isUUID(job.voiceType))
+  );
+  const isVieneuPreset = !isCustomVoice && job.providerId === "vieneu";
 
   return (
     <div 
@@ -144,11 +151,15 @@ export function AudioDownloadDialog({
             <span className="font-semibold text-foreground truncate max-w-[140px]">
               {job.voiceDisplayName || job.voiceType}
             </span>
-            {isCustomVoice && (
+            {isCustomVoice ? (
               <span className="rounded-full bg-violet-500/15 px-1.5 py-0.2 text-[9px] font-bold text-violet-600 dark:text-violet-400">
                 Clone
               </span>
-            )}
+            ) : isVieneuPreset ? (
+              <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                VieNeu
+              </span>
+            ) : null}
           </div>
           <div className="h-3 w-[1px] bg-border/80 mx-1" />
           <div className="flex items-center gap-1.5 text-muted-foreground">

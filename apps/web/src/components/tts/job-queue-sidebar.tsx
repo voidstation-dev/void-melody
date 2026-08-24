@@ -245,9 +245,14 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const seekIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const seekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isUUID = (str?: string | null) =>
+    Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
 
-  const isCustomVoice = job.providerId === "vieneu" || (job.voiceType && job.voiceType.startsWith("custom_"));
+  const isCustomVoice = Boolean(
+    job.voiceType &&
+      (job.voiceType.startsWith("custom_") || isUUID(job.voiceType))
+  );
+  const isVieneuPreset = !isCustomVoice && job.providerId === "vieneu";
   const speedText = typeof job.rate === "number" ? `${job.rate}x` : "1.0x";
 
   // Auto-expand when active or starts playing
@@ -433,11 +438,15 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
             <span className="text-xs font-bold text-foreground truncate max-w-[130px] sm:max-w-[180px]">
               {job.voiceDisplayName || job.voiceType}
             </span>
-            {isCustomVoice && (
+            {isCustomVoice ? (
               <span className="shrink-0 rounded-md bg-violet-500/15 px-1 py-0.2 text-[9px] font-black uppercase text-violet-600 dark:text-violet-400">
                 Clone
               </span>
-            )}
+            ) : isVieneuPreset ? (
+              <span className="shrink-0 rounded-md bg-emerald-500/15 px-1 py-0.2 text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400">
+                VieNeu
+              </span>
+            ) : null}
             <span
               className="shrink-0 rounded-md bg-muted/80 px-1.5 py-0.2 text-[9px] font-mono font-bold text-muted-foreground border border-border/50"
               title="Tốc độ đọc"
