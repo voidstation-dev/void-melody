@@ -1,0 +1,5 @@
+export { AudioStudioPage } from "./components/audio-studio-page"
+export { useAudioStudio } from "./hooks/use-audio-studio"
+export { parseScript, insertTagAtCursor } from "./lib/script-parser"
+export { evaluatePreflight } from "./lib/preflight"
+export * from "./types"

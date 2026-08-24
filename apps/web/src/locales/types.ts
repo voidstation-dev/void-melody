@@ -35,6 +35,9 @@ export type TranslationSchema = {
     settings: string;
     brandSubtitle: string;
     version: string;
+    groupCreate: string;
+    groupLibrary: string;
+    groupSettings: string;
   };
   shell: {
     title: string;

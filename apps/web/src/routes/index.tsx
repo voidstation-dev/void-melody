@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
-import { TTSStudio } from "@/components/tts/tts-studio"
+import { AudioStudioPage } from "@/features/audio-studio"
 
 type IndexSearch = {
   voice?: string
@@ -17,8 +17,8 @@ export const Route = createFileRoute("/")({
 
 function IndexPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading Studio…</div>}>
-      <TTSStudio />
+    <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Đang tải Audio Studio…</div>}>
+      <AudioStudioPage />
     </Suspense>
   )
 }

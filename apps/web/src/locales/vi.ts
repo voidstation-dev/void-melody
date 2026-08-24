@@ -27,7 +27,7 @@ export const vi: TranslationSchema = {
     select: "Lựa chọn",
   },
   nav: {
-    generate: "Tạo âm thanh",
+    generate: "Tạo audio",
     scripts: "Kịch bản cảm xúc",
     voiceLab: "Phòng thu giọng",
     voices: "Thư viện giọng",
@@ -35,6 +35,9 @@ export const vi: TranslationSchema = {
     settings: "Cài đặt",
     brandSubtitle: "Phát triển bởi VoidStation",
     version: "Phiên bản",
+    groupCreate: "TẠO",
+    groupLibrary: "THƯ VIỆN",
+    groupSettings: "CÀI ĐẶT",
   },
   shell: {
     title: "Melody - Text to Speech Studio",
