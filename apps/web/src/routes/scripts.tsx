@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router"
-import { EmotionalScriptPage } from "@/components/emotional-script/emotional-script-page"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/scripts")({
-  component: ScriptsRoute,
+  beforeLoad: () => {
+    throw redirect({
+      to: "/",
+    })
+  },
+  component: () => null,
 })
-
-function ScriptsRoute() {
-  return <EmotionalScriptPage />
-}

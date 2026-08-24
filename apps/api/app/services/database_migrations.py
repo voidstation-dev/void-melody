@@ -155,6 +155,10 @@ def _has_emotional_script_tables(connection: sqlite3.Connection) -> bool:
     )
 
 
+def _has_audio_segment_cache_table(connection: sqlite3.Connection) -> bool:
+    return _table_exists(connection, "audio_segment_cache")
+
+
 def _backup_database(database_path: Path, *, retain: int = 3) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     backup_path = database_path.with_name(
@@ -227,6 +231,9 @@ def _adopt_legacy_schema(
     command.stamp(config, BASELINE_REVISION)
 
 
+OPTIMIZATION_PREVIOUS_REVISION = "b7e3d2f1a9c4"
+
+
 def _run_database_migrations(
     *,
     database_url: str,
@@ -244,39 +251,25 @@ def _run_database_migrations(
         database_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(database_path) as connection:
             has_jobs_table = _table_exists(connection, "tts_jobs")
+            has_custom_voices = _table_exists(connection, "tts_custom_voices")
             current_revision = _current_revision(connection)
             has_emotional_script_tables = _has_emotional_script_tables(connection)
-            schema_is_current = (
-                has_jobs_table
-                and current_revision is None
-                and _has_post_baseline_columns(connection)
-                and has_emotional_script_tables
-            )
+            has_audio_cache_table = _has_audio_segment_cache_table(connection)
+            has_post_baseline = _has_post_baseline_columns(connection)
 
-        if has_jobs_table and current_revision is None:
-            if schema_is_current:
-                # The table already reflects the current model metadata (no
-                # alembic_version row yet). Stamp it at head instead of running
-                # the migrations, which would otherwise re-add columns that
-                # already exist.
-                command.stamp(config, head_revision)
-            else:
+        if has_jobs_table:
+            if has_custom_voices and has_emotional_script_tables and has_audio_cache_table and has_post_baseline:
+                if current_revision != head_revision:
+                    command.stamp(config, head_revision)
+            elif has_custom_voices and has_emotional_script_tables and has_post_baseline:
+                if current_revision != OPTIMIZATION_PREVIOUS_REVISION and current_revision != head_revision:
+                    command.stamp(config, OPTIMIZATION_PREVIOUS_REVISION)
+            elif has_custom_voices and has_post_baseline:
+                if current_revision != EMOTIONAL_SCRIPT_PREVIOUS_REVISION:
+                    command.stamp(config, EMOTIONAL_SCRIPT_PREVIOUS_REVISION)
+            elif current_revision is None:
                 _adopt_legacy_schema(config, database_path)
-        elif (
-            has_jobs_table
-            and current_revision is not None
-            and current_revision != head_revision
-        ):
-            if (
-                current_revision == EMOTIONAL_SCRIPT_PREVIOUS_REVISION
-                and has_emotional_script_tables
-            ):
-                # Some development databases created the new script tables
-                # from SQLAlchemy metadata before the Alembic revision was
-                # added.  The schema is already present, so running the
-                # revision would fail with "table already exists".
-                command.stamp(config, head_revision)
-            else:
+            elif current_revision != head_revision:
                 _backup_database(database_path)
 
     command.upgrade(config, "head")

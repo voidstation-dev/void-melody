@@ -40,11 +40,16 @@ class VieneuProvider:
         rate: float,
         style: str | None = None,
         options: SynthesisOptions | None = None,
+        ref_audio: str | None = None,
+        prompt_text: str | None = None,
     ) -> ProviderResult:
         logger.info("VieneuProvider synthesizing %s", voice_type)
         engine = await self.manager.get_engine()
         
-        voice_id, ref_audio, prompt_text = await self._resolve_custom_voice(voice_type)
+        if ref_audio is None and prompt_text is None:
+            voice_id, ref_audio, prompt_text = await self._resolve_custom_voice(voice_type)
+        else:
+            voice_id = None
 
         # inference is cpu bound, run in thread behind semaphore
         async with self._inference_semaphore:
@@ -268,11 +273,14 @@ class VieneuProvider:
         except ValueError:
             return voice_type, None, None
 
-        async with AsyncSessionLocal() as session:
-            stmt = select(CustomVoiceModel).where(CustomVoiceModel.id == voice_type)
-            result = await session.execute(stmt)
-            voice = result.scalars().first()
-            if voice and voice.reference_audio_path:
-                return None, voice.reference_audio_path, voice.transcript
-        
+        from app.services.voice_resolver import resolve_voice
+
+        try:
+            async with AsyncSessionLocal() as session:
+                resolved = await resolve_voice(session, voice_type)
+                if resolved and resolved.reference_audio_path:
+                    return None, resolved.reference_audio_path, resolved.prompt_text
+        except Exception:
+            logger.debug("Failed resolving voice %s via resolver, fallback to type", voice_type)
+
         return voice_type, None, None

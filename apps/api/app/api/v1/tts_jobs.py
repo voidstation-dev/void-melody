@@ -19,6 +19,7 @@ from app.schemas.tts import (
 from app.services.tts_service import (
     create_tts_job,
     create_tts_job_with_batch_limits,
+    create_tts_jobs_batch,
     get_job_by_id,
     list_jobs,
 )
@@ -136,7 +137,7 @@ async def create_batch_jobs_endpoint(
         raise HTTPException(status_code=400, detail="No items provided in batch request")
 
     batch_id = str(uuid.uuid4())
-    created_jobs = []
+    job_items_data = []
 
     for i, item in enumerate(req.items):
         if not item.text.strip():
@@ -151,30 +152,35 @@ async def create_batch_jobs_endpoint(
                 detail=f"{exc.code}: {exc.message}",
             ) from exc
 
-        job = await create_tts_job_with_batch_limits(
-            session,
-            text=item.text,
-            voice_type=item.voiceType,
-            voice_display_name=matched.display_name,
-            language_code=matched.language_code,
-            resource_id=matched.resource_id,
-            rate=item.rate,
-            batch_id=batch_id,
-            batch_position=i,
-            style=item.style,
-            provider_id=getattr(matched, "provider_id", "capcut"),
-            source_file_name=item.sourceFileName,
-            source_file_size=item.sourceFileSize,
-            export_path=item.exportPath,
-            export_format=item.exportFormat,
-            max_files=settings.tts_max_batch_files,
-            max_total_chars=settings.tts_max_batch_total_chars,
-        )
-        created_jobs.append(job)
-        await queue_manager.enqueue(job.id, batch_position=job.batch_position or 0)
+        job_items_data.append({
+            "text": item.text,
+            "voice_type": item.voiceType,
+            "voice_display_name": matched.display_name,
+            "language_code": matched.language_code,
+            "resource_id": matched.resource_id,
+            "rate": item.rate,
+            "batch_position": i,
+            "style": item.style,
+            "provider_id": getattr(matched, "provider_id", "capcut"),
+            "source_file_name": item.sourceFileName,
+            "source_file_size": item.sourceFileSize,
+            "export_path": item.exportPath,
+            "export_format": item.exportFormat,
+        })
 
-    if not created_jobs:
+    if not job_items_data:
         raise HTTPException(status_code=400, detail="No valid jobs could be created from the batch.")
+
+    created_jobs = await create_tts_jobs_batch(
+        session,
+        batch_id=batch_id,
+        items=job_items_data,
+        max_files=settings.tts_max_batch_files,
+        max_total_chars=settings.tts_max_batch_total_chars,
+    )
+
+    for job in created_jobs:
+        await queue_manager.enqueue(job.id, batch_position=job.batch_position or 0)
 
     return BatchJobCreateResponse(batchId=batch_id, jobs=[serialize_job(j) for j in created_jobs])
 
@@ -243,14 +249,18 @@ async def list_jobs_endpoint(
     status: str | None = None,
     page: int = 1,
     pageSize: int = 20,
+    cursor: str | None = None,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008,
 ):
-    jobs, total = await list_jobs(session, status=status, page=page, page_size=pageSize)
+    jobs, total, next_cursor = await list_jobs(
+        session, status=status, page=page, page_size=pageSize, cursor=cursor
+    )
     return TTSJobListResponse(
         items=[serialize_job(j) for j in jobs],
         page=page,
         pageSize=pageSize,
         total=total,
+        nextCursor=next_cursor,
     )
 
 
@@ -472,11 +482,14 @@ async def cancel_job_endpoint(
             status_code=400, detail="Job cannot be cancelled in its current state"
         )
 
+    from app.scheduler.cancellation import cancellation_registry
+
     if job.status == "queued":
         job.status = "cancelled"
     else:
         # If processing, signal cancellation
         job.cancel_requested = True
 
+    await cancellation_registry.cancel(job_id)
     await session.commit()
     return serialize_job(job)

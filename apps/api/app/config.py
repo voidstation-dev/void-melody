@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     capcut_catalog_path: Path = _catalog_path
     tts_queue_concurrency: int = 3
     tts_chunk_concurrency: int = 1
+    capcut_job_concurrency: int = 3
+    capcut_chunk_concurrency: int = 2
+    vieneu_job_concurrency: int = 1
+    vieneu_chunk_concurrency: int = 1
+    media_ffmpeg_concurrency: int = 2
+    audio_cache_enabled: bool = True
+    audio_cache_max_bytes: int = 1073741824  # 1GB
+    audio_cache_ttl_days: int = 30
     tts_max_text_chars: int = 50000
     tts_max_chunks_per_job: int = 120
     tts_max_batch_files: int = 50

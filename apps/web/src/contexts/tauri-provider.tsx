@@ -65,6 +65,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const shutdownPromiseRef = useRef<Promise<void> | null>(null);
   const restartPromiseRef = useRef<Promise<void> | null>(null);
+  const isShuttingDownRef = useRef(false);
 
   const updateStage = useCallback((id: BootstrapStageId, status: BootstrapStage["status"], detail?: string) => {
     setStages((prev) =>
@@ -121,7 +122,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         rejectReady = reject;
       });
 
-      const startupTimeoutMs = 30_000;
+      const startupTimeoutMs = 60_000;
       let startupTimer: ReturnType<typeof setTimeout>;
 
       const rejectStartup = (reason: Error) => {
@@ -163,7 +164,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       const probeHealth = async (url: string) => {
         updateStage("server", "active", `Đang xác thực ${url}...`);
         setCurrentStatusText(`Đang kết nối ${url}...`);
-        for (let attempt = 0; attempt < 30; attempt++) {
+        for (let attempt = 0; attempt < 60; attempt++) {
           try {
             const response = await fetch(`${url}/api/v1/health/live`, {
               method: "GET",
@@ -260,6 +261,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
         );
       });
       sidecar.on("close", ({ code, signal }) => {
+        if (didResolve || isShuttingDownRef.current || !mountedRef.current) return;
         const exitReason =
           code !== null && code !== undefined
             ? `exit code ${code}`
@@ -278,6 +280,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
       if (!mountedRef.current) {
         clearTimeout(startupTimer);
         try {
+          isShuttingDownRef.current = true;
           await process.kill();
         } catch {
           // ignore
@@ -302,6 +305,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
     if (!hasTauriRuntime()) return;
     if (shutdownPromiseRef.current) return shutdownPromiseRef.current;
 
+    isShuttingDownRef.current = true;
     const process = sidecarProcessRef.current;
     sidecarProcessRef.current = null;
     const shutdown = (async () => {
@@ -331,6 +335,7 @@ export function TauriProvider({ children }: { children: React.ReactNode }) {
 
     const restart = (async () => {
       await shutdownSidecar();
+      isShuttingDownRef.current = false;
       await startSidecar();
     })();
     restartPromiseRef.current = restart.finally(() => {

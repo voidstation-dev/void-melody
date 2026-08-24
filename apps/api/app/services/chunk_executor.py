@@ -12,6 +12,10 @@ class JobSnapshot:
     resource_id: str | None
     rate: float
     style: str | None = None
+    provider_id: str = "capcut"
+    reference_audio_path: str | None = None
+    prompt_text: str | None = None
+    voice_revision: str = "v1"
 
 
 @dataclass(frozen=True)

@@ -9,7 +9,7 @@ export function PageContainer({ children }: { children: React.ReactNode }) {
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <AppSidebar />
-        <main className="min-h-0 min-w-0 flex-1 bg-muted/30 p-6 overflow-hidden flex flex-col">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 bg-muted/30 p-4 sm:p-6 overflow-y-auto overflow-x-hidden flex flex-col">{children}</main>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from app.config import settings
 from app.database import Base
+from app.models.audio_cache import AudioSegmentCacheModel  # noqa: F401
 from app.models.custom_voice import CustomVoiceModel  # noqa: F401
 from app.models.emotional_script import (  # noqa: F401
     EmotionalScriptModel,

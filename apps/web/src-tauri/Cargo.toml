@@ -1,17 +1,17 @@
 [package]
-name = "app"
+name = "melody"
 version = "0.3.3"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "Melody Desktop Studio"
+authors = ["VoidStation"]
+license = "MIT"
+repository = "https://github.com/voidstation-dev/void-melody"
 edition = "2021"
 rust-version = "1.77.2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "app_lib"
+name = "melody_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

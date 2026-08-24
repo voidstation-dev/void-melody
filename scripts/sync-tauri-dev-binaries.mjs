@@ -1,11 +1,23 @@
 import fs from "node:fs"
 import path from "node:path"
-import { execFileSync } from "node:child_process"
+import { execFileSync, execSync } from "node:child_process"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const tauriBinDir = path.join(projectRoot, "apps/web/src-tauri/bin")
 const tauriDebugDir = path.join(projectRoot, "apps/web/src-tauri/target/debug")
+
+function killOrphanSidecars() {
+  try {
+    if (process.platform === "win32") {
+      execSync("taskkill /F /IM melody-api.exe /T 2>nul || exit 0", { stdio: "ignore" })
+    } else {
+      execSync("pkill -9 -f 'target/debug/melody-api' || true", { stdio: "ignore" })
+    }
+  } catch {
+    // ignore
+  }
+}
 
 function targetTriple() {
   if (process.platform === "darwin") {
@@ -99,6 +111,7 @@ const triple = targetTriple()
 const currentRevision = sourceRevision()
 
 export function syncBinaries() {
+  killOrphanSidecars()
   syncBinary(`melody-api-${triple}${extension}`, `melody-api${extension}`, currentRevision)
   syncBinary(`ffmpeg-${triple}${extension}`, `ffmpeg${extension}`, currentRevision)
 }

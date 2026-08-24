@@ -12,7 +12,7 @@ import { UpdateModal } from "@/components/update/update-modal"
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryProvider>
-      <ThemeProvider attribute="class" defaultTheme="light" forcedTheme="light">
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <I18nProvider>
           <AuthProvider>
             <TauriProvider>
