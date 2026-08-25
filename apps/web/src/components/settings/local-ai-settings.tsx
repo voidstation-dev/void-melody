@@ -3,6 +3,7 @@ import { Cpu, HardDrive, Loader2, Package, RotateCcw, Trash2, Wrench } from "luc
 import { useRuntimes } from "@/hooks/use-runtimes"
 import { useTranslation } from "@/hooks/use-translation"
 import { toast } from "sonner"
+import { SpeechModelSelector } from "./speech-model-selector"
 
 function formatBytes(bytes: number): string {
   if (!bytes) return "0 MB"
@@ -219,17 +220,13 @@ export function LocalAiSettings() {
           <p className="mt-1 text-xs text-muted-foreground">{t("settings.localAiSubtitle")}</p>
         </div>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-4">
         <RuntimeCard
           id="vieneu"
           title={t("settings.localAiVieneuTitle")}
           description={t("settings.localAiVieneuDesc")}
         />
-        <RuntimeCard
-          id="speech"
-          title={t("settings.localAiSpeechTitle")}
-          description={t("settings.localAiSpeechDesc")}
-        />
+        <SpeechModelSelector />
       </div>
     </section>
   )

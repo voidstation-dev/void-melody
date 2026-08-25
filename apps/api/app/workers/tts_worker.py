@@ -117,7 +117,7 @@ async def process_chunk(
                 "ref_codes": job.ref_codes,
                 "clone_mode": job.clone_mode,
                 "prompt_text": job.prompt_text,
-                "ref_audio": job.reference_audio_path if not job.speaker_emb else None,
+                "ref_audio": job.reference_audio_path if job.speaker_emb is None else None,
                 "destination_path": destination,
             })
 

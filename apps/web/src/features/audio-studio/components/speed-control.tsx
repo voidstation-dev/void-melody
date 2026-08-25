@@ -9,6 +9,23 @@ interface SpeedControlProps {
   disabled?: boolean
 }
 
+function speedToSlider(speed: number): number {
+  const safeSpeed = typeof speed === "number" && !Number.isNaN(speed) ? speed : 1.0
+  const clamped = Math.min(Math.max(safeSpeed, 0.5), 2.0)
+  if (clamped <= 1.0) {
+    return ((clamped - 0.5) / 0.5) * 50
+  }
+  return 50 + ((clamped - 1.0) / 1.0) * 50
+}
+
+function sliderToSpeed(sliderVal: number): number {
+  const raw =
+    sliderVal <= 50
+      ? 0.5 + (sliderVal / 50) * 0.5
+      : 1.0 + ((sliderVal - 50) / 50) * 1.0
+  return Number((Math.round(raw / 0.05) * 0.05).toFixed(2))
+}
+
 export function SpeedControl({ speed, onChange, disabled }: SpeedControlProps) {
   const { t } = useTranslation()
 
@@ -25,12 +42,12 @@ export function SpeedControl({ speed, onChange, disabled }: SpeedControlProps) {
       </div>
 
       <Slider
-        min={0.5}
-        max={2.0}
-        step={0.05}
-        value={[speed]}
+        min={0}
+        max={100}
+        step={1}
+        value={[speedToSlider(speed)]}
         onValueChange={(vals) => {
-          if (vals[0] !== undefined) onChange(vals[0])
+          if (vals[0] !== undefined) onChange(sliderToSpeed(vals[0]))
         }}
         disabled={disabled}
         className="py-1"
