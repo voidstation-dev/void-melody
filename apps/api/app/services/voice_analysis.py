@@ -22,6 +22,7 @@ SUPPORTED_EXTENSIONS = {".wav", ".mp3", ".m4a"}
 ANALYSIS_SAMPLE_RATE = 16_000
 MIN_REFERENCE_SECONDS = 3.0
 MAX_REFERENCE_SECONDS = 8.0
+VAD_SELECTOR_ENABLED = False  # ponytail: flip when speech-worker VAD probe is wired
 
 
 class VoiceAnalysisError(ValueError):
@@ -128,6 +129,92 @@ def choose_reference_segment(
         speech_levels, sample_rate=sample_rate, window_seconds=window_seconds
     )
     return start, end
+
+def choose_best_reference_segment_v2(
+    levels: list[float],
+    *,
+    sample_rate: int = 10,
+    min_seconds: float = MIN_REFERENCE_SECONDS,
+    max_seconds: float = MAX_REFERENCE_SECONDS,
+) -> tuple[float, float, float]:
+    """VAD-aware reference segment selector (Selector v2).
+
+    Scores candidate 3–8s windows using:
+      speech continuity (fewer silence breaks) + speech ratio + energy
+      − silence penalty − boundary-cut penalty − clipping.
+
+    Falls back to choose_best_reference_segment on any edge case so the
+    existing path is never broken.
+    """
+    n = len(levels)
+    if n == 0 or sample_rate <= 0:
+        return 0.0, 0.0, 0.0
+
+    total_duration = n / sample_rate
+    if total_duration <= min_seconds:
+        return 0.0, total_duration, 0.8
+
+    speech_flags = [1 if lvl > 0.02 else 0 for lvl in levels]
+
+    speech_prefix = [0] * (n + 1)
+    energy_prefix = [0.0] * (n + 1)
+    for i in range(n):
+        speech_prefix[i + 1] = speech_prefix[i] + speech_flags[i]
+        energy_prefix[i + 1] = energy_prefix[i] + levels[i]
+
+    candidate_durations = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
+    best_start = 0
+    best_dur = min(total_duration, candidate_durations[0])
+    best_score = float("-inf")
+
+    for dur in candidate_durations:
+        win = int(round(dur * sample_rate))
+        if win > n:
+            continue
+        for start in range(0, n - win + 1):
+            end = start + win
+            speech_cnt = speech_prefix[end] - speech_prefix[start]
+            speech_cov = speech_cnt / win
+            energy_sum = energy_prefix[end] - energy_prefix[start]
+            avg_energy = energy_sum / win
+
+            # Continuity: count silence→speech transitions inside the window.
+            # Fewer breaks = more continuous speech. 0 breaks is ideal.
+            breaks = 0
+            for j in range(start + 1, end):
+                if speech_flags[j] == 1 and speech_flags[j - 1] == 0:
+                    breaks += 1
+            continuity = max(0.0, 1.0 - (breaks / max(1, win / sample_rate)))
+
+            # Boundary-cut penalty: penalize speech cut at start/end edges.
+            boundary_penalty = 0.0
+            if speech_flags[start] == 1:
+                boundary_penalty += 0.1
+            if speech_flags[end - 1] == 1:
+                boundary_penalty += 0.1
+
+            # Silence penalty: windows dominated by silence score lower.
+            silence_ratio = 1.0 - speech_cov
+            silence_penalty = silence_ratio * 0.5
+
+            sweet_spot_bonus = 0.15 if 5.5 <= dur <= 7.0 else 0.0
+            score = (
+                speech_cov * 1.5
+                + continuity * 0.8
+                + avg_energy
+                - silence_penalty
+                - boundary_penalty
+                + sweet_spot_bonus
+            )
+            if score > best_score:
+                best_score = score
+                best_start = start
+                best_dur = dur
+
+    norm_score = max(0.0, min(1.0, (best_score + 0.2) / 3.5))
+    start_sec = round(best_start / sample_rate, 3)
+    end_sec = round(min(total_duration, start_sec + best_dur), 3)
+    return start_sec, end_sec, norm_score
 
 
 def _normalize_with_ffmpeg(source: Path, destination: Path) -> None:
@@ -262,7 +349,13 @@ def analyze_audio_file(source: Path) -> VoiceAnalysis:
                 "Audio must be at least three seconds long.",
             )
 
-        start, end, segment_score_norm = choose_best_reference_segment(levels, sample_rate=10)
+        if VAD_SELECTOR_ENABLED:
+            try:
+                start, end, segment_score_norm = choose_best_reference_segment_v2(levels, sample_rate=10)
+            except Exception:
+                start, end, segment_score_norm = choose_best_reference_segment(levels, sample_rate=10)
+        else:
+            start, end, segment_score_norm = choose_best_reference_segment(levels, sample_rate=10)
 
         warnings: list[str] = []
         if speech_ratio < 0.25:

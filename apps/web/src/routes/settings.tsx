@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { UpdateSettings } from "@/components/settings/update-settings"
 import { LicenseSettings } from "@/components/settings/license-settings"
+import { LocalAiSettings } from "@/components/settings/local-ai-settings"
 import { useTheme } from "next-themes"
 import { useTranslation } from "@/hooks/use-translation"
 import { Locale } from "@/locales"
@@ -134,6 +135,9 @@ function SettingsRoute() {
           </section>
 
           {/* App Updates Section */}
+
+          {/* Local AI Runtime Packs */}
+          <LocalAiSettings />
           <UpdateSettings />
         </div>
       </div>

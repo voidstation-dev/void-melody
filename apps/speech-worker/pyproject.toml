@@ -1,0 +1,25 @@
+[project]
+name = "melody-speech-worker"
+version = "0.1.0"
+description = "Standalone speech worker (Silero VAD + faster-whisper) for Void Melody. Runs as a JSONL stdin/stdout subprocess; not bundled into the default installer."
+requires-python = ">=3.10"
+
+dependencies = []
+
+[project.optional-dependencies]
+# Installed only inside the speech runtime pack, never in core.
+runtime = [
+    "faster-whisper>=1.0.0",
+    "ctranslate2>=4.0.0",
+    "silero-vad>=5.0",
+    "torch>=2.13.0",
+    "torchaudio>=2.11.0",
+    "soundfile",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["worker"]

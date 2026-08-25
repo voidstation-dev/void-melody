@@ -512,6 +512,28 @@ export type TranslationSchema = {
     updateCheckError: string;
     updateIdleNotice: string;
     desktopOnly: string;
+    localAiHeading: string;
+    localAiSubtitle: string;
+    localAiVieneuTitle: string;
+    localAiVieneuDesc: string;
+    localAiSpeechTitle: string;
+    localAiSpeechDesc: string;
+    localAiReady: string;
+    localAiNotInstalled: string;
+    localAiDownloading: string;
+    localAiVerifying: string;
+    localAiInstalling: string;
+    localAiError: string;
+    localAiUpdateRequired: string;
+    localAiVersion: string;
+    localAiInstall: string;
+    localAiUpdate: string;
+    localAiRepair: string;
+    localAiRemove: string;
+    localAiRollback: string;
+    localAiInstallSuccess: string;
+    localAiInstallError: string;
+    localAiUpdateSuccess: string;
     updateInProgress: string;
   };
   update: {
