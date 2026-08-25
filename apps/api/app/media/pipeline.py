@@ -51,11 +51,16 @@ async def concat_audio_parts(
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(f"{destination}.tmp")
 
+    part_suffix = parts[0].suffix.lower()
+    target_ext = f".{output_format.lower()}"
+    same_format = (part_suffix == target_ext)
+
     if len(parts) == 1:
-        if rate == 1.0 and output_format == "mp3":
+        if rate == 1.0 and same_format:
             try:
                 parts[0].replace(temporary)
-                size = validate_audio_file(temporary, mime_type="audio/mpeg")
+                expected_mime = "audio/wav" if output_format == "wav" else "audio/mpeg"
+                size = validate_audio_file(temporary, mime_type=expected_mime)
                 temporary.replace(destination)
                 duration = await probe_audio_duration(destination)
                 return size, duration
@@ -69,7 +74,12 @@ async def concat_audio_parts(
             str(parts[0].resolve()),
         ]
         if rate != 1.0:
-            command.extend(["-filter:a", f"atempo={rate}", "-q:a", "2"])
+            command.extend(["-filter:a", f"atempo={rate}"])
+            if output_format == "mp3":
+                command.extend(["-q:a", "2"])
+        elif not same_format:
+            if output_format == "mp3":
+                command.extend(["-q:a", "2"])
         else:
             command.extend(["-c", "copy"])
 
@@ -122,7 +132,12 @@ async def concat_audio_parts(
     ]
 
     if rate != 1.0:
-        command.extend(["-filter:a", f"atempo={rate}", "-q:a", "2"])
+        command.extend(["-filter:a", f"atempo={rate}"])
+        if output_format == "mp3":
+            command.extend(["-q:a", "2"])
+    elif not same_format:
+        if output_format == "mp3":
+            command.extend(["-q:a", "2"])
     else:
         command.extend(["-c", "copy"])
 

@@ -338,6 +338,7 @@ export type TranslationSchema = {
     selectedSample: string;
     libraryProfile: string;
     notSelected: string;
+    noFileSelected: string;
     analysisStatusLabel: string;
     ready: string;
     pending: string;
@@ -396,6 +397,11 @@ export type TranslationSchema = {
     transcriptPlaceholderAuto: string;
     selectedDurationLabel: string;
     synthesizing: string;
+    createAnotherVoice: string;
+    autoTranscribeBtn: string;
+    transcribingAudio: string;
+    transcribeSuccess: string;
+    transcribeEmpty: string;
   };
   voices: {
     title: string;
@@ -534,6 +540,27 @@ export type TranslationSchema = {
     localAiInstallSuccess: string;
     localAiInstallError: string;
     localAiUpdateSuccess: string;
+    speechModelsTitle: string;
+    speechModelsSubtitle: string;
+    speechModelTinyDesc: string;
+    speechModelBaseDesc: string;
+    speechModelSmallDesc: string;
+    speechModelMediumDesc: string;
+    speechModelLargeTurboDesc: string;
+    badgeRecommendedCpu: string;
+    badgeRecommendedGpu: string;
+    badgeRecommendedLowEnd: string;
+    activeBadge: string;
+    installedBadge: string;
+    notInstalledBadge: string;
+    accuracyLabel: string;
+    minRamLabel: string;
+    speedLabel: string;
+    selectModelBtn: string;
+    downloadModelBtn: string;
+    removeModelBtn: string;
+    autoTranscribeVoiceLabLabel: string;
+    autoTranscribeVoiceLabDesc: string;
     updateInProgress: string;
   };
   update: {

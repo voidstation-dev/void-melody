@@ -4,6 +4,21 @@ All notable changes to VoidMelody Desktop are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-08-25
+
+### Added
+
+- **Speech Transcription API & Model Selector**: Integrated automatic speech-to-text (STT) for Voice Lab audio reference segmentation with CPU/GPU recommended model catalog (Whisper/Faster-Whisper/CapCut STT).
+- **Redesigned Calibration & Preview Audio Players**: Custom interactive audio players with play/pause, scrubbers, real-time waveform timing, quality/similarity metrics, and format export options (WAV, MP3, M4A).
+- **Studio Quick-Start & Presets**: Enhanced "Use in Studio" section with quick speech prompt templates (Original transcript, Greetings, Storytelling, Tech news) and direct one-click navigation to Audio Studio.
+
+### Fixed
+
+- **Numpy Array Truth Value in TTS Worker**: Fixed ambiguous truth value evaluation bug when synthesizing preview jobs with cloned voice profiles.
+- **Audio Output Signature & Transcoding**: Resolved `Audio output is empty or has an invalid signature` error by ensuring proper WAV-to-MP3 transcoding in single and multi-chunk concatenation pipelines.
+- **Calibration Audio Serving & FileResponse**: Fixed 500 error on `/calibration/audio` by importing `FileResponse` and using authenticated `apiFetchBlob`.
+- **Responsive Layout & Text Wrapping**: Fixed badge line wrapping and card layout in the Voice Lab sidebar.
+
 ## [0.4.2] - 2026-08-25
 
 ### Added

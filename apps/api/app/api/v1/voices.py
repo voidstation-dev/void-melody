@@ -14,6 +14,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from vieneu_core import capabilities_for_runtime, probe_runtime
@@ -385,15 +386,21 @@ async def get_custom_voice_calibration_audio(
     voice_id: str,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ):
-    voice = await session.scalar(
-        select(CustomVoiceModel).where(CustomVoiceModel.id == voice_id)
-    )
-    if not voice or not voice.calibration_audio_path:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration audio not found.")
-    calib_path = Path(voice.calibration_audio_path)
-    if not calib_path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration audio file is missing.")
-    return FileResponse(path=str(calib_path), media_type="audio/wav")
+    try:
+        voice = await session.scalar(
+            select(CustomVoiceModel).where(CustomVoiceModel.id == voice_id)
+        )
+        if not voice or not voice.calibration_audio_path:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration audio not found.")
+        calib_path = Path(voice.calibration_audio_path)
+        if not calib_path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Calibration audio file is missing.")
+        return FileResponse(path=str(calib_path), media_type="audio/wav")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed serving calibration audio for voice %s", voice_id)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
 
 @router.delete("/tts/voices/custom/{voice_id}", status_code=status.HTTP_204_NO_CONTENT)

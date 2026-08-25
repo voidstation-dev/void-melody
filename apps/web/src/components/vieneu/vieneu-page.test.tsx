@@ -1,9 +1,17 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { VieneuPage } from "./vieneu-page";
 import { I18nProvider } from "@/contexts/i18n-provider";
+import { QueryProvider } from "@/components/providers/query-provider";
+import { useVoiceLabStore } from "@/stores/voice-lab-store";
+
+vi.mock("@/lib/voice-lab-api", () => ({
+  analyzeVoiceSample: vi.fn().mockImplementation(() => new Promise(() => {})),
+  cloneVoiceProfile: vi.fn().mockResolvedValue({ id: "mock-id", display_name: "Mock Voice" }),
+  getVoiceCalibrationAudioUrl: vi.fn().mockReturnValue("/mock-calibration.wav"),
+}));
 
 vi.mock("@/hooks/use-voice-capabilities", () => ({
   useVoiceCapabilities: () => ({
@@ -26,13 +34,6 @@ vi.mock("@/hooks/use-voice-capabilities", () => ({
   }),
 }));
 
-vi.mock("@/hooks/use-voice-lab", () => ({
-  useVoiceLab: () => ({
-    analysis: { data: null, isPending: false, isError: false, mutate: vi.fn(), reset: vi.fn() },
-    clone: { data: null, isPending: false, isError: false, mutate: vi.fn(), reset: vi.fn() },
-  }),
-}));
-
 vi.mock("@/hooks/use-tts-job", () => ({
   useTTSJob: () => ({ data: null }),
 }));
@@ -43,13 +44,18 @@ vi.mock("@/hooks/use-custom-voice", () => ({
 
 function renderVieneu() {
   return render(
-    <I18nProvider initialLocale="en">
-      <VieneuPage />
-    </I18nProvider>
+    <QueryProvider>
+      <I18nProvider initialLocale="en">
+        <VieneuPage />
+      </I18nProvider>
+    </QueryProvider>
   );
 }
 
 describe("VieneuPage", () => {
+  beforeEach(() => {
+    useVoiceLabStore.getState().reset();
+  });
   it("renders the Voice Lab workspace and runtime status", () => {
     renderVieneu();
 
@@ -84,5 +90,40 @@ describe("VieneuPage", () => {
     renderVieneu();
     expect(screen.getByLabelText(/denoise mode/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/voice clone mode/i)).toBeInTheDocument();
+  });
+
+  it("restores active cloning progress when navigating back to Voice Lab", () => {
+    useVoiceLabStore.setState({
+      isCloning: true,
+      cloneProgress: 75,
+      cloneStage: "Extracting timbre characteristics...",
+    });
+
+    renderVieneu();
+
+    expect(screen.getByText("Extracting timbre characteristics...")).toBeInTheDocument();
+    expect(screen.getByText("75%")).toBeInTheDocument();
+  });
+
+  it("restores completed voice profile and allows resetting", () => {
+    useVoiceLabStore.setState({
+      createdProfile: {
+        id: "cloned-voice-123",
+        display_name: "My Cloned Voice",
+        provider_id: "vieneu",
+        engine_id: "v3turbo",
+        status: "ready",
+        calibration_available: false,
+      } as any,
+    });
+
+    renderVieneu();
+
+    expect(screen.getByText("My Cloned Voice")).toBeInTheDocument();
+    const resetBtn = screen.getByRole("button", { name: /create another voice/i });
+    expect(resetBtn).toBeInTheDocument();
+
+    fireEvent.click(resetBtn);
+    expect(useVoiceLabStore.getState().createdProfile).toBeNull();
   });
 });
