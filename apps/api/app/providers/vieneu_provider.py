@@ -5,6 +5,7 @@ import tempfile
 import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import select
 from vieneu_core.engine import ModelManager
@@ -14,13 +15,15 @@ from app.providers.base import ProviderResult, ProviderVoice, SynthesisOptions
 from app.config import settings
 from app.services.vieneu_preset_catalog import list_vieneu_preset_voices
 
+from app.services.vieneu_resource_governor import vieneu_governor
+
 logger = logging.getLogger(__name__)
 
 
 class VieneuProvider:
     def __init__(self):
         self.manager = ModelManager()
-        self._inference_semaphore = asyncio.Semaphore(1)
+        self._governor = vieneu_governor
 
     async def list_voices(self, language: str | None = None) -> list[ProviderVoice]:
         voices = list(list_vieneu_preset_voices())
@@ -36,26 +39,59 @@ class VieneuProvider:
         *,
         text: str,
         voice_type: str,
-        resource_id: str | None,
-        rate: float,
+        resource_id: str | None = None,
+        rate: float = 1.0,
         style: str | None = None,
         options: SynthesisOptions | None = None,
         ref_audio: str | None = None,
         prompt_text: str | None = None,
+        voice_spec: dict | str | None = None,
+        speaker_emb: Any | None = None,
+        ref_codes: Any | None = None,
+        clone_mode: str = "fidelity",
+        prepared_voice: Any | None = None,
+        destination_path: Path | None = None,
     ) -> ProviderResult:
-        logger.info("VieneuProvider synthesizing %s", voice_type)
+        logger.info("VieneuProvider synthesizing %s (len: %d)", voice_type, len(text))
         engine = await self.manager.get_engine()
-        
+        await self._governor.initialize()
+
         use_ref_codes = True
-        if ref_audio is None and prompt_text is None:
+
+        if prepared_voice is not None:
+            if prepared_voice.is_enrollment_v2:
+                voice_spec = {
+                    "speaker_emb": prepared_voice.speaker_emb,
+                    "codes": prepared_voice.ref_codes,
+                }
+                ref_audio = None
+                prompt_text = prepared_voice.prompt_text
+                use_ref_codes = (prepared_voice.clone_mode == "fidelity")
+            elif prepared_voice.source == "preset":
+                voice_spec = prepared_voice.voice_type
+                ref_audio = None
+                prompt_text = None
+            else:
+                # v1 custom voice fallback
+                voice_spec = None
+                ref_audio = prepared_voice.reference_audio_path
+                prompt_text = prepared_voice.prompt_text
+        elif speaker_emb is not None and ref_codes is not None:
+            voice_spec = {
+                "speaker_emb": speaker_emb,
+                "codes": ref_codes,
+            }
+            ref_audio = None
+            use_ref_codes = (clone_mode == "fidelity")
+        elif voice_spec is not None:
+            ref_audio = None
+        elif ref_audio is None and prompt_text is None:
             resolved_tup = await self._resolve_custom_voice(voice_type)
             voice_spec, ref_audio, prompt_text = resolved_tup[0], resolved_tup[1], resolved_tup[2]
             if len(resolved_tup) > 3:
                 use_ref_codes = resolved_tup[3]
-        else:
-            voice_spec = None
 
-        infer_kwargs = {
+        infer_kwargs: dict[str, Any] = {
             "text": text,
             "voice": voice_spec,
             "ref_audio": ref_audio,
@@ -66,51 +102,97 @@ class VieneuProvider:
         if isinstance(voice_spec, dict):
             infer_kwargs["use_ref_codes"] = use_ref_codes
 
-        # inference is cpu bound, run in thread behind semaphore
-        async with self._inference_semaphore:
+        async with self._governor.semaphore:
             wav = await asyncio.to_thread(
                 engine.infer,
                 **infer_kwargs,
             )
 
-        fd, wav_path_str = tempfile.mkstemp(suffix=".wav")
-        os.close(fd)
-        wav_path = Path(wav_path_str)
+        if destination_path is not None:
+            wav_path = destination_path
+            wav_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            fd, wav_path_str = tempfile.mkstemp(suffix=".wav")
+            os.close(fd)
+            wav_path = Path(wav_path_str)
+
+        await asyncio.to_thread(engine.save, wav, wav_path)
+
+        return ProviderResult(
+            raw_response={"engine": "vieneu-v3-turbo", "voice": voice_type, "lossless": True},
+            audio_urls=[],
+            local_paths=[str(wav_path)],
+        )
+
+    async def synthesize_batch(
+        self,
+        *,
+        texts: list[str],
+        voice_type: str,
+        destinations: list[Path],
+        style: str | None = None,
+        prepared_voice: Any | None = None,
+    ) -> list[Path]:
+        """Synthesize multiple texts using infer_batch on CUDA with dynamic OOM recovery."""
+        if not texts:
+            return []
+        engine = await self.manager.get_engine()
+        await self._governor.initialize()
+
+        voice_spec = None
+        use_ref_codes = True
+        prompt_text = None
+        ref_audio = None
+
+        if prepared_voice is not None:
+            if prepared_voice.is_enrollment_v2:
+                voice_spec = {
+                    "speaker_emb": prepared_voice.speaker_emb,
+                    "codes": prepared_voice.ref_codes,
+                }
+                use_ref_codes = (prepared_voice.clone_mode == "fidelity")
+            elif prepared_voice.source == "preset":
+                voice_spec = prepared_voice.voice_type
+            else:
+                ref_audio = prepared_voice.reference_audio_path
+                prompt_text = prepared_voice.prompt_text
+        else:
+            resolved_tup = await self._resolve_custom_voice(voice_type)
+            voice_spec, ref_audio, prompt_text = resolved_tup[0], resolved_tup[1], resolved_tup[2]
+            if len(resolved_tup) > 3:
+                use_ref_codes = resolved_tup[3]
+
+        batch_size = self._governor.gpu_batch_size
+
+        async def _run_batch(bs: int) -> list[Any]:
+            return await asyncio.to_thread(
+                engine.infer_batch,
+                texts=texts,
+                voice=voice_spec,
+                ref_audio=ref_audio,
+                ref_text=prompt_text,
+                style=style or "tu_nhien",
+                use_ref_codes=use_ref_codes,
+                batch_size=bs,
+                apply_watermark=False,
+            )
 
         try:
-            await asyncio.to_thread(engine.save, wav, wav_path)
+            async with self._governor.semaphore:
+                wavs = await _run_batch(batch_size)
+        except Exception as exc:
+            # OOM Fallback: reduce batch size and retry
+            logger.warning("infer_batch failed with batch_size %d: %s. Attempting fallback.", batch_size, exc)
+            fallback_bs = self._governor.handle_cuda_oom()
+            async with self._governor.semaphore:
+                wavs = await _run_batch(fallback_bs)
 
-            mp3_path = wav_path.with_suffix(".mp3")
-            ffmpeg_binary = settings.ffmpeg_binary_path
-
-            command = [
-                ffmpeg_binary,
-                "-y",
-                "-i",
-                str(wav_path),
-                "-q:a",
-                "2",
-                str(mp3_path),
-            ]
-
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            _, stderr = await process.communicate()
-            if process.returncode != 0:
-                raise RuntimeError(
-                    f"FFmpeg conversion failed: {stderr.decode('utf-8', errors='ignore')}"
-                )
-
-            return ProviderResult(
-                raw_response={"engine": "vieneu-v3-turbo", "voice": voice_type},
-                audio_urls=[],
-                local_paths=[str(mp3_path)],
-            )
-        finally:
-            wav_path.unlink(missing_ok=True)
+        saved_paths: list[Path] = []
+        for wav, dest in zip(wavs, destinations):
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            await asyncio.to_thread(engine.save, wav, dest)
+            saved_paths.append(dest)
+        return saved_paths
 
     async def synthesize_script(
         self,

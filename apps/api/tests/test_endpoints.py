@@ -99,7 +99,7 @@ async def test_manual_retry_creates_new_job_and_preserves_original(
     assert retried.voice_type == original.voice_type
     assert retried.batch_id == original.batch_id
     assert retried.provider_id == original.provider_id == "capcut"
-    enqueue.assert_awaited_once_with(retried.id, batch_position=2)
+    enqueue.assert_awaited_once_with(retried.id, batch_position=2, provider_id="capcut")
 
 
 @pytest.mark.asyncio
@@ -138,6 +138,7 @@ async def test_manual_retry_preserves_vieneu_provider_id(
     assert retried.style == "tu_nhien"
     assert retried.voice_profile_id == "profile-42"
     assert retried.request_metadata == '{"emotion":"chuckle"}'
+    enqueue.assert_awaited_once_with(retried.id, batch_position=0, provider_id="vieneu")
 
 
 @pytest.mark.asyncio

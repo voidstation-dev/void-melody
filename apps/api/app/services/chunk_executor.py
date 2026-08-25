@@ -2,7 +2,9 @@ import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypeVar
+from typing import Any, TypeVar
+
+from app.services.prepared_voice import PreparedVoice
 
 
 @dataclass(frozen=True)
@@ -16,6 +18,12 @@ class JobSnapshot:
     reference_audio_path: str | None = None
     prompt_text: str | None = None
     voice_revision: str = "v1"
+    prepared_voice: PreparedVoice | None = None
+    speaker_emb: Any | None = None
+    ref_codes: Any | None = None
+    clone_mode: str = "fidelity"
+    profile_format_version: str = "reference-v1"
+    output_format: str = "mp3"
 
 
 @dataclass(frozen=True)
@@ -25,6 +33,7 @@ class ChunkResult:
     raw_response: dict
     mime_type: str
     size: int
+    owned_by_job: bool = True
 
 
 class ChunkLimitExceeded(ValueError):

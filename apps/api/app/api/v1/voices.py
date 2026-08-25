@@ -404,3 +404,38 @@ async def delete_custom_voice(
 
     await session.delete(voice)
     await session.commit()
+
+
+from vieneu_core.engine import ModelManager
+from app.services.vieneu_resource_governor import vieneu_governor
+from app.services.vieneu_runtime_warmup import warm_vieneu_background
+
+
+@router.get("/tts/runtime/profile")
+async def get_runtime_profile():
+    """Return the active and persisted VieNeu hardware runtime execution profile."""
+    profile = await vieneu_governor.initialize()
+    return profile.to_dict()
+
+
+@router.post("/tts/runtime/optimize")
+async def optimize_runtime():
+    """Run an automated local micro-benchmark to tune VieNeu for this machine."""
+    manager = ModelManager()
+    engine = await manager.get_engine()
+    probe = probe_runtime()
+    tuned = await vieneu_governor.reoptimize(
+        engine=engine,
+        device=probe.device,
+        backend=probe.backend,
+        mode=settings.vieneu_runtime_mode,
+    )
+    return tuned.to_dict()
+
+
+@router.post("/tts/runtime/warmup")
+async def warmup_runtime(voice_type: str | None = None):
+    """Trigger background warmup for the VieNeu engine and selected voice artifact."""
+    import asyncio
+    asyncio.create_task(warm_vieneu_background(voice_type))
+    return {"status": "warming"}

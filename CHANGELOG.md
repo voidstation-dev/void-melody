@@ -4,6 +4,22 @@ All notable changes to VoidMelody Desktop are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-08-25
+
+### Added
+
+- **VieNeu Audio Studio Speed Optimization**: Comprehensive speed improvements for VieNeu TTS in Audio Studio:
+  - Macro text chunking (~1024 chars/chunk) reducing provider dispatch overhead by over 55%.
+  - Zero-copy cache path with batched database transactions.
+  - Lossless intermediate audio pipeline with single-pass final MP3 encoding and true lossless WAV output.
+  - Adaptive local runtime autotuning with CPU concurrency bounds (1–4 workers) and GPU batching with dynamic OOM fallback.
+  - Non-blocking background warmup for VieNeu engine and custom voice artifacts.
+
+### Fixed
+
+- **Voice Clone v2 Zero Re-Enrollment**: Guaranteed zero `prepare_reference` calls during Audio Studio generation with Enrollment v2 profiles.
+- **Provider Lane Routing**: Ensured jobs strictly preserve provider isolation across single, batch, retry, and recovery queues.
+
 ## [0.4.1] - 2026-08-25
 
 ### Added

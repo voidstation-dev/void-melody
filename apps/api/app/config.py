@@ -37,6 +37,15 @@ class Settings(BaseSettings):
     capcut_chunk_concurrency: int = 2
     vieneu_job_concurrency: int = 1
     vieneu_chunk_concurrency: int = 1
+    vieneu_macro_planner_enabled: bool = True
+    vieneu_macro_target_chars: int = 1024
+    vieneu_macro_hard_max_chars: int = 1280
+    vieneu_lossless_internal_enabled: bool = True
+    vieneu_adaptive_runtime_enabled: bool = True
+    vieneu_gpu_batch_enabled: bool = True
+    vieneu_background_warmup_enabled: bool = True
+    vieneu_runtime_mode: str = "auto"
+    vieneu_max_cpu_concurrency: int = 4
     media_ffmpeg_concurrency: int = 2
     audio_cache_enabled: bool = True
     audio_cache_max_bytes: int = 1073741824  # 1GB

@@ -49,7 +49,7 @@ async def concat_audio_parts(
         raise ValueError("At least one audio part is required for concatenation")
 
     destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = destination.with_name(f"{destination.stem}.tmp{destination.suffix or '.mp3'}")
+    temporary = Path(f"{destination}.tmp")
 
     if len(parts) == 1:
         if rate == 1.0 and output_format == "mp3":

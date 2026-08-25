@@ -119,7 +119,16 @@ async def create_job_endpoint(
         )
     job = await create_job(session, **create_kwargs)
 
-    await queue_manager.enqueue(job.id, batch_position=job.batch_position or 0)
+    await queue_manager.enqueue(
+        job.id,
+        batch_position=job.batch_position or 0,
+        provider_id=job.provider_id,
+    )
+
+    if job.provider_id == "vieneu":
+        from app.services.vieneu_runtime_warmup import warm_vieneu_background
+        import asyncio
+        asyncio.create_task(warm_vieneu_background(job.voice_type))
 
     return BatchJobCreateResponse(batchId=batch_id, jobs=[serialize_job(job)])
 
@@ -180,7 +189,11 @@ async def create_batch_jobs_endpoint(
     )
 
     for job in created_jobs:
-        await queue_manager.enqueue(job.id, batch_position=job.batch_position or 0)
+        await queue_manager.enqueue(
+            job.id,
+            batch_position=job.batch_position or 0,
+            provider_id=job.provider_id,
+        )
 
     return BatchJobCreateResponse(batchId=batch_id, jobs=[serialize_job(j) for j in created_jobs])
 
@@ -424,7 +437,11 @@ async def retry_job_endpoint(
         )
     else:
         retried_job = await create_tts_job(session, **retry_kwargs)
-    await queue_manager.enqueue(retried_job.id, batch_position=retried_job.batch_position or 0)
+    await queue_manager.enqueue(
+        retried_job.id,
+        batch_position=retried_job.batch_position or 0,
+        provider_id=retried_job.provider_id,
+    )
 
     return serialize_job(retried_job)
 

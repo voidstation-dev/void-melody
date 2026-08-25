@@ -6,11 +6,31 @@ from app.database import AsyncSessionLocal
 from app.models.tts_job import TTSJobModel
 
 
+class RecoveredJob(tuple):
+    """2-tuple (job_id, batch_position) subclass that also carries provider_id."""
+
+    job_id: str
+    batch_position: int
+    provider_id: str
+
+    def __new__(cls, job_id: str, batch_position: int = 0, provider_id: str = "capcut"):
+        obj = super().__new__(cls, (job_id, batch_position))
+        obj.job_id = job_id
+        obj.batch_position = batch_position
+        obj.provider_id = provider_id
+        return obj
+
+    def __getitem__(self, item):
+        if item == 2:
+            return self.provider_id
+        return super().__getitem__(item)
+
+
 async def recover_jobs(
     *,
     session_factory: async_sessionmaker[AsyncSession] = AsyncSessionLocal,
     max_total_attempts: int | None = None,
-) -> list[tuple[str, int]]:
+) -> list[RecoveredJob]:
     attempt_limit = (
         settings.tts_max_auto_retries + 1
         if max_total_attempts is None
@@ -21,7 +41,7 @@ async def recover_jobs(
             select(TTSJobModel).where(TTSJobModel.status.in_(["queued", "processing"]))
         )
         jobs = result.scalars().all()
-        recovered_ids: list[tuple[str, int]] = []
+        recovered_ids: list[RecoveredJob] = []
 
         for job in jobs:
             if job.attempt_count >= attempt_limit:
@@ -35,7 +55,7 @@ async def recover_jobs(
             job.started_at = None
             job.error_code = None
             job.error_message = None
-            recovered_ids.append((job.id, job.batch_position or 0))
+            recovered_ids.append(RecoveredJob(job.id, job.batch_position or 0, job.provider_id or "capcut"))
 
         await session.commit()
         return recovered_ids

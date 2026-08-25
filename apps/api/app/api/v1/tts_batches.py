@@ -77,7 +77,11 @@ async def create_batch(
     )
 
     for job in created_jobs:
-        await queue_manager.enqueue(job.id, batch_position=job.batch_position or 0)
+        await queue_manager.enqueue(
+            job.id,
+            batch_position=job.batch_position or 0,
+            provider_id=job.provider_id,
+        )
         
     return BatchJobCreateResponse(batchId=batch_id, jobs=[serialize_job(j) for j in created_jobs])
 

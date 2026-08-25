@@ -79,8 +79,12 @@ async def lifespan(app: FastAPI):
     await queue_manager.start()
     await script_render_queue.start()
 
-    for job_id, batch_pos in recovered_jobs:
-        await queue_manager.enqueue(job_id, batch_position=batch_pos)
+    for item in recovered_jobs:
+        await queue_manager.enqueue(
+            item.job_id,
+            batch_position=item.batch_position,
+            provider_id=item.provider_id,
+        )
 
     # Launch background housekeeping & warmup without blocking API readiness
     housekeeping_task = asyncio.create_task(_run_background_housekeeping())

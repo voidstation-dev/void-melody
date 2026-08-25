@@ -12,6 +12,8 @@ from app.models.custom_voice import CustomVoiceModel
 from app.services.voice_catalog import voice_catalog
 from app.services.voice_profile_artifacts import load_enrollment_artifact
 
+from app.services.prepared_voice import PreparedVoice
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +33,20 @@ class ResolvedVoice:
     speaker_emb: np.ndarray | None = None
     ref_codes: np.ndarray | None = None
     clone_mode: str = "fidelity"
+
+    def to_prepared_voice(self) -> PreparedVoice:
+        return PreparedVoice(
+            voice_type=self.voice_type,
+            provider_id=self.provider_id,
+            source=self.source,
+            voice_revision=self.voice_revision,
+            speaker_emb=self.speaker_emb,
+            ref_codes=self.ref_codes,
+            clone_mode=self.clone_mode,
+            profile_format_version=self.profile_format_version,
+            reference_audio_path=self.reference_audio_path,
+            prompt_text=self.prompt_text,
+        )
 
 
 class VoiceResolutionError(ValueError):
