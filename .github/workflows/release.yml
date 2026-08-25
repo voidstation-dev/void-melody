@@ -125,3 +125,47 @@ jobs:
           tag="${{ steps.rel.outputs.tag }}"
           echo "Listing GitHub Release assets for tag ${tag} (draft included):"
           gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[].name' || true
+  publish-release:
+    needs: publish-tauri
+    if: always()
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve release tag
+        id: rel
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish draft release
+        if: needs.publish-tauri.result == 'success'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.rel.outputs.tag }}"
+          echo "Un-drafting release ${tag} so the updater endpoint serves the new latest.json."
+          if ! gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" --json isDraft >/dev/null 2>&1; then
+            echo "::error::Release ${tag} not found; nothing to publish."
+            exit 1
+          fi
+          gh release edit "${tag}" --repo "${GITHUB_REPOSITORY}" --draft=false
+
+      - name: Verify updater endpoint
+        if: needs.publish-tauri.result == 'success'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.rel.outputs.tag }}"
+          latest=$(gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '.assets[] | select(.name=="latest.json") | .url')
+          if [ -z "${latest}" ]; then
+            echo "::error::latest.json is missing from release ${tag}; updater cannot discover the new version."
+            exit 1
+          fi
+          echo "latest.json is present at: ${latest}"
