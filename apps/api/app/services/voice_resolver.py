@@ -28,6 +28,8 @@ class ResolvedVoice:
     status: str
     voice_revision: str = "unknown"
     reference_audio_path: str | None = None
+    # For V3 Enrollment v2 this is profile metadata only — NOT active model
+    # conditioning. A future transcript-conditioned engine may consume it.
     prompt_text: str | None = None
     profile_format_version: str = "reference-v1"
     speaker_emb: np.ndarray | None = None

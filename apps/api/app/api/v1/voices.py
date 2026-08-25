@@ -206,6 +206,36 @@ async def clone_voice(
             },
         )
 
+    # Reference transcript: normalize and enforce engine policy. V3 Turbo policy is
+    # "optional" (stored as profile metadata, NOT used for enrollment); a future
+    # transcript-conditioned engine may declare "required".
+    normalized_transcript = transcript.strip()
+    MAX_REFERENCE_TEXT_CHARS = 2000
+    if len(normalized_transcript) > MAX_REFERENCE_TEXT_CHARS:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "REFERENCE_TEXT_TOO_LONG",
+                "message": f"Reference transcript must be at most {MAX_REFERENCE_TEXT_CHARS} characters.",
+            },
+        )
+    if (
+        not normalized_transcript
+        and getattr(clone_capabilities, "reference_text_policy", "optional") == "required"
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "REFERENCE_TEXT_REQUIRED",
+                "message": "Reference transcript is required for this engine.",
+            },
+        )
+    logger.debug(
+        "voice clone reference_transcript_present=%s reference_transcript_chars=%d",
+        bool(normalized_transcript),
+        len(normalized_transcript),
+    )
+
     temp_path = None
 
     try:
@@ -254,7 +284,7 @@ async def clone_voice(
             db_voice = await CloneOrchestrator().create(
                 session=session,
                 display_name=display_name,
-                transcript=transcript,
+                transcript=normalized_transcript,
                 consent_given=consent_given,
                 source_audio_path=temp_path,
                 duration_seconds=reference_duration or 0.0,

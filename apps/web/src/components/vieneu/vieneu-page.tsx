@@ -128,6 +128,9 @@ export function VieneuPage({
   const [cloneMode, setCloneMode] = useState<"fidelity" | "stability">("fidelity");
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [referenceTranscript, setReferenceTranscript] = useState("");
+  const [transcriptSegmentKey, setTranscriptSegmentKey] = useState<string | null>(null);
+  const [transcriptNeedsReview, setTranscriptNeedsReview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sourceAudioRef = useRef<HTMLAudioElement>(null);
   const capabilities = useVoiceCapabilities();
@@ -150,6 +153,21 @@ export function VieneuPage({
     selected_start_seconds: selectedStart,
     selected_end_seconds: selectedEnd,
   };
+  const referenceTextPolicy = runtime?.reference_text_policy ?? "optional";
+  const referenceTextUsedForEnrollment =
+    runtime?.reference_text_used_for_enrollment === true;
+  const referenceMinSeconds = runtime?.reference_min_seconds ?? 3;
+  const referenceMaxSeconds = runtime?.reference_max_seconds ?? 8;
+  const transcriptVisible = referenceTextPolicy !== "ignored";
+  const transcriptRequired = referenceTextPolicy === "required";
+  const currentSegmentKey = `${selectedStart.toFixed(2)}:${selectedEnd.toFixed(2)}`;
+
+  useEffect(() => {
+    if (!transcriptSegmentKey) return;
+    if (currentSegmentKey !== transcriptSegmentKey) {
+      setTranscriptNeedsReview(true);
+    }
+  }, [currentSegmentKey, transcriptSegmentKey]);
 
   useEffect(
     () => () => {
@@ -655,6 +673,68 @@ export function VieneuPage({
                       </div>
                     )}
 
+                    {/* Reference transcript (engine-aware policy: ignored/optional/required) */}
+                    {transcriptVisible && analysis && (
+                      <div className="mt-4 rounded-xl border border-border bg-muted/20 p-3">
+                        <div className="flex items-center justify-between">
+                          <label
+                            htmlFor="reference-transcript"
+                            className="text-xs font-semibold"
+                          >
+                            {t("voiceLab.referenceTranscriptLabel")}
+                            {transcriptRequired
+                              ? ` · ${t("voiceLab.referenceTranscriptRequired")}`
+                              : ` · ${t("voiceLab.referenceTranscriptOptional")}`}
+                          </label>
+                        </div>
+                        <textarea
+                          id="reference-transcript"
+                          value={referenceTranscript}
+                          onChange={(event) => {
+                            setReferenceTranscript(event.target.value);
+                            if (!transcriptSegmentKey) {
+                              setTranscriptSegmentKey(currentSegmentKey);
+                            }
+                          }}
+                          onFocus={() => {
+                            if (!transcriptSegmentKey) {
+                              setTranscriptSegmentKey(currentSegmentKey);
+                            }
+                          }}
+                          placeholder={t("voiceLab.referenceTranscriptPlaceholder")}
+                          className="mt-2 min-h-20 w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary"
+                        />
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          {t("voiceLab.referenceTranscriptHelper", {
+                            start: selectedStart.toFixed(1),
+                            end: selectedEnd.toFixed(1),
+                          })}
+                        </p>
+                        {!referenceTextUsedForEnrollment && (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {t("voiceLab.referenceTranscriptV3Note")}
+                          </p>
+                        )}
+                        {transcriptNeedsReview && referenceTranscript && (
+                          <p
+                            role="status"
+                            className="mt-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-[11px] font-semibold text-amber-700 dark:text-amber-400"
+                          >
+                            {t("voiceLab.referenceTranscriptReviewWarning")}
+                          </p>
+                        )}
+                        {transcriptRequired &&
+                          !referenceTranscript.trim() && (
+                            <p
+                              role="alert"
+                              className="mt-2 text-[11px] font-semibold text-destructive"
+                            >
+                              {t("voiceLab.referenceTranscriptRequiredValidation")}
+                            </p>
+                          )}
+                      </div>
+                    )}
+
                     {analysis?.warnings.map((warning) => (
                       <p
                         key={warning}
@@ -744,7 +824,7 @@ export function VieneuPage({
                     cloneAnalysis &&
                     cloneMutation.mutate({
                       file,
-                      displayName: voiceName,
+                      transcript: referenceTranscript,
                       consentGiven: consent,
                       analysis: cloneAnalysis,
                       startSeconds: selectedStart,
@@ -759,6 +839,7 @@ export function VieneuPage({
                     !cloneAnalysis ||
                     !voiceName.trim() ||
                     !consent ||
+                    (transcriptRequired && !referenceTranscript.trim()) ||
                     cloneMutation.isPending
                   }
                   className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-opacity disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
@@ -853,7 +934,9 @@ export function VieneuPage({
                     {t("voiceLab.referenceTranscriptLabel")}
                   </span>
                   <span className="max-w-40 truncate text-xs text-muted-foreground">
-                    {t("voiceLab.transcriptPlaceholderAuto")}
+                    {(referenceTranscript.trim() || profile?.transcript)
+                      ? (referenceTranscript.trim() || profile?.transcript || "")
+                      : t("voiceLab.transcriptPlaceholderAuto")}
                   </span>
                 </div>
 

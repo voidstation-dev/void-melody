@@ -10,6 +10,7 @@ export async function analyzeVoiceSample(file: File): Promise<VoiceAnalysis> {
 export async function cloneVoiceProfile({
   file,
   displayName,
+  transcript,
   consentGiven,
   analysis,
   startSeconds,
@@ -19,6 +20,7 @@ export async function cloneVoiceProfile({
 }: {
   file: File
   displayName: string
+  transcript?: string
   consentGiven: boolean
   analysis?: VoiceAnalysis | null
   startSeconds?: number | null
@@ -28,7 +30,7 @@ export async function cloneVoiceProfile({
 }): Promise<CustomVoice> {
   const form = new FormData()
   form.append("audio_file", file)
-  form.append("transcript", "")
+  form.append("transcript", (transcript ?? "").trim())
   form.append("display_name", displayName)
   form.append("consent_given", String(consentGiven))
   

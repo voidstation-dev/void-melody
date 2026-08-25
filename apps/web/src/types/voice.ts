@@ -29,7 +29,10 @@ export type VoiceCapabilities = {
   clone_frontend_available?: boolean
   speaker_encoder_artifact_available?: boolean
   denoiser_artifact_available?: boolean
-  codec_encoder_artifact_available?: boolean
+  reference_text_policy?: "ignored" | "optional" | "required"
+  reference_text_used_for_enrollment?: boolean
+  reference_min_seconds?: number
+  reference_max_seconds?: number
   reason_code: string | null
   reason: string | null
 }

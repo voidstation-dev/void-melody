@@ -385,6 +385,16 @@ export type TranslationSchema = {
     loadingAudioFile: string;
     reloadAudioPlayer: string;
     downloadAudioFiles: string;
+    referenceTranscriptLabel: string;
+    referenceTranscriptOptional: string;
+    referenceTranscriptRequired: string;
+    referenceTranscriptHelper: string;
+    referenceTranscriptV3Note: string;
+    referenceTranscriptPlaceholder: string;
+    referenceTranscriptReviewWarning: string;
+    referenceTranscriptRequiredValidation: string;
+    transcriptPlaceholderAuto: string;
+    selectedDurationLabel: string;
     synthesizing: string;
   };
   voices: {

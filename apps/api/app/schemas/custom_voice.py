@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
+from typing import Literal
 
 
 class CustomVoiceResponse(BaseModel):
@@ -54,6 +55,10 @@ class VoiceCapabilitiesResponse(BaseModel):
     speaker_encoder_artifact_available: bool = False
     denoiser_artifact_available: bool = False
     codec_encoder_artifact_available: bool = False
+    reference_text_policy: Literal["ignored", "optional", "required"] = "optional"
+    reference_text_used_for_enrollment: bool = False
+    reference_min_seconds: float = 3.0
+    reference_max_seconds: float = 8.0
     reason_code: str | None
     reason: str | None
 

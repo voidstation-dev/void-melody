@@ -55,6 +55,14 @@ class RuntimeCapabilities:
     speaker_encoder_artifact_available: bool = False
     denoiser_artifact_available: bool = False
     codec_encoder_artifact_available: bool = False
+    # Reference-text capability policy (engine-aware, V4-ready).
+    # ignored  → engine does not consume reference text; UI may hide the field.
+    # optional → profile may store reference text; enrollment can proceed without it.
+    # required → enrollment cannot proceed without valid reference text.
+    reference_text_policy: str = "optional"
+    reference_text_used_for_enrollment: bool = False
+    reference_min_seconds: float = 3.0
+    reference_max_seconds: float = 8.0
     reason_code: str | None = None
     reason: str | None = None
 
