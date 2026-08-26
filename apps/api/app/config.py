@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     capcut_chunk_concurrency: int = 2
     vieneu_job_concurrency: int = 1
     vieneu_chunk_concurrency: int = 1
+    omnivoice_job_concurrency: int = 1
+    omnivoice_chunk_concurrency: int = 1
+    omnivoice_inference_timeout_seconds: float = 180.0
     vieneu_macro_planner_enabled: bool = True
     vieneu_macro_target_chars: int = 1024
     vieneu_macro_hard_max_chars: int = 1280

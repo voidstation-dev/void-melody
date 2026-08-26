@@ -57,9 +57,9 @@ def _make_zip(path: Path, entrypoint: str = "worker.py") -> Path:
 
 
 class TestManifests:
-    def test_known_manifests_return_both_packs(self):
+    def test_known_manifests_return_all_packs(self):
         manifests = known_manifests()
-        assert set(manifests.keys()) == {"vieneu", "speech"}
+        assert set(manifests.keys()) == {"vieneu", "speech", "omnivoice"}
 
     def test_manifests_have_protocol_version(self):
         for m in known_manifests().values():
@@ -68,6 +68,7 @@ class TestManifests:
     def test_is_known_runtime(self):
         assert is_known_runtime("vieneu")
         assert is_known_runtime("speech")
+        assert is_known_runtime("omnivoice")
         assert not is_known_runtime("unknown")
 
     def test_get_manifest_unknown_returns_none(self):
@@ -238,12 +239,13 @@ class TestService:
         with pytest.raises(Exception, match="Unknown runtime"):
             svc.status("unknown")
 
-    def test_list_statuses_returns_both(self, tmp_path: Path):
+    def test_list_statuses_returns_all(self, tmp_path: Path):
         svc = RuntimeManagerService(data_dir=tmp_path)
         statuses = svc.list_statuses()
         ids = [s.runtime_id for s in statuses]
         assert "vieneu" in ids
         assert "speech" in ids
+        assert "omnivoice" in ids
 
     def test_install_with_zip(self, tmp_path: Path):
         svc = RuntimeManagerService(data_dir=tmp_path)

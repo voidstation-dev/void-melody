@@ -68,6 +68,7 @@ def known_manifests() -> dict[str, RuntimeManifest]:
     return {
         "vieneu": _blank_manifest("vieneu", "0.1.0"),
         "speech": _blank_manifest("speech", "0.1.0"),
+        "omnivoice": _blank_manifest("omnivoice", "0.2.1"),
     }
 
 

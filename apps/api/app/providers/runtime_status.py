@@ -76,18 +76,49 @@ def get_provider_runtime_status(provider_id: str) -> ProviderRuntimeStatus:
             )
 
     if provider_id == OMNIVOICE:
-        # Prior to O3 installer implementation, the optional OmniVoice runtime and weights
-        # are not installed. Source files in the repository and unverified manifests
-        # must never be reported as an installed/ready runtime.
+        from app.services.omnivoice_model_service import omnivoice_model_service
+        from app.services.runtime_manager import RuntimeManagerService
+        from app.services.runtime_manager.models import RuntimeStatus
+
+        runtime_svc = RuntimeManagerService()
+        runtime_state = runtime_svc.status(OMNIVOICE)
+        model_state = omnivoice_model_service.status()
+
+        installed = runtime_state.status != RuntimeStatus.missing
+        available = runtime_state.status == RuntimeStatus.ready
+        model_installed = model_state.installed
+        model_loaded = model_state.loaded
+
+        if not installed:
+            status = "not_installed"
+            reason_code = "OMNI_RUNTIME_NOT_INSTALLED"
+            reason = "OmniVoice optional runtime is not installed."
+        elif runtime_state.status == RuntimeStatus.error:
+            status = "broken"
+            reason_code = "OMNI_RUNTIME_BROKEN"
+            reason = runtime_state.error or "OmniVoice runtime is broken."
+        elif not model_installed:
+            status = "not_installed"
+            reason_code = "OMNI_MODEL_NOT_INSTALLED"
+            reason = "OmniVoice runtime is installed but G-OmniVoice model is missing."
+        elif not available:
+            status = "broken"
+            reason_code = "OMNI_RUNTIME_BROKEN"
+            reason = "OmniVoice runtime is installed but not ready."
+        else:
+            status = "ready"
+            reason_code = None
+            reason = None
+
         return ProviderRuntimeStatus(
             provider_id=OMNIVOICE,
-            installed=False,
-            available=False,
-            model_installed=False,
-            model_loaded=False,
-            status="not_installed",
-            reason_code="OMNI_RUNTIME_NOT_INSTALLED",
-            reason="OmniVoice optional runtime and weights are not installed. Install via Settings.",
+            installed=installed,
+            available=available,
+            model_installed=model_installed,
+            model_loaded=model_loaded,
+            status=status,
+            reason_code=reason_code,
+            reason=reason,
         )
 
     return ProviderRuntimeStatus(

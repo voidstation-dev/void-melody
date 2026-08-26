@@ -11,7 +11,7 @@ from app.providers.capcut_provider import CapCutProvider
 from app.providers.vieneu_provider import VieneuProvider
 from app.scheduler.cancellation import cancellation_registry
 from app.scheduler.lanes import ExecutionLane
-from app.scheduler.policies import ProviderExecutionPolicy
+from app.scheduler.policies import ProviderExecutionPolicy, select_execution_lane
 from app.services.job_recovery import requeue_interrupted_job
 from app.services.provider_circuit_breaker import ProviderCircuitBreaker
 from app.workers.tts_worker import execute_tts_job_step
@@ -82,6 +82,16 @@ class TTSQueueManager:
                 worker_executor=self._execute_tts_job,
                 shutdown_grace_seconds=self.shutdown_grace_seconds,
             )
+            self.lanes["omnivoice"] = ExecutionLane(
+                name="omnivoice",
+                policy=ProviderExecutionPolicy(
+                    "omnivoice",
+                    settings.omnivoice_job_concurrency,
+                    settings.omnivoice_chunk_concurrency,
+                ),
+                worker_executor=self._execute_tts_job,
+                shutdown_grace_seconds=self.shutdown_grace_seconds,
+            )
 
         self._accepting_jobs = False
 
@@ -145,14 +155,12 @@ class TTSQueueManager:
         if not self.accepting_jobs:
             raise RuntimeError("Queue manager is not accepting jobs")
 
-        lane_name = "capcut"
-        if provider_id and provider_id in self.lanes:
-            lane_name = provider_id
+        lane = select_execution_lane(self.lanes, provider_id)
 
         # Register in-memory cancellation
         await cancellation_registry.register(job_id)
 
-        return await self.lanes[lane_name].enqueue(job_id, batch_position=batch_position)
+        return await lane.enqueue(job_id, batch_position=batch_position)
 
     async def enqueue_after(
         self,
@@ -162,11 +170,8 @@ class TTSQueueManager:
         batch_position: int = 0,
         provider_id: str | None = None,
     ) -> None:
-        lane_name = "capcut"
-        if provider_id and provider_id in self.lanes:
-            lane_name = provider_id
-
-        await self.lanes[lane_name].enqueue_after(
+        lane = select_execution_lane(self.lanes, provider_id)
+        await lane.enqueue_after(
             job_id,
             delay_seconds=delay_seconds,
             batch_position=batch_position,

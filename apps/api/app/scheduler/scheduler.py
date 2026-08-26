@@ -13,7 +13,11 @@ from app.providers.capcut_provider import CapCutProvider
 from app.providers.vieneu_provider import VieneuProvider
 from app.scheduler.cancellation import cancellation_registry
 from app.scheduler.lanes import ExecutionLane
-from app.scheduler.policies import ProviderExecutionPolicy, get_default_policies
+from app.scheduler.policies import (
+    ProviderExecutionPolicy,
+    get_default_policies,
+    select_execution_lane,
+)
 from app.services.provider_circuit_breaker import ProviderCircuitBreaker
 from app.workers.tts_worker import execute_tts_job_step
 
@@ -65,6 +69,19 @@ class UnifiedScheduler:
                 policy=self.policies.get(
                     "vieneu",
                     ProviderExecutionPolicy("vieneu", settings.vieneu_job_concurrency, settings.vieneu_chunk_concurrency),
+                ),
+                worker_executor=self._execute_tts_job,
+                shutdown_grace_seconds=self.shutdown_grace_seconds,
+            ),
+            "omnivoice": ExecutionLane(
+                name="omnivoice",
+                policy=self.policies.get(
+                    "omnivoice",
+                    ProviderExecutionPolicy(
+                        "omnivoice",
+                        settings.omnivoice_job_concurrency,
+                        settings.omnivoice_chunk_concurrency,
+                    ),
                 ),
                 worker_executor=self._execute_tts_job,
                 shutdown_grace_seconds=self.shutdown_grace_seconds,
@@ -135,8 +152,7 @@ class UnifiedScheduler:
                 if job:
                     resolved_provider = job.provider_id
 
-        lane_name = resolved_provider if resolved_provider in self.lanes else "capcut"
-        lane = self.lanes[lane_name]
+        lane = select_execution_lane(self.lanes, resolved_provider)
 
         # Register in-memory cancellation event
         await cancellation_registry.register(job_id)
@@ -151,8 +167,7 @@ class UnifiedScheduler:
         batch_position: int = 0,
         provider_id: str | None = None,
     ) -> None:
-        lane_name = provider_id if provider_id in self.lanes else "capcut"
-        lane = self.lanes[lane_name]
+        lane = select_execution_lane(self.lanes, provider_id)
         await lane.enqueue_after(
             job_id,
             delay_seconds=delay_seconds,
