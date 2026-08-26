@@ -75,6 +75,33 @@ async def test_omitted_provider_keeps_capcut_default():
 
 
 @pytest.mark.asyncio
+async def test_omnivoice_enqueue_uses_only_omnivoice_lane():
+    manager = TTSQueueManager(provider_registry={"capcut": object()})
+    manager.accepting_jobs = True
+
+    assert await manager.enqueue("job-omni", provider_id="omnivoice") is True
+    assert manager.lanes["omnivoice"].queue.qsize() == 1
+    assert manager.lanes["capcut"].queue.empty()
+    assert manager.lanes["vieneu"].queue.empty()
+
+
+@pytest.mark.asyncio
+async def test_omnivoice_delayed_retry_stays_in_omnivoice_lane():
+    manager = TTSQueueManager(provider_registry={"capcut": object()})
+    manager.accepting_jobs = True
+
+    await manager.enqueue_after(
+        "job-omni-retry", delay_seconds=0, provider_id="omnivoice"
+    )
+    async with asyncio.timeout(1):
+        while manager.lanes["omnivoice"].queue.empty():
+            await asyncio.sleep(0)
+
+    assert manager.lanes["omnivoice"].queue.qsize() == 1
+    assert manager.lanes["capcut"].queue.empty()
+
+
+@pytest.mark.asyncio
 async def test_queue_workers_share_provider_registry(monkeypatch):
 
     provider = {"capcut": object()}

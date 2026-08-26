@@ -52,6 +52,12 @@ def get_default_policies() -> dict[str, ProviderExecutionPolicy]:
             chunk_concurrency=settings.vieneu_chunk_concurrency,
             cache_enabled=settings.audio_cache_enabled,
         ),
+        "omnivoice": ProviderExecutionPolicy(
+            provider_id="omnivoice",
+            job_concurrency=settings.omnivoice_job_concurrency,
+            chunk_concurrency=settings.omnivoice_chunk_concurrency,
+            cache_enabled=settings.audio_cache_enabled,
+        ),
         "script": ProviderExecutionPolicy(
             provider_id="script",
             job_concurrency=1,

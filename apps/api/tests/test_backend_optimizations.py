@@ -17,22 +17,37 @@ from app.models.tts_job import TTSJobModel
 from app.scheduler.cancellation import cancellation_registry
 from app.scheduler.lanes import ExecutionLane
 from app.scheduler.policies import ProviderExecutionPolicy
+from app.scheduler.policies import get_default_policies
 from app.scheduler.scheduler import UnifiedScheduler
 from app.services.tts_service import create_tts_jobs_batch, list_jobs
 from app.services.voice_resolver import invalidate_voice_cache, resolve_voice
 
 
+def test_default_scheduler_configures_isolated_omnivoice_lane():
+    policy = get_default_policies()["omnivoice"]
+    scheduler = UnifiedScheduler(provider_registry={"capcut": object()})
+
+    assert policy.job_concurrency == 1
+    assert policy.chunk_concurrency == 1
+    assert scheduler.lanes["omnivoice"].policy == policy
+
+
 @pytest.mark.asyncio
 async def test_scheduler_lane_isolation():
-    """Verify that a slow VieNeu task does not block CapCut tasks in isolated lanes."""
+    """Slow local providers must not block jobs in other provider lanes."""
     capcut_started = []
     vieneu_started = []
+    omnivoice_started = []
     vieneu_blocker = asyncio.Event()
+    omnivoice_blocker = asyncio.Event()
 
     async def execute_job(job_id: str, worker_id: int):
         if "vieneu" in job_id:
             vieneu_started.append(job_id)
             await vieneu_blocker.wait()
+        elif "omnivoice" in job_id:
+            omnivoice_started.append(job_id)
+            await omnivoice_blocker.wait()
         else:
             capcut_started.append(job_id)
 
@@ -47,13 +62,20 @@ async def test_scheduler_lane_isolation():
         policy=ProviderExecutionPolicy("vieneu", 1, 1),
         worker_executor=execute_job,
     )
+    scheduler.lanes["omnivoice"] = ExecutionLane(
+        name="omnivoice",
+        policy=ProviderExecutionPolicy("omnivoice", 1, 1),
+        worker_executor=execute_job,
+    )
 
     await scheduler.start()
     try:
         # Enqueue slow vieneu job first
         await scheduler.enqueue("job-vieneu-1", provider_id="vieneu")
+        await scheduler.enqueue("job-omnivoice-1", provider_id="omnivoice")
         await asyncio.sleep(0.02)
         assert len(vieneu_started) == 1
+        assert len(omnivoice_started) == 1
 
         # Enqueue multiple capcut jobs
         await scheduler.enqueue("job-capcut-1", provider_id="capcut")
@@ -66,6 +88,7 @@ async def test_scheduler_lane_isolation():
         assert "job-capcut-2" in capcut_started
     finally:
         vieneu_blocker.set()
+        omnivoice_blocker.set()
         await scheduler.stop()
 
 

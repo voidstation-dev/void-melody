@@ -73,6 +73,19 @@ class UnifiedScheduler:
                 worker_executor=self._execute_tts_job,
                 shutdown_grace_seconds=self.shutdown_grace_seconds,
             ),
+            "omnivoice": ExecutionLane(
+                name="omnivoice",
+                policy=self.policies.get(
+                    "omnivoice",
+                    ProviderExecutionPolicy(
+                        "omnivoice",
+                        settings.omnivoice_job_concurrency,
+                        settings.omnivoice_chunk_concurrency,
+                    ),
+                ),
+                worker_executor=self._execute_tts_job,
+                shutdown_grace_seconds=self.shutdown_grace_seconds,
+            ),
         }
 
         self.accepting_jobs = False

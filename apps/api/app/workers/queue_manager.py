@@ -82,6 +82,16 @@ class TTSQueueManager:
                 worker_executor=self._execute_tts_job,
                 shutdown_grace_seconds=self.shutdown_grace_seconds,
             )
+            self.lanes["omnivoice"] = ExecutionLane(
+                name="omnivoice",
+                policy=ProviderExecutionPolicy(
+                    "omnivoice",
+                    settings.omnivoice_job_concurrency,
+                    settings.omnivoice_chunk_concurrency,
+                ),
+                worker_executor=self._execute_tts_job,
+                shutdown_grace_seconds=self.shutdown_grace_seconds,
+            )
 
         self._accepting_jobs = False
 
