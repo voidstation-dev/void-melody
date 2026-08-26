@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from app.scheduler.policies import ProviderRoutingError
 from app.workers.queue_manager import TTSQueueManager
 
 
@@ -48,6 +49,29 @@ async def test_duplicate_enqueue_is_ignored():
     assert results.count(True) == 1
     assert results.count(False) == 2
     assert manager.queue.qsize() == 1
+
+
+@pytest.mark.asyncio
+async def test_explicit_unknown_provider_does_not_fall_back_to_capcut():
+    manager = TTSQueueManager(concurrency=1)
+    manager.accepting_jobs = True
+
+    with pytest.raises(ProviderRoutingError) as exc_info:
+        await manager.enqueue("job-unknown", provider_id="unknown")
+
+    assert exc_info.value.code == "PROVIDER_LANE_NOT_CONFIGURED"
+    assert manager.queue.empty()
+
+
+@pytest.mark.asyncio
+async def test_omitted_provider_keeps_capcut_default():
+    manager = TTSQueueManager(concurrency=1)
+    manager.accepting_jobs = True
+
+    assert await manager.enqueue("job-default") is True
+    _, _, job_id = await manager.queue.get()
+    assert job_id == "job-default"
+    manager.queue.task_done()
 
 
 @pytest.mark.asyncio
