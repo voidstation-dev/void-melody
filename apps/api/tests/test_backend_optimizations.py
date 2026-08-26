@@ -159,12 +159,17 @@ async def test_single_transaction_batch_creation(tmp_path: Path):
             session=session,
             items=[
                 {"text": "Sentence 1", "voice_type": "bv001", "provider_id": "capcut"},
-                {"text": "Sentence 2", "voice_type": "bv001", "provider_id": "capcut"},
-                {"text": "Sentence 3", "voice_type": "bv001", "provider_id": "capcut"},
+                {"text": "Sentence 2", "voice_type": "vieneu-voice", "provider_id": "vieneu"},
+                {"text": "Sentence 3", "voice_type": "omni-voice", "provider_id": "omnivoice"},
             ],
             batch_id="test-batch-123",
         )
         assert len(created_jobs) == 3
+        assert [job.provider_id for job in created_jobs] == [
+            "capcut",
+            "vieneu",
+            "omnivoice",
+        ]
         for idx, job in enumerate(created_jobs):
             assert job.batch_id == "test-batch-123"
             assert job.batch_position == idx

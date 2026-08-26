@@ -23,6 +23,7 @@ from app.media.pipeline import concat_audio_parts, probe_audio_duration, transco
 from app.models.tts_job import TTSJobModel
 from app.providers.capcut_provider import CapCutProvider
 from app.scheduler.cancellation import cancellation_registry
+from app.scheduler.policies import get_default_policies
 from app.services.audio_cleanup import cleanup_job_artifacts
 from app.services.audio_storage import download_audio, validate_audio_file
 from app.services.chunk_executor import (
@@ -212,12 +213,6 @@ async def execute_tts_job_step(
             return
 
         timings.provider = job.provider_id
-        active_provider = None
-        if provider_registry:
-            active_provider = provider_registry.get(job.provider_id)
-        if not active_provider:
-            active_provider = CapCutProvider(catalog_path=settings.capcut_catalog_path)
-
         chunk_results: list[ChunkResult] = []
         cached_fingerprints: list[str] = []
         new_cache_entries: list[dict[str, Any]] = []
@@ -241,6 +236,18 @@ async def execute_tts_job_step(
         )
 
         try:
+            active_provider = (
+                CapCutProvider(catalog_path=settings.capcut_catalog_path)
+                if provider_registry is None and job.provider_id == "capcut"
+                else (provider_registry or {}).get(job.provider_id)
+            )
+            if active_provider is None:
+                raise TTSJobError(
+                    code="PROVIDER_NOT_CONFIGURED",
+                    message=f"Provider '{job.provider_id}' is not configured.",
+                    retryable=False,
+                )
+
             # Resolve voice metadata once per job to snapshot PreparedVoice & embeddings
             prepared_voice: PreparedVoice | None = None
             resolved_ref_audio: str | None = None
@@ -322,12 +329,7 @@ async def execute_tts_job_step(
                     return True
                 return job.cancel_requested
 
-            # Determine chunk concurrency from lane policy
-            chunk_conc = (
-                settings.vieneu_chunk_concurrency
-                if job.provider_id == "vieneu"
-                else settings.capcut_chunk_concurrency
-            )
+            chunk_conc = get_default_policies()[job.provider_id].chunk_concurrency
 
             completed = 0
             async for result in execute_chunks_bounded(

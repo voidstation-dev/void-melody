@@ -1,7 +1,7 @@
 import asyncio
 import threading
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import requests
@@ -13,6 +13,39 @@ from app.exceptions import TTSJobError
 from app.models.tts_job import TTSJobModel
 from app.providers.base import ProviderResult
 from app.workers.tts_worker import combine_audio_parts, execute_tts_job_step
+
+
+@pytest.mark.asyncio
+async def test_omnivoice_job_never_falls_back_to_capcut(
+    async_session_factory,
+    monkeypatch,
+):
+    async with async_session_factory() as session:
+        job = TTSJobModel(
+            text="hello",
+            text_hash="omni-no-fallback",
+            voice_type="omni-voice",
+            voice_display_name="Omni voice",
+            language_code="vi-VN",
+            provider_id="omnivoice",
+            status="queued",
+        )
+        session.add(job)
+        await session.commit()
+        job_id = job.id
+
+    capcut = MagicMock(side_effect=AssertionError("CapCut fallback used"))
+    monkeypatch.setattr("app.workers.tts_worker.AsyncSessionLocal", async_session_factory)
+    monkeypatch.setattr("app.workers.tts_worker.CapCutProvider", capcut)
+
+    await execute_tts_job_step(job_id, provider_registry={})
+
+    async with async_session_factory() as session:
+        reloaded = await session.get(TTSJobModel, job_id)
+        assert reloaded is not None
+        assert reloaded.status == "failed"
+        assert reloaded.error_code == "PROVIDER_NOT_CONFIGURED"
+    capcut.assert_not_called()
 
 
 class ConcatProcess:
@@ -73,6 +106,45 @@ class ConcurrentFakeProvider:
             raw_response={"audio_url": "https://cdn.example/audio.mp3"},
             audio_urls=["https://cdn.example/audio.mp3"],
         )
+
+
+@pytest.mark.asyncio
+async def test_omnivoice_job_uses_omnivoice_chunk_concurrency(
+    async_session_factory,
+    tmp_path,
+    monkeypatch,
+):
+    async with async_session_factory() as session:
+        job = TTSJobModel(
+            text="first. second.",
+            text_hash="omni-chunk-concurrency",
+            voice_type="omni-voice",
+            voice_display_name="Omni voice",
+            language_code="vi-VN",
+            provider_id="omnivoice",
+            status="queued",
+        )
+        session.add(job)
+        await session.commit()
+        job_id = job.id
+
+    observed_concurrency: list[int] = []
+
+    async def capture_chunks(chunks, *, concurrency, process_chunk, is_cancelled):
+        observed_concurrency.append(concurrency)
+        if False:
+            yield None
+
+    monkeypatch.setattr("app.workers.tts_worker.AsyncSessionLocal", async_session_factory)
+    monkeypatch.setattr("app.workers.tts_worker.execute_chunks_bounded", capture_chunks)
+    monkeypatch.setattr(settings, "audio_storage_dir", tmp_path)
+
+    await execute_tts_job_step(
+        job_id,
+        provider_registry={"omnivoice": ConcurrentFakeProvider()},
+    )
+
+    assert observed_concurrency == [1]
 
 
 @pytest.mark.asyncio
