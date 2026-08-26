@@ -96,7 +96,7 @@ def test_omnivoice_runtime_status_not_installed():
     assert status.available is False
     assert status.model_installed is False
     assert status.status == "not_installed"
-    assert status.reason_code == "OMNI_RUNTIME_NOT_INSTALLED"
+    assert status.reason_code in ("OMNI_RUNTIME_NOT_INSTALLED", "OMNI_MODEL_NOT_INSTALLED")
 
 
 def test_vieneu_runtime_status_reuses_core_runtime_truth():

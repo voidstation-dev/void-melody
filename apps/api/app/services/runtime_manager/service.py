@@ -48,7 +48,7 @@ class RuntimeManagerService:
         return state
 
     def list_statuses(self) -> list[RuntimeState]:
-        return [self.status(rid) for rid in ("vieneu", "speech")]
+        return [self.status(rid) for rid in ("vieneu", "speech", "omnivoice")]
 
     # ---- install ----
 

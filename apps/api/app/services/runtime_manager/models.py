@@ -17,7 +17,7 @@ class RuntimeStatus(str, Enum):
     update_required = "update_required"
 
 
-KNOWN_RUNTIME_IDS = ("vieneu", "speech")
+KNOWN_RUNTIME_IDS = ("vieneu", "speech", "omnivoice")
 PROTOCOL_VERSION = 1
 
 
