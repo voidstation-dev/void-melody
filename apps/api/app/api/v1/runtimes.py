@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, status
 
 from app.config import settings
+from app.services.plan_enforcement import check_request_feature
 from app.services.runtime_manager import RuntimeManagerService
 from app.services.runtime_manager.models import RuntimeManagerError
 from app.services.runtime_manager.manifests import KNOWN_RUNTIME_IDS
@@ -42,12 +43,16 @@ async def runtime_status(runtime_id: str):
 
 
 @router.post("/runtimes/{runtime_id}/install")
-async def install_runtime(runtime_id: str, file: UploadFile = File(...)):  # noqa: B008
+async def install_runtime(
+    runtime_id: str,
+    file: UploadFile = File(...),  # noqa: B008
+    request: Request = None,  # noqa: B008
+):
     """Install a runtime pack from an uploaded ZIP.
 
-    Downloads are not fetched from a remote URL yet — callers upload the
-    trusted, SHA-256-verified pack ZIP directly.
+    Requires the runtime_install plan feature.
     """
+    check_request_feature(request, "runtime_install")
     try:
         tmp_dir = settings.custom_voices_dir / ".runtime-uploads"
         tmp_dir.mkdir(parents=True, exist_ok=True)

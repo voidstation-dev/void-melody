@@ -60,8 +60,11 @@ async def process_chunk(
     new_cache_entries: list[dict[str, Any]] | None = None,
     cached_fingerprints: list[str] | None = None,
 ) -> ChunkResult:
-    is_vieneu = (job.provider_id == "vieneu")
-    ext = ".wav" if (is_vieneu and settings.vieneu_lossless_internal_enabled) else ".mp3"
+    # Provider-aware destination extension and mime type
+    provider_descriptor = get_default_policies().get(job.provider_id)
+    provider_sample_rate = provider_descriptor.sample_rate if provider_descriptor else None
+    is_local_wav = job.provider_id in ("vieneu", "omnivoice")
+    ext = ".wav" if is_local_wav else ".mp3"
     destination = settings.audio_storage_dir / f"{job.id}_part{index}{ext}"
     destination.parent.mkdir(parents=True, exist_ok=True)
 
@@ -111,7 +114,7 @@ async def process_chunk(
             "rate": job.rate,
             "style": job.style,
         }
-        if is_vieneu:
+        if job.provider_id == "vieneu":
             synth_kwargs.update({
                 "prepared_voice": job.prepared_voice,
                 "speaker_emb": job.speaker_emb,
@@ -121,8 +124,10 @@ async def process_chunk(
                 "ref_audio": job.reference_audio_path if job.speaker_emb is None else None,
                 "destination_path": destination,
             })
+        else:
+            synth_kwargs["destination_path"] = destination
 
-        with timings.measure("vieneu_infer_ms" if is_vieneu else "provider_ms") if timings else _null_context():
+        with timings.measure("vieneu_infer_ms" if job.provider_id == "vieneu" else "provider_ms") if timings else _null_context():
             result = await provider.synthesize(**synth_kwargs)
     except Exception as exc:
         raise map_provider_error(exc) from exc
@@ -139,7 +144,7 @@ async def process_chunk(
             local_src = Path(result.local_paths[0])
             if local_src != destination:
                 await asyncio.to_thread(shutil.move, str(local_src), str(destination))
-            mime_type = "audio/wav" if ext == ".wav" else "audio/mpeg"
+            mime_type = result.mime_type or ("audio/wav" if ext == ".wav" else "audio/mpeg")
             size = destination.stat().st_size
         else:
             mime_type, size = await download_audio(
@@ -188,13 +193,14 @@ async def combine_audio_parts(
     parts: list[Path],
     destination: Path,
     rate: float = 1.0,
+    output_format: str = "mp3",
 ) -> None:
     """Backwards-compatible wrapper delegating to central media pipeline."""
     await concat_audio_parts(
         parts=parts,
         destination=destination,
         rate=rate,
-        output_format="mp3",
+        output_format=output_format,
     )
 
 
@@ -217,7 +223,6 @@ async def execute_tts_job_step(
         cached_fingerprints: list[str] = []
         new_cache_entries: list[dict[str, Any]] = []
 
-        is_vieneu = (job.provider_id == "vieneu")
         output_format = job.export_format if job.export_format in {"wav", "mp3"} else "mp3"
         final_destination = settings.audio_storage_dir / f"{job.id}.{output_format}"
 
@@ -272,8 +277,8 @@ async def execute_tts_job_step(
                 except Exception:
                     logger.debug("Voice resolution snapshot skipped for preset: %s", job.voice_type)
 
-            # Route text chunking: VieNeu Macro Planner vs CapCut 450-char splitter
-            if is_vieneu and settings.vieneu_macro_planner_enabled:
+            # Route text chunking: VieNeu Macro Planner vs generic 450-char splitter
+            if job.provider_id == "vieneu" and settings.vieneu_macro_planner_enabled:
                 chunks = plan_vieneu_macro_chunks(
                     job.text,
                     target_chars=settings.vieneu_macro_target_chars,
@@ -355,6 +360,7 @@ async def execute_tts_job_step(
                     parts=part_paths,
                     destination=final_destination,
                     rate=(job.rate if settings.tts_apply_rate_with_ffmpeg else 1.0),
+                    output_format=output_format,
                 )
 
             mime = "audio/wav" if output_format == "wav" else "audio/mpeg"

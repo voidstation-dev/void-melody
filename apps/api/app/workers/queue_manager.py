@@ -8,6 +8,7 @@ from typing import Any
 
 from app.config import settings
 from app.providers.capcut_provider import CapCutProvider
+from app.providers.omnivoice_provider import OmniVoiceProvider
 from app.providers.vieneu_provider import VieneuProvider
 from app.scheduler.cancellation import cancellation_registry
 from app.scheduler.lanes import ExecutionLane
@@ -42,6 +43,7 @@ class TTSQueueManager:
                 circuit_breaker=self.circuit_breaker,
             ),
             "vieneu": VieneuProvider(),
+            "omnivoice": OmniVoiceProvider(),
         }
         self.shutdown_grace_seconds = (
             settings.tts_queue_shutdown_grace_seconds

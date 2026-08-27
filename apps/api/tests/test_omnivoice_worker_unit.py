@@ -190,10 +190,14 @@ def test_non_object_params_has_stable_error():
 
 
 @pytest.mark.asyncio
-async def test_repeated_timeout_restart_does_not_leak_tasks(tmp_path: Path):
+async def test_repeated_timeout_restart_does_not_leak_tasks(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
     """PR18-F15: Repeated timeout and recovery cleanly reaps processes and does not leak tasks."""
     client = OmniVoiceRuntimeClient(mock_mode=True)
     try:
+        monkeypatch.setenv("VOID_OMNI_ALLOWED_ROOTS", str(tmp_path))
         out_wav = tmp_path / "timeout_leak_test.wav"
         request = OmniSynthesisRequest(
             text="Simulated slow generation",

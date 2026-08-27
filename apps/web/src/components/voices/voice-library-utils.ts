@@ -1,7 +1,7 @@
 import { CustomVoice, Voice } from "@/types/voice"
 
 export type VoiceLibraryTab = "all" | "preset" | "custom"
-export type VoiceFilterValue = "all" | string
+type VoiceFilterValue = "all" | string
 
 type FilterableVoice = Pick<Voice, "displayName" | "voiceType" | "languageCode" | "gender" | "region" | "style" | "description"> & {
   providerId?: string | null

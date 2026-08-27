@@ -112,7 +112,11 @@ async def test_render_preflight_creates_script_segments_without_tts_jobs(async_s
                 },
             )
             script_id = created.json()["id"]
-            render = await client.post(f"/api/v1/scripts/{script_id}/renders", json={"scope": "stale", "output_format": "mp3"})
+            render = await client.post(
+                f"/api/v1/scripts/{script_id}/renders",
+                json={"scope": "stale", "output_format": "mp3"},
+                headers={"X-License-Key": "dev"},
+            )
 
         assert render.status_code == 201
         payload = render.json()

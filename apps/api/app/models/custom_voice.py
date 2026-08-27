@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -58,6 +58,12 @@ class CustomVoiceModel(Base):
     speaker_similarity_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     calibration_quality_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     enrollment_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # License tracking
+    license_entitlement_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("license_entitlements.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now

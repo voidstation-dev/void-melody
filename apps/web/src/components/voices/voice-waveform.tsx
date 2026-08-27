@@ -1,5 +1,5 @@
 type VoiceWaveformProps = {
-  accent?: "coral" | "muted"
+  accent?: "coral" | "muted" | "amber"
 }
 
 const BAR_HEIGHTS = [8, 14, 23, 12, 17, 10, 26, 15, 9, 13, 12, 8, 20, 10, 15, 24, 12, 18, 9, 13, 22, 11, 16, 8]
@@ -14,7 +14,14 @@ export function VoiceWaveform({ accent = "muted" }: VoiceWaveformProps) {
           className="w-[3px] rounded-full"
           style={{
             height,
-            backgroundColor: accent === "coral" && index % 5 === 0 ? "#df604e" : "#d7d6d3",
+            backgroundColor:
+              index % 5 === 0
+                ? accent === "coral"
+                  ? "#df604e"
+                  : accent === "amber"
+                    ? "#f59e0b"
+                    : "#d7d6d3"
+                : "#d7d6d3",
           }}
         />
       ))}

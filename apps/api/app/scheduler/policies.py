@@ -36,6 +36,7 @@ class ProviderExecutionPolicy:
     job_concurrency: int
     chunk_concurrency: int
     cache_enabled: bool = True
+    sample_rate: int | None = None
 
 
 def get_default_policies() -> dict[str, ProviderExecutionPolicy]:
@@ -45,23 +46,27 @@ def get_default_policies() -> dict[str, ProviderExecutionPolicy]:
             job_concurrency=settings.capcut_job_concurrency,
             chunk_concurrency=settings.capcut_chunk_concurrency,
             cache_enabled=settings.audio_cache_enabled,
+            sample_rate=None,
         ),
         "vieneu": ProviderExecutionPolicy(
             provider_id="vieneu",
             job_concurrency=settings.vieneu_job_concurrency,
             chunk_concurrency=settings.vieneu_chunk_concurrency,
             cache_enabled=settings.audio_cache_enabled,
+            sample_rate=24000,
         ),
         "omnivoice": ProviderExecutionPolicy(
             provider_id="omnivoice",
             job_concurrency=settings.omnivoice_job_concurrency,
             chunk_concurrency=settings.omnivoice_chunk_concurrency,
             cache_enabled=settings.audio_cache_enabled,
+            sample_rate=24000,
         ),
         "script": ProviderExecutionPolicy(
             provider_id="script",
             job_concurrency=1,
             chunk_concurrency=1,
             cache_enabled=True,
+            sample_rate=None,
         ),
     }

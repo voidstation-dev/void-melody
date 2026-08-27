@@ -54,7 +54,7 @@ async def test_analyze_rejects_extension_without_touching_backend():
         response = await client.post(
             "/api/v1/tts/voices/analyze",
             files={"audio_file": ("voice.exe", io.BytesIO(b"not audio"), "application/octet-stream")},
-            headers={"X-Melody-Token": "test-token"},
+            headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
         )
 
     assert response.status_code == 400
@@ -79,7 +79,7 @@ async def test_analyze_returns_path_free_metadata():
             response = await client.post(
                 "/api/v1/tts/voices/analyze",
                 files={"audio_file": ("../../voice.wav", io.BytesIO(b"fake"), "audio/wav")},
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
 
     assert response.status_code == 200

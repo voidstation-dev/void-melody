@@ -56,7 +56,7 @@ async def test_voice_capabilities_report_runtime_gate():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get(
             "/api/v1/tts/voices/capabilities",
-            headers={"X-Melody-Token": "test-token"},
+            headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
         )
 
     assert response.status_code == 200
@@ -84,7 +84,7 @@ async def test_clone_voice_rejects_when_runtime_cannot_enroll(monkeypatch):
             "/api/v1/tts/voices/clone",
             data={"display_name": "Unavailable Voice", "consent_given": "true"},
             files={"audio_file": ("test.wav", io.BytesIO(b"fake audio"), "audio/wav")},
-            headers={"X-Melody-Token": "test-token"},
+            headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
         )
 
     assert response.status_code == 503
@@ -104,7 +104,7 @@ async def test_clone_voice_no_consent():
             "/api/v1/tts/voices/clone",
             data=data,
             files=files,
-            headers={"X-Melody-Token": "test-token"},
+            headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
         )
         assert response.status_code == 400
         assert "consent" in response.json()["detail"]
@@ -124,7 +124,7 @@ async def test_clone_voice_invalid_extension():
             "/api/v1/tts/voices/clone",
             data=data,
             files=files,
-            headers={"X-Melody-Token": "test-token"},
+            headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
         )
         assert response.status_code == 400
         assert "Unsupported audio format" in response.json()["detail"]
@@ -146,7 +146,7 @@ async def test_clone_voice_success(enable_clone_runtime):
                 "/api/v1/tts/voices/clone",
                 data=data,
                 files=files,
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
         
         assert response.status_code == 201
@@ -181,7 +181,7 @@ async def test_clone_voice_does_not_use_user_filename_as_temp_path(enable_clone_
                 "/api/v1/tts/voices/clone",
                 data=data,
                 files=files,
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
 
         assert response.status_code == 201
@@ -212,7 +212,7 @@ async def test_clone_voice_uses_selected_segment_for_long_source(enable_clone_ru
                 "/api/v1/tts/voices/clone",
                 data=data,
                 files=files,
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
 
         assert response.status_code == 201

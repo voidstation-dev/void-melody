@@ -31,6 +31,8 @@ class ProviderResult:
     raw_response: dict[str, Any]
     audio_urls: list[str]
     local_paths: list[str] | None = None
+    mime_type: str | None = None
+    sample_rate: int | None = None
 
 
 class TTSProvider(Protocol):

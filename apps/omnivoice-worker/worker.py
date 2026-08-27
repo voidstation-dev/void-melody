@@ -1,140 +1,123 @@
-"""OmniVoice isolated runtime worker entrypoint.
+#!/usr/bin/env python3
+"""OmniVoice out-of-process worker.
 
-Communicates with the parent process strictly via JSONL on stdin/stdout.
-Standard error (stderr) is used for all diagnostics/logging.
+Reads JSONL requests from stdin and writes JSONL responses to stdout.
+Supports both a lightweight mock backend (no ML dependencies) and a real
+backend that defers torch/omnivoice imports until load_model.
 """
 
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
+import logging
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 from backend import OmniBackend
-from errors import (
-    OMNI_INVALID_PARAMS,
-    OMNI_INVALID_REQUEST,
-    OMNI_METHOD_NOT_FOUND,
-    OMNI_WORKER_INTERNAL_ERROR,
-    WorkerError,
-)
-from mock_backend import MockOmniBackend
-from real_backend import RealOmniBackend
+from errors import OMNI_INVALID_PARAMS, WorkerError
+
+logger = logging.getLogger(__name__)
 
 
-def log_debug(message: str) -> None:
-    sys.stderr.write(f"[omnivoice-worker] {message}\n")
-    sys.stderr.flush()
+def _load_backend(mock: bool) -> OmniBackend:
+    if mock or os.environ.get("OMNIVOICE_WORKER_MODE") == "mock":
+        from mock_backend import MockOmniBackend
+
+        return MockOmniBackend()
+    from real_backend import RealOmniBackend
+
+    return RealOmniBackend()
 
 
 class OmniVoiceWorker:
+    """JSONL request dispatcher for the OmniVoice worker process."""
+
     def __init__(self, backend: OmniBackend) -> None:
         self.backend = backend
-        self.running: bool = True
-
-    def dispatch(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
-        handlers = {
-            "ping": self.backend.ping,
-            "runtime_info": self.backend.runtime_info,
-            "load_model": self.backend.load_model,
-            "unload_model": self.backend.unload_model,
-            "synthesize": self.backend.synthesize,
-            "create_voice_prompt": self.backend.create_voice_prompt,
-            "validate_voice_prompt": self.backend.validate_voice_prompt,
-            "shutdown": self.backend.shutdown,
-        }
-        handler = handlers.get(method)
-        if not handler:
-            raise WorkerError(OMNI_METHOD_NOT_FOUND, f"Unknown RPC method: '{method}'")
-        return handler(params)
 
     def run(self) -> None:
-        log_debug(f"Worker process started with PID {os.getpid()}")
-        while self.running:
-            line = sys.stdin.readline()
-            if not line:
-                break
+        """Read JSONL from stdin and emit JSONL on stdout until EOF."""
+        for line in sys.stdin:
             line = line.strip()
             if not line:
                 continue
-
-            req_id = None
             try:
-                try:
-                    request = json.loads(line)
-                except Exception as json_err:
-                    raise WorkerError(
-                        OMNI_INVALID_REQUEST,
-                        f"Malformed JSON request: {json_err}",
-                    ) from json_err
+                req = json.loads(line)
+            except json.JSONDecodeError as exc:
+                self._respond("", error={"code": "INVALID_JSON", "message": str(exc)})
+                continue
 
-                if not isinstance(request, dict):
-                    raise WorkerError(OMNI_INVALID_REQUEST, "Request must be a JSON object")
+            req_id = req.get("id", "")
+            method = req.get("method", "")
+            params = req.get("params", {})
+            self._dispatch(req_id, method, params)
 
-                req_id = request.get("id")
-                method = request.get("method")
-                params = request.get("params", {})
+    def _dispatch(self, req_id: str, method: str, params: Any) -> None:
+        if not isinstance(params, dict):
+            self._respond(
+                req_id,
+                error={
+                    "code": OMNI_INVALID_PARAMS,
+                    "message": "Request params must be an object.",
+                },
+            )
+            return
 
-                if not req_id or not isinstance(req_id, str):
-                    raise WorkerError(OMNI_INVALID_REQUEST, "Field 'id' (string) is required")
+        handler = getattr(self.backend, method, None)
+        if handler is None:
+            self._respond(
+                req_id,
+                error={"code": "OMNI_METHOD_NOT_FOUND", "message": f"Unknown method: {method}"},
+            )
+            return
 
-                if not method or not isinstance(method, str):
-                    raise WorkerError(OMNI_INVALID_REQUEST, "Field 'method' (string) is required")
+        # Synchronous workers use time.sleep for simulated delays.
+        delay = params.get("simulate_delay_seconds")
+        if delay:
+            import time
 
-                if not isinstance(params, dict):
-                    raise WorkerError(OMNI_INVALID_PARAMS, "Field 'params' must be a JSON object")
+            time.sleep(float(delay))
 
-                result = self.dispatch(method, params)
-                response = {"id": req_id, "ok": True, "result": result}
+        try:
+            result = handler(params)
+            self._respond(req_id, result=result)
+        except WorkerError as exc:
+            self._respond(req_id, error={"code": exc.code, "message": exc.message})
+        except Exception as exc:
+            logger.exception("Request failed: %s", method)
+            self._respond(
+                req_id,
+                error={"code": "WORKER_ERROR", "message": f"{type(exc).__name__}: {exc}"},
+            )
 
-                if method == "shutdown":
-                    self.running = False
-            except WorkerError as exc:
-                response = {
-                    "id": req_id,
-                    "ok": False,
-                    "error": exc.to_dict(),
-                }
-            except Exception as exc:
-                log_debug(f"Unhandled worker error on request {req_id}: {exc}")
-                response = {
-                    "id": req_id,
-                    "ok": False,
-                    "error": {
-                        "code": OMNI_WORKER_INTERNAL_ERROR,
-                        "message": str(exc),
-                    },
-                }
-
-            sys.stdout.write(json.dumps(response) + "\n")
-            sys.stdout.flush()
-
-            if not self.running:
-                break
+    def _respond(self, req_id: str, result: dict | None = None, error: dict | None = None) -> None:
+        payload: dict = {"id": req_id}
+        if error is not None:
+            payload["ok"] = False
+            payload["error"] = error
+        else:
+            payload["ok"] = True
+            payload["result"] = result or {}
+        sys.stdout.write(json.dumps(payload) + "\n")
+        sys.stdout.flush()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="OmniVoice isolated runtime worker")
-    parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Run in mock mode (strictly for automated tests/CI)",
-    )
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mock", action="store_true", default=False)
     args = parser.parse_args()
 
-    # Determine mode: explicit CLI flag or explicit env variable
-    is_mock = args.mock or os.environ.get("OMNIVOICE_WORKER_MODE") == "mock"
-
-    if is_mock:
-        os.environ["OMNIVOICE_WORKER_MODE"] = "mock"
-        log_debug("Starting worker with MockOmniBackend")
-        backend: OmniBackend = MockOmniBackend()
-    else:
-        log_debug("Starting worker with RealOmniBackend")
-        backend = RealOmniBackend()
-
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        stream=sys.stderr,
+    )
+    backend = _load_backend(mock=args.mock)
+    logger.info("OmniVoice worker started (mock=%s)", args.mock)
     worker = OmniVoiceWorker(backend)
     worker.run()
 

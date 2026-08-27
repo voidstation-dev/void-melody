@@ -7,6 +7,7 @@ from app.main import app
 from app.database import Base, engine
 from app.api.v1.tts_batches import create_batch
 from app.models.custom_voice import CustomVoiceModel
+from tests.conftest import make_fake_request
 
 client = TestClient(app)
 
@@ -45,6 +46,7 @@ async def test_create_batch_resolves_custom_voice(async_session, tmp_path, monke
         rate=1.0,
         style=None,
         session=async_session,
+        request=make_fake_request(),
     )
 
     assert len(response.jobs) == 2
@@ -225,7 +227,7 @@ async def test_create_batch_jobs_json_endpoint(monkeypatch, async_session, tmp_p
         ]
     )
 
-    data = await create_batch_jobs_endpoint(req=req, session=async_session)
+    data = await create_batch_jobs_endpoint(req=req, session=async_session, request=make_fake_request())
     assert data.batchId
     assert len(data.jobs) == 2
     assert data.jobs[0].voiceType == voice.id

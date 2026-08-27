@@ -4,7 +4,7 @@ import tempfile
 import uuid
 import zipfile
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,11 @@ from app.database import get_async_session
 from app.models.tts_job import TTSJobModel
 from app.schemas.tts import BatchJobCreateResponse, BatchStatusResponse
 from app.services.batch_manager import parse_batch_file
+from app.services.plan_enforcement import (
+    check_request_feature,
+    check_request_provider,
+    get_request_features,
+)
 from app.services.tts_service import create_tts_jobs_batch
 from app.services.voice_catalog import voice_catalog
 from app.services.voice_resolver import VoiceResolutionError, resolve_voice
@@ -28,14 +33,17 @@ async def create_batch(
     voiceType: str = Form(...),
     rate: float = Form(1.0),
     style: str | None = Form(None),
+    request: Request = None,  # noqa: B008
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
 ):
     content = await file.read()
     items = parse_batch_file(file.filename, content)
-    
+
     if not items:
         raise HTTPException(status_code=400, detail="Uploaded file contains no valid text items.")
-        
+
+    check_request_feature(request, "tts")
+
     try:
         matched = await resolve_voice(session, voiceType)
     except VoiceResolutionError as exc:
@@ -43,16 +51,25 @@ async def create_batch(
             status_code=422,
             detail=f"{exc.code}: {exc.message}",
         ) from exc
-        
+
+    provider_id = getattr(matched, "provider_id", "capcut")
+    check_request_provider(request, provider_id)
+
     batch_id = str(uuid.uuid4())
     job_items_data = []
-    
+
+    entitlement = getattr(request.state, "entitlement", None)
+    license_entitlement_id = entitlement.id if entitlement else None
+    features = get_request_features(request)
+    effective_max_files = min(settings.tts_max_batch_files, features.get("max_batch_files", settings.tts_max_batch_files) or settings.tts_max_batch_files)
+    effective_max_total_chars = min(settings.tts_max_batch_total_chars, features.get("max_batch_total_chars", settings.tts_max_batch_total_chars) or settings.tts_max_batch_total_chars)
+
     from app.api.v1.tts_jobs import serialize_job
-    
+
     for i, text in enumerate(items):
         if len(text) > settings.tts_max_text_chars:
             continue
-            
+
         job_items_data.append({
             "text": text,
             "voice_type": voiceType,
@@ -62,9 +79,9 @@ async def create_batch(
             "rate": rate,
             "batch_position": i,
             "style": style,
-            "provider_id": getattr(matched, "provider_id", "capcut"),
+            "provider_id": provider_id,
         })
-        
+
     if not job_items_data:
         raise HTTPException(status_code=400, detail="No valid jobs could be created from the batch.")
 
@@ -72,8 +89,9 @@ async def create_batch(
         session,
         batch_id=batch_id,
         items=job_items_data,
-        max_files=settings.tts_max_batch_files,
-        max_total_chars=settings.tts_max_batch_total_chars,
+        max_files=effective_max_files,
+        max_total_chars=effective_max_total_chars,
+        license_entitlement_id=license_entitlement_id,
     )
 
     for job in created_jobs:

@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     raw_provider_response_retention_seconds: float = 604800.0
     log_level: str = "INFO"
 
+    # Plan / licensing
+    default_plan_id: str = "free"
+    dev_license_plan_id: str = "pro"
+
     @property
     def ffmpeg_binary_path(self) -> str:
         """Finds ffmpeg sidecar or fallback to PATH"""

@@ -68,6 +68,7 @@ class CloneOrchestrator:
         analysis: VoiceAnalysis | None = None,
         progress: Callable[[str], None] | None = None,
         is_cancelled: Callable[[], bool] | None = None,
+        license_entitlement_id: str | None = None,
     ) -> CustomVoiceModel:
         def stage(name: str) -> None:
             if progress:
@@ -124,6 +125,7 @@ class CloneOrchestrator:
                 selected_end_seconds=selected_end_seconds or stored_reference_duration,
                 quality_score=quality_score,
                 analysis_warnings=json.dumps(warnings or []),
+                license_entitlement_id=license_entitlement_id,
             )
             stage("creating")
             session.add(voice)

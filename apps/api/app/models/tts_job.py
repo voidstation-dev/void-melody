@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -59,6 +59,11 @@ class TTSJobModel(Base):
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     export_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     export_format: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+    # License tracking
+    license_entitlement_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("license_entitlements.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(

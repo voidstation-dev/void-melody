@@ -10,6 +10,7 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.tts_job import TTSJobModel
 from app.providers.capcut_provider import CapCutProvider
+from app.providers.omnivoice_provider import OmniVoiceProvider
 from app.providers.vieneu_provider import VieneuProvider
 from app.scheduler.cancellation import cancellation_registry
 from app.scheduler.lanes import ExecutionLane
@@ -51,6 +52,7 @@ class UnifiedScheduler:
                 circuit_breaker=self.circuit_breaker,
             ),
             "vieneu": VieneuProvider(),
+            "omnivoice": OmniVoiceProvider(),
         }
 
         # Create isolated execution lanes

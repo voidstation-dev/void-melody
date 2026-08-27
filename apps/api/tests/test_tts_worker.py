@@ -178,7 +178,7 @@ async def test_worker_chunk_tasks_never_commit_shared_session(
         destination.write_bytes(b"ID3audio")
         return "audio/mpeg", 8
 
-    async def fake_combine(*, parts, destination, rate):
+    async def fake_combine(*, parts, destination, rate, output_format="mp3", **kwargs):
         destination.write_bytes(b"ID3combined")
 
     provider = ConcurrentFakeProvider()
@@ -313,7 +313,7 @@ async def test_worker_applies_rate_in_exactly_one_stage(
 
     ffmpeg_rates: list[float] = []
 
-    async def fake_combine(*, parts, destination, rate):
+    async def fake_combine(*, parts, destination, rate, output_format="mp3", **kwargs):
         ffmpeg_rates.append(rate)
         destination.write_bytes(b"ID3combined")
 
@@ -360,7 +360,7 @@ async def test_ffmpeg_failure_does_not_retry_provider(
         destination.write_bytes(b"ID3audio")
         return "audio/mpeg", 8
 
-    async def fail_combine(*, parts, destination, rate):
+    async def fail_combine(*, parts, destination, rate, output_format="mp3", **kwargs):
         raise TTSJobError(
             code="FFMPEG_FAILED",
             message="concat failed",
@@ -415,7 +415,7 @@ async def test_invalid_final_output_is_failed_and_removed(
         destination.write_bytes(b"ID3audio")
         return "audio/mpeg", 8
 
-    async def invalid_combine(*, parts, destination, rate):
+    async def invalid_combine(*, parts, destination, rate, output_format="mp3", **kwargs):
         destination.write_bytes(b"not audio")
 
     monkeypatch.setattr(
@@ -461,7 +461,7 @@ async def test_successful_job_does_not_persist_raw_provider_response(
         destination.write_bytes(b"ID3audio")
         return "audio/mpeg", 8
 
-    async def fake_combine(*, parts, destination, rate):
+    async def fake_combine(*, parts, destination, rate, output_format="mp3", **kwargs):
         destination.write_bytes(b"ID3combined")
 
     raw_directory = tmp_path / "raw"

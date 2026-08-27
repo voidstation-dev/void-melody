@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from app.api.v1.router import api_router
@@ -13,6 +14,7 @@ from app.database import AsyncSessionLocal
 from app.db.maintenance import prune_audio_cache, run_pragma_optimize
 from app.middleware.local_auth import LocalAuthMiddleware, validate_runtime_security
 from app.models.custom_voice import CustomVoiceModel
+from app.services.plan_enforcement import PlanFeatureNotAllowedError
 from app.services.audio_cleanup import cleanup_stale_temp_files
 from app.services.audio_storage import close_http_client
 from app.services.database_migrations import run_database_migrations
@@ -104,6 +106,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="CapVoice Studio API", version="0.1.0", lifespan=lifespan)
 
+
+@app.exception_handler(PlanFeatureNotAllowedError)
+async def plan_feature_not_allowed_handler(_, exc: PlanFeatureNotAllowedError):
+    return JSONResponse(
+        status_code=403,
+        content={
+            "error_code": "PLAN_FEATURE_NOT_ALLOWED",
+            "feature": exc.feature,
+            "message": exc.detail,
+        },
+    )
+
+
 app.add_middleware(LocalAuthMiddleware)
 
 app.add_middleware(
@@ -111,7 +126,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Request-ID", "X-Melody-Token"],
+    allow_headers=["Content-Type", "X-Request-ID", "X-Melody-Token", "X-License-Key"],
 )
 
 app.include_router(api_router, prefix="/api/v1")

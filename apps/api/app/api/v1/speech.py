@@ -7,9 +7,10 @@ import logging
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 
 from app.config import settings
+from app.services.plan_enforcement import check_request_feature
 from app.services.voice_analysis import normalized_extension, save_upload_to_temp
 
 router = APIRouter()
@@ -54,8 +55,10 @@ async def transcribe_speech(
     end_seconds: float | None = Form(default=None),
     language: str = Form(default="vi"),
     model: str = Form(default="small"),
+    request: Request = None,  # noqa: B008
 ):
     """Transcribe an audio file or selected segment into text."""
+    check_request_feature(request, "transcription")
     ext = normalized_extension(file.filename)
     if ext is None:
         raise HTTPException(

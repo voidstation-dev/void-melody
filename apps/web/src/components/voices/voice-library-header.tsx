@@ -1,6 +1,7 @@
-import { Link } from "@tanstack/react-router"
+import { useState } from "react"
 import { ChevronDown, Plus, Search } from "lucide-react"
 import { useTranslation } from "@/hooks/use-translation"
+import { CreateVoiceDialog } from "./create-voice-dialog"
 
 type FilterOption = { value: string; label: string }
 
@@ -35,6 +36,7 @@ function FilterSelect({ id, label, value, options, onChange }: { id: string; lab
 
 export function VoiceLibraryHeader({ search, provider, language, providers, languages, onSearchChange, onProviderChange, onLanguageChange }: VoiceLibraryHeaderProps) {
   const { t } = useTranslation()
+  const [createOpen, setCreateOpen] = useState(false)
 
   return (
     <header className="shrink-0 space-y-5">
@@ -61,14 +63,17 @@ export function VoiceLibraryHeader({ search, provider, language, providers, lang
           <FilterSelect id="voice-library-provider" label={t("voices.providerFilter")} value={provider} options={providers} onChange={onProviderChange} />
           <FilterSelect id="voice-library-language" label={t("voices.languageFilter")} value={language} options={languages} onChange={onLanguageChange} />
         </div>
-        <Link
-          to="/vieneu"
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
           className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-2xs transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Plus className="h-4 w-4" />
           {t("voices.newVoice")}
-        </Link>
+        </button>
       </div>
+
+      <CreateVoiceDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </header>
   )
 }

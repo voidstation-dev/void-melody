@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useMemo, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { CreateVoiceDialog } from "@/components/voices/create-voice-dialog"
 import { VoiceLibraryHeader } from "@/components/voices/voice-library-header"
 import { VoiceLibraryStats } from "@/components/voices/voice-library-stats"
 import { VoiceLibraryTabs } from "@/components/voices/voice-library-tabs"
@@ -9,7 +10,7 @@ import { PresetVoicesSection } from "@/components/voices/preset-voices-section"
 import { useCustomVoices } from "@/hooks/use-custom-voices"
 import { useTranslation } from "@/hooks/use-translation"
 import { useVoices } from "@/hooks/use-voices"
-import { apiFetch } from "@/lib/api-client"
+import { deleteCustomVoice } from "@/api/voices"
 import { VoiceLibraryTab, customVoiceAsFilterable, getVoiceLanguages, getVoiceProviders, matchesVoiceFilters } from "@/components/voices/voice-library-utils"
 import { voiceQueries } from "@/queries/voices.queries"
 
@@ -31,6 +32,7 @@ function VoicesRoute() {
   const [language, setLanguage] = useState("all")
   const [customPage, setCustomPage] = useState(1)
   const [tab, setTab] = useState<VoiceLibraryTab>("all")
+  const [createOpen, setCreateOpen] = useState(false)
 
   // Presets are a small local catalog; fetching the complete list allows the
   // provider/language filters to work without changing the backend contract.
@@ -38,7 +40,7 @@ function VoicesRoute() {
   const customSearch = /vieneu|omnivoice|capcut|clone|vi-vn|en-us/i.test(search) ? undefined : search.trim() || undefined
   const customQuery = useCustomVoices(customSearch, customPage, customPageSize)
   const deleteVoice = useMutation({
-    mutationFn: (voiceId: string) => apiFetch<void>(`/api/v1/tts/voices/custom/${voiceId}`, { method: "DELETE" }),
+    mutationFn: deleteCustomVoice,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["custom-voices"] }),
   })
 
@@ -111,8 +113,11 @@ function VoicesRoute() {
               onRetry={() => void customQuery.refetch()}
               onDelete={(voiceId) => deleteVoice.mutate(voiceId)}
               onPageChange={setCustomPage}
+              onCreateVoice={() => setCreateOpen(true)}
             />
           )}
+
+          <CreateVoiceDialog open={createOpen} onClose={() => setCreateOpen(false)} />
 
           {showPreset && (
             <PresetVoicesSection

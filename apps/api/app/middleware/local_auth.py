@@ -5,6 +5,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from app.config import settings
+from app.database import AsyncSessionLocal
+from app.services.plan_enforcement import resolve_entitlement
 
 PUBLIC_PATHS = {
     "/api/v1/health",
@@ -22,6 +24,21 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS" or request.url.path in PUBLIC_PATHS:
             return await call_next(request)
 
+        # Resolve license entitlement for every request so endpoints can enforce plan
+        # limits. This runs before auth so dev/test environments without a token still
+        # pick up the X-License-Key header and resolve to the right plan.
+        license_key = request.headers.get("X-License-Key")
+        if license_key:
+            request.state.license_key = license_key
+        try:
+            async with AsyncSessionLocal() as session:
+                entitlement = await resolve_entitlement(session, license_key)
+                if entitlement is not None:
+                    request.state.entitlement = entitlement
+        except Exception:
+            # Fail open for auth middleware; endpoints will fall back to default plan.
+            pass
+
         expected = settings.melody_api_token
         if expected is None and settings.app_env.lower() != "production":
             return await call_next(request)
@@ -32,4 +49,5 @@ class LocalAuthMiddleware(BaseHTTPMiddleware):
                 status_code=401,
                 content={"detail": "UNAUTHORIZED"},
             )
+
         return await call_next(request)

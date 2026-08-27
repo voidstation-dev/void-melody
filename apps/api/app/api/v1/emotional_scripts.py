@@ -5,13 +5,14 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse
 
 from app.database import get_async_session
 from app.config import settings
+from app.services.plan_enforcement import check_request_feature
 from app.models.emotional_script import (
     EmotionalScriptModel,
     ScriptAudioCacheModel,
@@ -183,8 +184,10 @@ async def delete_script_endpoint(script_id: str, session: AsyncSession = Depends
 async def create_script_render(
     script_id: str,
     request: RenderCreateRequest,
+    fastapi_request: Request,
     session: AsyncSession = Depends(get_async_session),
 ) -> RenderResponse:
+    check_request_feature(fastapi_request, "audio_studio")
     if request.output_format not in {"mp3", "wav"}:
         raise HTTPException(status_code=422, detail={"code": "INVALID_OUTPUT_FORMAT", "message": "Only MP3 and WAV are supported."})
     try:

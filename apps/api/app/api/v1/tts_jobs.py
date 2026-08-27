@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,13 @@ from app.schemas.tts import (
     TTSJobListResponse,
     TTSJobResponse,
     TTSPreviewRequest,
+)
+from app.services.plan_enforcement import (
+    PlanFeatureNotAllowedError,
+    check_request_feature,
+    check_request_provider,
+    get_effective_features,
+    get_request_features,
 )
 from app.services.tts_service import (
     create_tts_job,
@@ -76,6 +83,7 @@ from app.workers.queue_manager import queue_manager
 )
 async def create_job_endpoint(
     req: CreateTTSJobRequest,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008,
 ):
     if len(req.text) > settings.tts_max_text_chars:
@@ -89,11 +97,21 @@ async def create_job_endpoint(
             detail=f"{exc.code}: {exc.message}",
         ) from exc
 
+    check_request_feature(request, "tts")
+    provider_id = getattr(matched, "provider_id", "capcut")
+    check_request_provider(request, provider_id)
+
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="Empty text provided")
 
     batch_id = req.batchId if req.batchId else str(uuid.uuid4())
     batch_position = req.batchPosition if req.batchPosition is not None else 0
+
+    entitlement = getattr(request.state, "entitlement", None)
+    license_entitlement_id = entitlement.id if entitlement else None
+    features = get_request_features(request)
+    effective_max_files = min(settings.tts_max_batch_files, features.get("max_batch_files", settings.tts_max_batch_files) or settings.tts_max_batch_files)
+    effective_max_total_chars = min(settings.tts_max_batch_total_chars, features.get("max_batch_total_chars", settings.tts_max_batch_total_chars) or settings.tts_max_batch_total_chars)
 
     create_job = create_tts_job_with_batch_limits if req.batchId else create_tts_job
     create_kwargs = {
@@ -106,16 +124,17 @@ async def create_job_endpoint(
         "batch_id": batch_id,
         "batch_position": batch_position,
         "style": req.style,
-        "provider_id": getattr(matched, "provider_id", "capcut"),
+        "provider_id": provider_id,
         "source_file_name": req.sourceFileName,
         "source_file_size": req.sourceFileSize,
         "export_path": req.exportPath,
         "export_format": req.exportFormat,
+        "license_entitlement_id": license_entitlement_id,
     }
     if req.batchId:
         create_kwargs.update(
-            max_files=settings.tts_max_batch_files,
-            max_total_chars=settings.tts_max_batch_total_chars,
+            max_files=effective_max_files,
+            max_total_chars=effective_max_total_chars,
         )
     job = await create_job(session, **create_kwargs)
 
@@ -140,13 +159,22 @@ async def create_job_endpoint(
 )
 async def create_batch_jobs_endpoint(
     req: CreateTTSBatchJobsRequest,
+    request: Request,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008,
 ):
     if not req.items:
         raise HTTPException(status_code=400, detail="No items provided in batch request")
 
+    check_request_feature(request, "tts")
+
     batch_id = str(uuid.uuid4())
     job_items_data = []
+
+    entitlement = getattr(request.state, "entitlement", None)
+    license_entitlement_id = entitlement.id if entitlement else None
+    features = get_request_features(request)
+    effective_max_files = min(settings.tts_max_batch_files, features.get("max_batch_files", settings.tts_max_batch_files) or settings.tts_max_batch_files)
+    effective_max_total_chars = min(settings.tts_max_batch_total_chars, features.get("max_batch_total_chars", settings.tts_max_batch_total_chars) or settings.tts_max_batch_total_chars)
 
     for i, item in enumerate(req.items):
         if not item.text.strip():
@@ -161,6 +189,9 @@ async def create_batch_jobs_endpoint(
                 detail=f"{exc.code}: {exc.message}",
             ) from exc
 
+        provider_id = getattr(matched, "provider_id", "capcut")
+        check_request_provider(request, provider_id)
+
         job_items_data.append({
             "text": item.text,
             "voice_type": item.voiceType,
@@ -170,7 +201,7 @@ async def create_batch_jobs_endpoint(
             "rate": item.rate,
             "batch_position": i,
             "style": item.style,
-            "provider_id": getattr(matched, "provider_id", "capcut"),
+            "provider_id": provider_id,
             "source_file_name": item.sourceFileName,
             "source_file_size": item.sourceFileSize,
             "export_path": item.exportPath,
@@ -184,8 +215,9 @@ async def create_batch_jobs_endpoint(
         session,
         batch_id=batch_id,
         items=job_items_data,
-        max_files=settings.tts_max_batch_files,
-        max_total_chars=settings.tts_max_batch_total_chars,
+        max_files=effective_max_files,
+        max_total_chars=effective_max_total_chars,
+        license_entitlement_id=license_entitlement_id,
     )
 
     for job in created_jobs:
@@ -195,10 +227,11 @@ async def create_batch_jobs_endpoint(
             provider_id=job.provider_id,
         )
 
-    return BatchJobCreateResponse(batchId=batch_id, jobs=[serialize_job(j) for j in created_jobs])
+    return BatchJobCreateResponse(batchId=batch_id, jobs=[serialize_job(job) for job in created_jobs])
 
 
 from pydantic import BaseModel
+
 
 class ExportJobRequest(BaseModel):
     exportPath: str

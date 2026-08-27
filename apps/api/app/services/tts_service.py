@@ -86,6 +86,7 @@ def _build_tts_job(
     request_metadata: str | None = None,
     export_path: str | None = None,
     export_format: str | None = None,
+    license_entitlement_id: str | None = None,
 ) -> TTSJobModel:
     cleaned_text = text.strip()
     return TTSJobModel(
@@ -109,6 +110,7 @@ def _build_tts_job(
         request_metadata=request_metadata,
         export_path=export_path,
         export_format=export_format,
+        license_entitlement_id=license_entitlement_id,
     )
 
 
@@ -133,6 +135,7 @@ async def create_tts_job(
     request_metadata: str | None = None,
     export_path: str | None = None,
     export_format: str | None = None,
+    license_entitlement_id: str | None = None,
 ) -> TTSJobModel:
     job = _build_tts_job(
         text=text,
@@ -153,6 +156,7 @@ async def create_tts_job(
         request_metadata=request_metadata,
         export_path=export_path,
         export_format=export_format,
+        license_entitlement_id=license_entitlement_id,
     )
     session.add(job)
     await session.commit()
@@ -183,6 +187,7 @@ async def create_tts_job_with_batch_limits(
     request_metadata: str | None = None,
     export_path: str | None = None,
     export_format: str | None = None,
+    license_entitlement_id: str | None = None,
 ) -> TTSJobModel:
     try:
         await session.execute(sql_text("BEGIN IMMEDIATE"))
@@ -212,6 +217,7 @@ async def create_tts_job_with_batch_limits(
             request_metadata=request_metadata,
             export_path=export_path,
             export_format=export_format,
+            license_entitlement_id=license_entitlement_id,
         )
         session.add(job)
         await session.commit()
@@ -229,6 +235,7 @@ async def create_tts_jobs_batch(
     items: list[dict[str, Any]],
     max_files: int = settings.tts_max_batch_files,
     max_total_chars: int = settings.tts_max_batch_total_chars,
+    license_entitlement_id: str | None = None,
 ) -> list[TTSJobModel]:
     """Create all batch jobs in ONE single atomic transaction."""
     if not items:
@@ -266,6 +273,7 @@ async def create_tts_jobs_batch(
                 request_metadata=item.get("request_metadata"),
                 export_path=item.get("export_path"),
                 export_format=item.get("export_format"),
+                license_entitlement_id=license_entitlement_id,
             )
             for idx, item in enumerate(items)
         ]

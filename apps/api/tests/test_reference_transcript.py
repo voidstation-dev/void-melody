@@ -121,7 +121,7 @@ async def test_clone_with_transcript_persists_exact_text(enable_clone_runtime):
                 "/api/v1/tts/voices/clone",
                 data=data,
                 files=files,
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
 
         assert response.status_code == 201
@@ -153,7 +153,7 @@ async def test_clone_without_transcript_accepted_for_optional_policy(enable_clon
                 "/api/v1/tts/voices/clone",
                 data=data,
                 files=files,
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
 
         assert response.status_code == 201
@@ -188,7 +188,7 @@ async def test_required_policy_rejects_empty_transcript(enable_required_transcri
                 "/api/v1/tts/voices/clone",
                 data=data,
                 files=files,
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
 
         assert response.status_code == 422
@@ -213,7 +213,7 @@ async def test_transcript_max_length_rejected(enable_clone_runtime):
                 "/api/v1/tts/voices/clone",
                 data=data,
                 files=files,
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
 
         assert response.status_code == 422
@@ -284,7 +284,7 @@ async def test_v3_enrollment_does_not_consume_transcript(enable_clone_runtime):
                 "/api/v1/tts/voices/clone",
                 data=data,
                 files=files,
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
 
         assert response.status_code == 201
@@ -360,7 +360,7 @@ async def test_transcript_whitespace_is_normalized(enable_clone_runtime):
                 "/api/v1/tts/voices/clone",
                 data=data,
                 files=files,
-                headers={"X-Melody-Token": "test-token"},
+                headers={"X-Melody-Token": "test-token", "X-License-Key": "dev"},
             )
 
         assert response.status_code == 201

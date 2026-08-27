@@ -17,7 +17,10 @@ export function VoiceLibraryEmpty({ kind }: { kind: EmptyKind }) {
       <Mic2 className="mx-auto h-7 w-7 text-muted-foreground" />
       <h3 className="mt-3 font-bold">{t("voices.customEmptyTitle")}</h3>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{t("voices.customEmptyDescription")}</p>
-      <Link to="/vieneu" className="mt-5 inline-flex min-h-9 items-center rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("voices.createFirstVoice")}</Link>
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        <Link to="/vieneu" className="inline-flex min-h-9 items-center rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("voices.createFirstVoice")}</Link>
+        <Link to="/voice-design" className="inline-flex min-h-9 items-center gap-1 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-bold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t("voices.designBadge")}</Link>
+      </div>
     </div>
   )
 }

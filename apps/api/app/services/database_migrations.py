@@ -101,6 +101,10 @@ POST_BASELINE_CUSTOM_VOICE_COLUMNS = {
     "calibration_quality_score",
     "enrollment_created_at",
 }
+POST_BASELINE_OMNIVOICE_VOICE_COLUMNS = {
+    "license_entitlement_id",
+}
+OMNIVOICE_VOICE_TABLE = "tts_omnivoice_voices"
 
 
 class MigrationError(RuntimeError):
@@ -152,7 +156,11 @@ def _has_post_baseline_columns(connection: sqlite3.Connection) -> bool:
         row[1]
         for row in connection.execute("PRAGMA table_info(tts_custom_voices)")
     }
-    return POST_BASELINE_CUSTOM_VOICE_COLUMNS.issubset(custom_columns)
+    if not POST_BASELINE_CUSTOM_VOICE_COLUMNS.issubset(custom_columns):
+        return False
+    if not _table_exists(connection, OMNIVOICE_VOICE_TABLE):
+        return False
+    return True
 
 
 def _has_emotional_script_tables(connection: sqlite3.Connection) -> bool:

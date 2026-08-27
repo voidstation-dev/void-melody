@@ -1,25 +1,31 @@
-"""Protocol definition for OmniVoice worker execution backends."""
+"""Abstract backend interface for OmniVoice worker."""
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from abc import ABC, abstractmethod
+from typing import Any
 
 
-class OmniBackend(Protocol):
-    """Protocol for OmniVoice backend implementations (Real vs Mock)."""
+class OmniBackend(ABC):
+    """Worker-side backend contract for model load/unload and inference."""
 
-    def ping(self, params: dict[str, Any]) -> dict[str, Any]: ...
+    @abstractmethod
+    def ping(self, params: dict[str, Any] | None = None) -> dict[str, Any]: ...
 
-    def runtime_info(self, params: dict[str, Any]) -> dict[str, Any]: ...
+    @abstractmethod
+    def runtime_info(self, params: dict[str, Any] | None = None) -> dict[str, Any]: ...
 
+    @abstractmethod
     def load_model(self, params: dict[str, Any]) -> dict[str, Any]: ...
 
-    def unload_model(self, params: dict[str, Any]) -> dict[str, Any]: ...
+    @abstractmethod
+    def unload_model(self, params: dict[str, Any] | None = None) -> dict[str, Any]: ...
 
+    @abstractmethod
     def synthesize(self, params: dict[str, Any]) -> dict[str, Any]: ...
 
+    @abstractmethod
     def create_voice_prompt(self, params: dict[str, Any]) -> dict[str, Any]: ...
 
+    @abstractmethod
     def validate_voice_prompt(self, params: dict[str, Any]) -> dict[str, Any]: ...
-
-    def shutdown(self, params: dict[str, Any]) -> dict[str, Any]: ...

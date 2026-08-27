@@ -5,6 +5,7 @@ import pytest
 from app.api.v1.tts_jobs import create_job_endpoint
 from app.models.custom_voice import CustomVoiceModel
 from app.schemas.tts import CreateTTSJobRequest
+from tests.conftest import make_fake_request
 
 
 @pytest.mark.asyncio
@@ -25,7 +26,8 @@ async def test_custom_voice_uuid_reuses_existing_tts_job_contract(async_session,
 
     response = await create_job_endpoint(
         CreateTTSJobRequest(text="Preview text", voiceType=voice.id),
-        async_session,
+        request=make_fake_request(),
+        session=async_session,
     )
 
     assert response.jobs[0].voiceType == voice.id
