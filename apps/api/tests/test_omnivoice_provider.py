@@ -177,6 +177,13 @@ async def test_tts_worker_omnivoice_job_end_to_end(
     monkeypatch.setattr("app.workers.tts_worker.AsyncSessionLocal", async_session_factory)
     monkeypatch.setattr(settings, "audio_storage_dir", tmp_path / "audio")
     monkeypatch.setattr(settings, "tts_apply_rate_with_ffmpeg", False)
+    async def fake_audio_duration(_path):
+        return 1.5
+
+    monkeypatch.setattr(
+        "app.utils.audio_utils.get_audio_duration",
+        fake_audio_duration,
+    )
 
     async with async_session_factory() as session:
         job = await create_tts_job(

@@ -3,6 +3,12 @@ from httpx import ASGITransport, AsyncClient
 
 from app.database import get_async_session
 from app.main import app
+from tests.conftest import pro_entitlement_auth
+
+
+@pytest.fixture(autouse=True)
+def _pro_auth(pro_entitlement_auth):
+    pass
 
 
 @pytest.mark.asyncio

@@ -12,6 +12,12 @@ from vieneu_core.capabilities import RuntimeCapabilities
 
 from app.database import Base, get_async_session
 from app.main import app
+from tests.conftest import pro_entitlement_auth
+
+
+@pytest.fixture(autouse=True)
+def _pro_auth(pro_entitlement_auth):
+    pass
 
 test_engine = create_async_engine(
     "sqlite+aiosqlite:///file:memdb_ref_transcript?mode=memory&cache=shared&uri=true",

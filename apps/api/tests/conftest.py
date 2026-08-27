@@ -1,3 +1,4 @@
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -59,6 +60,23 @@ def make_fake_request(entitlement: LicenseEntitlementModel | None = None):
             self.state = type("State", (), {"entitlement": entitlement})()
 
     return FakeRequest(entitlement)
+
+
+@pytest.fixture
+def pro_entitlement_auth(monkeypatch):
+    """Patch LocalAuthMiddleware so all HTTP requests resolve to a pro entitlement.
+
+    Use this in endpoint tests that need plan-gated features/providers but do not
+    seed the license_plans table in their in-memory database.
+    """
+
+    async def fake_resolve_entitlement(_session, _license_key):
+        return make_pro_entitlement()
+
+    monkeypatch.setattr(
+        "app.middleware.local_auth.resolve_entitlement",
+        fake_resolve_entitlement,
+    )
 
 
 @pytest_asyncio.fixture

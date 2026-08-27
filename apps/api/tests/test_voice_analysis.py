@@ -5,6 +5,13 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
+from tests.conftest import pro_entitlement_auth
+
+
+@pytest.fixture(autouse=True)
+def _pro_auth(pro_entitlement_auth):
+    pass
+
 from app.services.voice_analysis import (
     VoiceAnalysis,
     VoiceAnalysisError,
