@@ -506,37 +506,23 @@ function JobItem({
           )}
         </div>
 
-        {/* Center: Voice Name + Badges + Speed + 1-Line Preview */}
+        {/* Center: Dòng 1 (Tên giọng + Thời lượng) & Dòng 2 (Tag VieNeu/Speed + Kịch bản) */}
         <div
-          className="min-w-0 flex-1 cursor-pointer overflow-hidden"
+          className="min-w-0 flex-1 cursor-pointer overflow-hidden flex flex-col justify-center gap-0.5"
           onClick={() => setIsExpanded((prev) => !prev)}
         >
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-xs font-bold text-foreground truncate max-w-[90px] sm:max-w-[130px] shrink-0">
+          {/* Row 1: Voice Name (Left) + Duration / Status (Right) */}
+          <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <span className="text-xs font-bold text-foreground truncate min-w-0 flex-1">
               {job.voiceDisplayName || job.voiceType}
             </span>
-            {isCustomVoice ? (
-              <span className="shrink-0 rounded-md bg-violet-500/15 px-1 py-0.2 text-[9px] font-black uppercase text-violet-600 dark:text-violet-400">
-                Clone
-              </span>
-            ) : isVieneuPreset ? (
-              <span className="shrink-0 rounded-md bg-emerald-500/15 px-1 py-0.2 text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400">
-                VieNeu
-              </span>
-            ) : null}
-            <span
-              className="shrink-0 rounded-md bg-muted/80 px-1.5 py-0.2 text-[9px] font-mono font-bold text-muted-foreground border border-border/50"
-              title={t("jobQueue.speedTooltip")}
-            >
-              {speedText}
-            </span>
             {job.status === "completed" && (
-              <span className="shrink-0 text-[10px] font-mono font-bold text-muted-foreground/80 bg-muted/50 px-1.5 py-0.2 rounded">
+              <span className="shrink-0 text-[10px] font-mono font-bold text-muted-foreground/90 tabular-nums">
                 {formatTime(job.audioDuration || 0)}
               </span>
             )}
             {job.status === "processing" && (
-              <span className="shrink-0 text-[10px] font-bold text-primary font-mono">
+              <span className="shrink-0 text-[10px] font-bold text-primary font-mono animate-pulse">
                 {job.progress && job.progress > 0
                   ? `${Math.round(job.progress)}%`
                   : t("jobQueue.statusGenerating")}
@@ -547,13 +533,29 @@ function JobItem({
                 {t("jobQueue.statusWaiting")}
               </span>
             )}
+            {job.status === "failed" && (
+              <span className="shrink-0 text-[10px] font-bold text-destructive">
+                {t("common.error")}
+              </span>
+            )}
           </div>
-          <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5 block w-full">
-            {job.textPreview || job.text}
-          </p>
+
+          {/* Row 2: Tag (VieNeu · 1.1x) + Script Preview Snippet */}
+          <div className="flex items-center gap-1.5 min-w-0 text-[11px] leading-tight">
+            <span className="shrink-0 rounded bg-muted/90 px-1 py-0.2 text-[9px] font-mono font-bold text-muted-foreground border border-border/40 select-none">
+              {isCustomVoice
+                ? `Clone · ${speedText}`
+                : isVieneuPreset
+                  ? `VieNeu · ${speedText}`
+                  : speedText}
+            </span>
+            <span className="truncate text-muted-foreground min-w-0 flex-1">
+              {job.textPreview || job.text}
+            </span>
+          </div>
         </div>
 
-        {/* Right: Quick Actions & Toggle */}
+        {/* Right: Primary Action & Expand/Collapse Toggle */}
         <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           {/* Quick Download for completed audio */}
           {job.status === "completed" && job.audioUrl && (
@@ -611,54 +613,6 @@ function JobItem({
               />
             </button>
           )}
-
-          {/* More options menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none cursor-pointer"
-                title="Tùy chọn khác"
-              >
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="min-w-[170px] p-1 rounded-xl shadow-xl z-50 text-xs"
-            >
-              <DropdownMenuItem
-                onClick={() => setPreviewOpen(true)}
-                className="flex items-center gap-2 px-2.5 py-1.5 font-medium cursor-pointer rounded-lg"
-              >
-                <FileText className="h-3.5 w-3.5 text-primary" />
-                <span>Xem kịch bản & phân tích</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  onReparse?.(job.text, job.sourceFileName || undefined)
-                }
-                className="flex items-center gap-2 px-2.5 py-1.5 font-medium cursor-pointer rounded-lg"
-              >
-                <CornerUpLeft className="h-3.5 w-3.5 text-orange-500" />
-                <span>{t("generate.loadComposerTooltip")}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleCopyText}
-                className="flex items-center gap-2 px-2.5 py-1.5 font-medium cursor-pointer rounded-lg"
-              >
-                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>Sao chép văn bản</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="flex items-center gap-2 px-2.5 py-1.5 font-medium cursor-pointer rounded-lg text-rose-600 dark:text-rose-400 focus:text-rose-600 focus:bg-rose-500/10"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span>{t("generate.deleteJobTooltip")}</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           {/* Expand/Collapse Toggle */}
           <button
