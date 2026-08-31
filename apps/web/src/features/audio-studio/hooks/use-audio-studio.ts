@@ -47,16 +47,31 @@ export function useAudioStudio(initialVoiceId?: string) {
       languageShort: "vi",
       resourceId: "",
       capturedAt: null,
-      providerId: "custom",
+      providerId: cv.provider_id || "vieneu",
     }))
     return [...presets, ...customs]
   }, [presetData?.items, customData?.items])
 
-  const effectiveVoiceId =
-    selectedVoiceId ||
-    allVoices.find((v) => v.providerId === "vieneu")?.voiceType ||
-    allVoices[0]?.voiceType ||
-    ""
+  const selectedVoice = useMemo(() => {
+    if (!allVoices.length) return undefined
+    if (selectedVoiceId) {
+      const match = allVoices.find((v) => v.voiceType === selectedVoiceId || v.id === selectedVoiceId)
+      if (match) return match
+    }
+    return allVoices.find((v) => v.providerId === "vieneu") || allVoices[0]
+  }, [allVoices, selectedVoiceId])
+
+  const effectiveVoiceId = selectedVoice?.voiceType || selectedVoice?.id || ""
+
+  useEffect(() => {
+    if (
+      effectiveVoiceId &&
+      selectedVoiceId !== effectiveVoiceId &&
+      !allVoices.some((v) => v.voiceType === selectedVoiceId || v.id === selectedVoiceId)
+    ) {
+      setSelectedVoiceId(effectiveVoiceId)
+    }
+  }, [effectiveVoiceId, selectedVoiceId, allVoices])
 
   // Autosave draft debounce
   useEffect(() => {
@@ -65,7 +80,7 @@ export function useAudioStudio(initialVoiceId?: string) {
       try {
         const draft: AudioStudioDraft = {
           text,
-          selectedVoiceId,
+          selectedVoiceId: effectiveVoiceId,
           speed,
           format: outputFormat,
           updatedAt: Date.now(),
@@ -77,12 +92,7 @@ export function useAudioStudio(initialVoiceId?: string) {
       }
     }, 1500)
     return () => clearTimeout(timer)
-  }, [text, selectedVoiceId, speed, outputFormat])
-
-  const selectedVoice = useMemo(
-    () => allVoices.find((v) => v.voiceType === effectiveVoiceId || v.id === effectiveVoiceId),
-    [allVoices, effectiveVoiceId],
-  )
+  }, [text, effectiveVoiceId, speed, outputFormat])
 
   const selectedVoiceProvider = selectedVoice?.providerId || "vieneu"
 

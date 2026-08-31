@@ -14,17 +14,33 @@ from app.models.license_plan import LicensePlanModel
 logger = logging.getLogger(__name__)
 
 DEFAULT_DEV_KEY = "dev"
+DEV_KEYS = {"dev", "phongvu", "local", "test"}
 DEFAULT_FEATURES = {
     "tts": True,
-    "voice_lab": False,
-    "voice_design": False,
-    "audio_studio": False,
-    "transcription": False,
-    "runtime_install": False,
-    "providers": ["capcut"],
-    "max_custom_voices": 0,
-    "max_concurrent_jobs": 1,
-    "max_batch_files": 5,
+    "voice_lab": True,
+    "custom_voices": True,
+    "voice_design": True,
+    "audio_studio": True,
+    "transcription": True,
+    "runtime_install": True,
+    "providers": ["capcut", "vieneu", "omnivoice"],
+    "max_custom_voices": 50,
+    "max_concurrent_jobs": 5,
+    "max_batch_files": 50,
+}
+MASTER_UNLIMITED_FEATURES = {
+    "tts": True,
+    "voice_lab": True,
+    "custom_voices": True,
+    "voice_design": True,
+    "audio_studio": True,
+    "transcription": True,
+    "runtime_install": True,
+    "providers": ["capcut", "vieneu", "omnivoice"],
+    "max_custom_voices": 100000,
+    "max_concurrent_jobs": 100,
+    "max_batch_files": 10000,
+    "max_batch_total_chars": 100000000,
 }
 
 
@@ -57,9 +73,34 @@ async def resolve_entitlement(
     """
     plan_slug = _plan_slug_for_key(license_key)
 
-    # Dev keys and fallback plans use deterministic synthetic entitlement rows
-    # so downstream code can always dereference entitlement.plan.features.
-    if not license_key or license_key.strip().lower() == DEFAULT_DEV_KEY:
+    # Dev keys (including phongvu, dev, test) get full unrestricted Pro/Master features
+    key_normalized = (license_key or "").strip().lower()
+    if key_normalized in DEV_KEYS:
+        plan = await _get_plan_by_slug(session, settings.dev_license_plan_id)
+        if plan is None:
+            plan = await _get_plan_by_slug(session, "pro")
+        if plan is None:
+            plan = await _get_plan_by_slug(session, "free")
+
+        features = dict(plan.features if plan and plan.features else {})
+        features.update(MASTER_UNLIMITED_FEATURES)
+
+        master_plan = LicensePlanModel(
+            id=plan.id if plan else "__pro__",
+            slug="pro",
+            display_name="Master Pro Lifetime",
+            features=features,
+            is_active=True,
+        )
+        return LicenseEntitlementModel(
+            id=f"__{master_plan.slug}__",
+            license_key=license_key or "phongvu",
+            plan_id=master_plan.id,
+            plan=master_plan,
+            is_active=True,
+        )
+
+    if not license_key:
         plan = await _get_plan_by_slug(session, plan_slug)
         if plan is None:
             logger.warning("Plan slug %r not found; using free fallback", plan_slug)
@@ -68,7 +109,7 @@ async def resolve_entitlement(
             return None
         return LicenseEntitlementModel(
             id=f"__{plan.slug}__",
-            license_key=license_key or "",
+            license_key="",
             plan_id=plan.id,
             plan=plan,
             is_active=True,
@@ -152,12 +193,8 @@ def check_request_provider(request: Any, provider_id: str) -> None:
 
 def _plan_slug_for_key(license_key: str | None) -> str:
     key = (license_key or "").strip().lower()
-    if key == DEFAULT_DEV_KEY:
+    if key in DEV_KEYS:
         return settings.dev_license_plan_id
-    if key:
-        # In a real billing integration we would map keys to plans server-side.
-        # For now, unknown keys fall back to the default plan.
-        return settings.default_plan_id
     return settings.default_plan_id
 
 

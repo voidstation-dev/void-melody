@@ -41,10 +41,12 @@ class CapCutProvider:
         *,
         text: str,
         voice_type: str,
-        resource_id: str | None,
-        rate: float,
+        resource_id: str | None = None,
+        rate: float = 1.0,
         style: str | None = None,
         options: SynthesisOptions | None = None,
+        destination_path: Path | None = None,
+        **kwargs: Any,
     ) -> ProviderResult:
         import asyncio
 
@@ -79,10 +81,12 @@ class CapCutProvider:
         *,
         text: str,
         voice_type: str,
-        resource_id: str | None,
-        rate: float,
+        resource_id: str | None = None,
+        rate: float = 1.0,
         style: str | None = None,
         options: SynthesisOptions | None = None,
+        destination_path: Path | None = None,
+        **kwargs: Any,
     ) -> AsyncGenerator[bytes, None]:
         import httpx
 

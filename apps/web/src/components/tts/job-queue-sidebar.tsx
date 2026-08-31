@@ -1,7 +1,6 @@
 import { useQueue } from "@/hooks/use-queue";
 import {
   Loader2,
-  CheckCircle2,
   XCircle,
   Clock,
   Play,
@@ -15,13 +14,12 @@ import {
   FastForward,
   Download,
   ChevronDown,
-  ChevronUp,
-  Volume2,
   Activity,
-  Sparkles,
   Copy,
   Check,
   Filter,
+  FileText,
+  Maximize2,
 } from "lucide-react";
 import { TTSJob } from "@/types/tts-job";
 import { apiFetchBlob } from "@/lib/api-client";
@@ -61,14 +59,22 @@ export function JobQueueSidebar({
   const [isClearingCompleted, setIsClearingCompleted] = useState(false);
 
   // Categorize counts
-  const completedJobs = useMemo(() => queue.filter((j) => j.status === "completed"), [queue]);
-  const failedJobs = useMemo(() => queue.filter((j) => j.status === "failed"), [queue]);
+  const completedJobs = useMemo(
+    () => queue.filter((j) => j.status === "completed"),
+    [queue],
+  );
+  const failedJobs = useMemo(
+    () => queue.filter((j) => j.status === "failed"),
+    [queue],
+  );
 
   // Filter and sort queue
   const filteredQueue = useMemo(() => {
     let list = queue;
     if (filter === "active") {
-      list = queue.filter((j) => j.status === "processing" || j.status === "queued");
+      list = queue.filter(
+        (j) => j.status === "processing" || j.status === "queued",
+      );
     } else if (filter === "completed") {
       list = completedJobs;
     } else if (filter === "failed") {
@@ -76,8 +82,10 @@ export function JobQueueSidebar({
     }
 
     return [...list].sort((a, b) => {
-      const aActive = a.status === "processing" || a.status === "queued" ? 1 : 0;
-      const bActive = b.status === "processing" || b.status === "queued" ? 1 : 0;
+      const aActive =
+        a.status === "processing" || a.status === "queued" ? 1 : 0;
+      const bActive =
+        b.status === "processing" || b.status === "queued" ? 1 : 0;
       if (aActive !== bActive) return bActive - aActive;
 
       if (a.batchId && b.batchId && a.batchId === b.batchId) {
@@ -103,11 +111,18 @@ export function JobQueueSidebar({
 
   if (queue.length === 0) {
     return (
-      <Card className={cn("rounded-2xl border-2 border-dashed border-border/70 bg-card/60 p-6 flex flex-col items-center justify-center text-center overflow-hidden min-h-[180px] group transition-all hover:border-primary/40 shadow-xs", className)}>
+      <Card
+        className={cn(
+          "rounded-2xl border-2 border-dashed border-border/70 bg-card/60 p-6 flex flex-col items-center justify-center text-center overflow-hidden min-h-[180px] group transition-all hover:border-primary/40 shadow-xs",
+          className,
+        )}
+      >
         <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-muted/80 shadow-xs border border-border/50 mb-3 group-hover:scale-110 group-hover:bg-primary/10 transition-all duration-300">
           <Layers className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
         </div>
-        <h3 className="text-xs font-bold text-foreground mb-1">{t("generate.queueEmpty")}</h3>
+        <h3 className="text-xs font-bold text-foreground mb-1">
+          {t("generate.queueEmpty")}
+        </h3>
         <p className="text-[11px] text-muted-foreground max-w-[220px] leading-normal">
           {t("generate.queueEmptyDesc")}
         </p>
@@ -116,7 +131,12 @@ export function JobQueueSidebar({
   }
 
   return (
-    <Card className={cn("rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden flex flex-col", className)}>
+    <Card
+      className={cn(
+        "rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden flex flex-col",
+        className,
+      )}
+    >
       {/* Header with Title & Stats */}
       <CardHeader className="p-3.5 pb-2.5 border-b border-border/60 bg-muted/20 space-y-2">
         <div className="flex items-center justify-between gap-2">
@@ -127,14 +147,19 @@ export function JobQueueSidebar({
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
                 <span>{title || t("generate.queueTitle")}</span>
-                <span className="text-[10px] font-mono font-bold text-muted-foreground">({queue.length})</span>
+                <span className="text-[10px] font-mono font-bold text-muted-foreground">
+                  ({queue.length})
+                </span>
               </h3>
             </div>
           </div>
 
           <div className="flex items-center gap-1">
             {activeJobs.length > 0 && (
-              <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-bold bg-primary/10 text-primary border-primary/30 animate-pulse">
+              <Badge
+                variant="outline"
+                className="h-5 px-1.5 text-[10px] font-bold bg-primary/10 text-primary border-primary/30 animate-pulse"
+              >
                 <Loader2 className="h-2.5 w-2.5 animate-spin mr-1" />
                 {activeJobs.length} {t("generate.statusProcessing")}
               </Badge>
@@ -156,7 +181,9 @@ export function JobQueueSidebar({
                 title={t("jobQueue.clearCompleted")}
               >
                 <Trash2 className="h-3 w-3" />
-                <span className="hidden sm:inline">{t("jobQueue.clearCompleted")}</span>
+                <span className="hidden sm:inline">
+                  {t("jobQueue.clearCompleted")}
+                </span>
               </button>
             )}
           </div>
@@ -214,7 +241,12 @@ export function JobQueueSidebar({
       </CardHeader>
 
       {/* Bounded Scrollable Queue List */}
-      <CardContent className={cn("p-3.5 pt-4 sm:p-4 sm:pt-5 overflow-y-auto space-y-3 pr-1.5 divide-y-0", maxHeightClass)}>
+      <CardContent
+        className={cn(
+          "p-3.5 pt-4 sm:p-4 sm:pt-5 overflow-y-auto space-y-3 pr-1.5 divide-y-0",
+          maxHeightClass,
+        )}
+      >
         {filteredQueue.length === 0 ? (
           <div className="py-6 text-center text-xs text-muted-foreground flex flex-col items-center gap-1">
             <Filter className="h-4 w-4 opacity-40 mb-0.5" />
@@ -230,7 +262,13 @@ export function JobQueueSidebar({
   );
 }
 
-function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string, fileName?: string) => void }) {
+function JobItem({
+  job,
+  onReparse,
+}: {
+  job: TTSJob;
+  onReparse?: (jobText: string, fileName?: string) => void;
+}) {
   const { removeFromQueue, retryJob } = useQueue();
   const { t } = useTranslation();
   const [playing, setPlaying] = useState(false);
@@ -243,20 +281,30 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
-  const [downloadFormat, setDownloadFormat] = useState<"mp3" | "m4a" | null>(null);
-  const [downloadingFormat, setDownloadingFormat] = useState<"mp3" | "m4a" | null>(null);
+  const [downloadFormat, setDownloadFormat] = useState<"mp3" | "m4a" | null>(
+    null,
+  );
+  const [downloadingFormat, setDownloadingFormat] = useState<
+    "mp3" | "m4a" | null
+  >(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioBlobUrlRef = useRef<string | null>(null);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
+  const seekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isUUID = (str?: string | null) =>
-    Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+    Boolean(
+      str &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        str,
+      ),
+    );
 
   const isCustomVoice = Boolean(
     job.voiceType &&
-      (job.voiceType.startsWith("custom_") || isUUID(job.voiceType))
+    (job.voiceType.startsWith("custom_") || isUUID(job.voiceType)),
   );
   const isVieneuPreset = !isCustomVoice && job.providerId === "vieneu";
   const speedText = typeof job.rate === "number" ? `${job.rate}x` : "1.0x";
@@ -270,7 +318,10 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
 
   useEffect(() => {
     return () => {
-      if (audioBlobUrlRef.current && typeof URL.revokeObjectURL === "function") {
+      if (
+        audioBlobUrlRef.current &&
+        typeof URL.revokeObjectURL === "function"
+      ) {
         URL.revokeObjectURL(audioBlobUrlRef.current);
       }
     };
@@ -284,7 +335,10 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
   const startSeeking = (direction: "forward" | "rewind") => {
     if (!audioRef.current || !duration) return;
     const jump = direction === "forward" ? 10 : -10;
-    const newTime = Math.max(0, Math.min(duration, audioRef.current.currentTime + jump));
+    const newTime = Math.max(
+      0,
+      Math.min(duration, audioRef.current.currentTime + jump),
+    );
     audioRef.current.currentTime = newTime;
     setCurrentTime(newTime);
 
@@ -292,7 +346,10 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
       seekIntervalRef.current = setInterval(() => {
         if (!audioRef.current || !duration) return;
         const step = direction === "forward" ? 2 : -2;
-        const t = Math.max(0, Math.min(duration, audioRef.current.currentTime + step));
+        const t = Math.max(
+          0,
+          Math.min(duration, audioRef.current.currentTime + step),
+        );
         audioRef.current.currentTime = t;
         setCurrentTime(t);
       }, 100);
@@ -328,12 +385,16 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
     audioRef.current?.play().catch(console.error);
   };
 
-  const handleStartDownload = async (format: "mp3" | "m4a", customFileName?: string) => {
+  const handleStartDownload = async (
+    format: "mp3" | "m4a",
+    customFileName?: string,
+  ) => {
     setDownloadingFormat(format);
     try {
-      const endpoint = format === "m4a"
-        ? `/api/v1/tts/jobs/${job.id}/audio?format=m4a`
-        : `/api/v1/tts/jobs/${job.id}/audio`;
+      const endpoint =
+        format === "m4a"
+          ? `/api/v1/tts/jobs/${job.id}/audio?format=m4a`
+          : `/api/v1/tts/jobs/${job.id}/audio`;
       const blob = await apiFetchBlob(endpoint);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -419,9 +480,15 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
                   ? "bg-primary text-primary-foreground ring-2 ring-primary/30 scale-105"
                   : "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground hover:scale-105 active:scale-95",
               )}
-              title={playing ? t("generate.pauseTooltip") : t("generate.playTooltip")}
+              title={
+                playing ? t("generate.pauseTooltip") : t("generate.playTooltip")
+              }
             >
-              {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
+              {playing ? (
+                <Pause className="h-3.5 w-3.5" />
+              ) : (
+                <Play className="h-3.5 w-3.5 ml-0.5" />
+              )}
             </button>
           ) : job.status === "processing" ? (
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
@@ -439,7 +506,10 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
         </div>
 
         {/* Center: Voice Name + Speed + 1-Line Preview */}
-        <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setIsExpanded((prev) => !prev)}>
+        <div
+          className="min-w-0 flex-1 cursor-pointer"
+          onClick={() => setIsExpanded((prev) => !prev)}
+        >
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs font-bold text-foreground truncate max-w-[130px] sm:max-w-[180px]">
               {job.voiceDisplayName || job.voiceType}
@@ -461,7 +531,9 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
             </span>
             {job.status === "processing" && (
               <span className="text-[10px] font-bold text-primary font-mono">
-                {job.progress && job.progress > 0 ? `${Math.round(job.progress)}%` : t("jobQueue.statusGenerating")}
+                {job.progress && job.progress > 0
+                  ? `${Math.round(job.progress)}%`
+                  : t("jobQueue.statusGenerating")}
               </span>
             )}
             {job.status === "queued" && (
@@ -491,17 +563,26 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
                   className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
                   title={t("generate.downloadAudioTooltip")}
                 >
-                  {downloadingFormat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  {downloadingFormat ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[120px] p-1 rounded-xl shadow-xl z-50">
+              <DropdownMenuContent
+                align="end"
+                className="min-w-[120px] p-1 rounded-xl shadow-xl z-50"
+              >
                 <DropdownMenuItem
                   onClick={() => handleDownloadClick("mp3")}
                   disabled={downloadingFormat !== null}
                   className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-semibold cursor-pointer rounded-lg"
                 >
                   <span className="font-bold">MP3</span>
-                  <span className="text-[10px] font-medium text-muted-foreground">{t("jobQueue.audioLabel")}</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    {t("jobQueue.audioLabel")}
+                  </span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => handleDownloadClick("m4a")}
@@ -509,7 +590,9 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
                   className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs font-semibold cursor-pointer rounded-lg"
                 >
                   <span className="font-bold">M4A</span>
-                  <span className="text-[10px] font-medium text-muted-foreground">{t("jobQueue.aacLabel")}</span>
+                  <span className="text-[10px] font-medium text-muted-foreground">
+                    {t("jobQueue.aacLabel")}
+                  </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -522,12 +605,24 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
               className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
               title={t("generate.retryJobTooltip")}
             >
-              <RotateCcw className={cn("h-3.5 w-3.5", isRetrying && "animate-spin")} />
+              <RotateCcw
+                className={cn("h-3.5 w-3.5", isRetrying && "animate-spin")}
+              />
             </button>
           )}
 
           <button
-            onClick={() => onReparse?.(job.text, job.sourceFileName || undefined)}
+            onClick={() => setPreviewOpen(true)}
+            className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+            title="Xem kịch bản & Phân tích"
+          >
+            <FileText className="h-3.5 w-3.5" />
+          </button>
+
+          <button
+            onClick={() =>
+              onReparse?.(job.text, job.sourceFileName || undefined)
+            }
             className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-orange-500/10 text-muted-foreground hover:text-orange-500 transition-colors"
             title={t("generate.loadComposerTooltip")}
           >
@@ -540,134 +635,199 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
             className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-colors disabled:opacity-50"
             title={t("generate.deleteJobTooltip")}
           >
-            {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            {isDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
           </button>
 
           {/* Expand/Collapse Toggle */}
           <button
             onClick={() => setIsExpanded((prev) => !prev)}
-            className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title={isExpanded ? "Thu gọn" : "Mở rộng"}
           >
-            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 transition-transform duration-300 ease-out",
+                isExpanded && "rotate-180",
+              )}
+            />
           </button>
         </div>
       </div>
 
-      {/* Expandable Area: Progress Bar or Full Waveform & Text */}
-      {isExpanded && (
-        <div className="px-3 pb-3 pt-1 border-t border-border/40 space-y-2.5 animate-in fade-in duration-150">
-          {/* Detailed Text Content */}
-          <div className="relative rounded-lg bg-muted/40 p-2.5 border border-border/40 group/text">
-            <p className="text-[11px] leading-relaxed text-foreground/90 max-h-24 overflow-y-auto pr-6 font-sans">
-              {job.text}
-            </p>
-            <button
-              onClick={handleCopyText}
-              className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-md bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground border border-border/50 transition-colors opacity-0 group-hover/text:opacity-100"
-              title="Sao chép văn bản"
+      {/* Expandable Area: Smooth CSS Grid Accordion Transition */}
+      <div
+        className={cn(
+          "grid transition-all duration-300 ease-out",
+          isExpanded
+            ? "grid-rows-[1fr] opacity-100 border-t border-border/40"
+            : "grid-rows-[0fr] opacity-0 border-t-0 pointer-events-none",
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="px-3 pb-3 pt-2 space-y-2.5">
+            {/* Detailed Text Content */}
+            <div
+              onClick={() => setPreviewOpen(true)}
+              className="group/text relative rounded-xl bg-muted/40 hover:bg-muted/70 p-2.5 sm:p-3 border border-border/40 hover:border-primary/30 transition-all cursor-pointer shadow-2xs"
+              title="Bấm để xem toàn bộ kịch bản chi tiết"
             >
-              {copiedText ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-            </button>
-          </div>
-
-          {/* Full Interactive Waveform Player for completed jobs */}
-          {job.status === "completed" && job.audioUrl && (
-            <div className="flex items-center gap-2 rounded-xl bg-muted/50 border border-border/50 p-2 shadow-2xs">
-              {/* Seeking controls */}
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onPointerDown={() => startSeeking("rewind")}
-                  onPointerUp={stopSeeking}
-                  onPointerLeave={stopSeeking}
-                  className="flex items-center justify-center h-6 w-6 rounded-lg bg-background border border-border/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-all select-none"
-                  title={t("generate.rewindTooltip")}
-                >
-                  <Rewind className="h-3 w-3" />
-                </button>
-
-                <button
-                  onClick={togglePlay}
-                  className={cn(
-                    "flex items-center justify-center h-7 w-7 rounded-lg transition-all shadow-xs",
-                    playing
-                      ? "bg-primary text-primary-foreground ring-2 ring-primary/20"
-                      : "bg-primary text-primary-foreground hover:opacity-90 active:scale-95",
-                  )}
-                  title={playing ? t("generate.pauseTooltip") : t("generate.playTooltip")}
-                >
-                  {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
-                </button>
-
-                <button
-                  onPointerDown={() => startSeeking("forward")}
-                  onPointerUp={stopSeeking}
-                  onPointerLeave={stopSeeking}
-                  className="flex items-center justify-center h-6 w-6 rounded-lg bg-background border border-border/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-all select-none"
-                  title={t("generate.forwardTooltip")}
-                >
-                  <FastForward className="h-3 w-3" />
-                </button>
-              </div>
-
-              {/* Progress Slider */}
-              <div
-                ref={sliderRef}
-                className="flex-1 h-2 bg-muted-foreground/15 rounded-full overflow-hidden cursor-pointer relative group/slider"
-                onPointerDown={(e) => {
-                  if (!audioRef.current || !duration) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
-
-                  const updatePosition = (clientX: number) => {
-                    let percent = (clientX - rect.left) / rect.width;
-                    percent = Math.max(0, Math.min(1, percent));
-                    const newTime = percent * duration;
-                    if (audioRef.current) audioRef.current.currentTime = newTime;
-                    setCurrentTime(newTime);
-                  };
-
-                  updatePosition(e.clientX);
-
-                  const handlePointerMove = (moveEvent: PointerEvent) => {
-                    updatePosition(moveEvent.clientX);
-                  };
-
-                  const handlePointerUp = () => {
-                    window.removeEventListener("pointermove", handlePointerMove);
-                    window.removeEventListener("pointerup", handlePointerUp);
-                  };
-
-                  window.addEventListener("pointermove", handlePointerMove);
-                  window.addEventListener("pointerup", handlePointerUp);
-                }}
-                title={t("generate.seekTooltip")}
-              >
-                <div
-                  className="absolute top-0 left-0 h-full rounded-full bg-primary transition-all duration-75 ease-linear"
-                  style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-                />
-                <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover/slider:opacity-100 transition-opacity pointer-events-none" />
-              </div>
-
-              {/* Time Indicators */}
-              <div className="flex items-center gap-1 shrink-0 text-[10px] font-mono font-semibold text-muted-foreground tabular-nums">
-                <span className="text-foreground">{formatTime(currentTime)}</span>
-                <span className="text-muted-foreground/60">/</span>
-                <span>{formatTime(duration || job.audioDuration || 0)}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Failure Error Trace */}
-          {job.status === "failed" && (
-            <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
-              <p className="text-[11px] leading-relaxed font-medium text-destructive break-words whitespace-pre-wrap max-h-24 overflow-y-auto">
-                {job.errorMessage || t("errors.generic")}
+              <p className="text-[11px] leading-relaxed text-foreground/90 max-h-24 overflow-y-auto font-sans">
+                {job.text}
               </p>
+              {/* Clean bottom metadata & action bar */}
+              <div className="mt-2 flex items-center justify-between pt-1.5 border-t border-border/30 text-[10px] text-muted-foreground select-none">
+                <span className="font-mono text-[9px] opacity-75">
+                  {job.text.length.toLocaleString()} ký tự · Bấm để xem chi tiết
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyText();
+                    }}
+                    className="flex h-5 w-5 items-center justify-center rounded-md hover:bg-background text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title="Sao chép văn bản"
+                  >
+                    {copiedText ? (
+                      <Check className="h-3 w-3 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewOpen(true);
+                    }}
+                    className="flex h-5 w-5 items-center justify-center rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                    title="Phóng to kịch bản"
+                  >
+                    <Maximize2 className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Full Interactive Waveform Player for completed jobs */}
+            {job.status === "completed" && job.audioUrl && (
+              <div className="flex items-center gap-2 rounded-xl bg-muted/50 border border-border/50 p-2 shadow-2xs">
+                {/* Seeking controls */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onPointerDown={() => startSeeking("rewind")}
+                    onPointerUp={stopSeeking}
+                    onPointerLeave={stopSeeking}
+                    className="flex items-center justify-center h-6 w-6 rounded-lg bg-background border border-border/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-all select-none"
+                    title={t("generate.rewindTooltip")}
+                  >
+                    <Rewind className="h-3 w-3" />
+                  </button>
+
+                  <button
+                    onClick={togglePlay}
+                    className={cn(
+                      "flex items-center justify-center h-7 w-7 rounded-lg transition-all shadow-xs",
+                      playing
+                        ? "bg-primary text-primary-foreground ring-2 ring-primary/20"
+                        : "bg-primary text-primary-foreground hover:opacity-90 active:scale-95",
+                    )}
+                    title={
+                      playing
+                        ? t("generate.pauseTooltip")
+                        : t("generate.playTooltip")
+                    }
+                  >
+                    {playing ? (
+                      <Pause className="h-3.5 w-3.5" />
+                    ) : (
+                      <Play className="h-3.5 w-3.5 ml-0.5" />
+                    )}
+                  </button>
+
+                  <button
+                    onPointerDown={() => startSeeking("forward")}
+                    onPointerUp={stopSeeking}
+                    onPointerLeave={stopSeeking}
+                    className="flex items-center justify-center h-6 w-6 rounded-lg bg-background border border-border/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-all select-none"
+                    title={t("generate.forwardTooltip")}
+                  >
+                    <FastForward className="h-3 w-3" />
+                  </button>
+                </div>
+
+                {/* Progress Slider */}
+                <div
+                  ref={sliderRef}
+                  className="flex-1 h-2 bg-muted-foreground/15 rounded-full overflow-hidden cursor-pointer relative group/slider"
+                  onPointerDown={(e) => {
+                    if (!audioRef.current || !duration) return;
+                    const rect = e.currentTarget.getBoundingClientRect();
+
+                    const updatePosition = (clientX: number) => {
+                      let percent = (clientX - rect.left) / rect.width;
+                      percent = Math.max(0, Math.min(1, percent));
+                      const newTime = percent * duration;
+                      if (audioRef.current)
+                        audioRef.current.currentTime = newTime;
+                      setCurrentTime(newTime);
+                    };
+
+                    updatePosition(e.clientX);
+
+                    const handlePointerMove = (moveEvent: PointerEvent) => {
+                      updatePosition(moveEvent.clientX);
+                    };
+
+                    const handlePointerUp = () => {
+                      window.removeEventListener(
+                        "pointermove",
+                        handlePointerMove,
+                      );
+                      window.removeEventListener("pointerup", handlePointerUp);
+                    };
+
+                    window.addEventListener("pointermove", handlePointerMove);
+                    window.addEventListener("pointerup", handlePointerUp);
+                  }}
+                  title={t("generate.seekTooltip")}
+                >
+                  <div
+                    className="absolute top-0 left-0 h-full rounded-full bg-primary transition-all duration-75 ease-linear"
+                    style={{
+                      width: `${duration ? (currentTime / duration) * 100 : 0}%`,
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover/slider:opacity-100 transition-opacity pointer-events-none" />
+                </div>
+
+                {/* Time Indicators */}
+                <div className="flex items-center gap-1 shrink-0 text-[10px] font-mono font-semibold text-muted-foreground tabular-nums">
+                  <span className="text-foreground">
+                    {formatTime(currentTime)}
+                  </span>
+                  <span className="text-muted-foreground/60">/</span>
+                  <span>{formatTime(duration || job.audioDuration || 0)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Failure Error Trace */}
+            {job.status === "failed" && (
+              <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
+                <p className="text-[11px] leading-relaxed font-medium text-destructive break-words whitespace-pre-wrap max-h-24 overflow-y-auto">
+                  {job.errorMessage || t("errors.generic")}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Hidden Native Audio Element */}
       <audio
@@ -681,7 +841,12 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
         className="hidden"
       />
 
-      <TextPreviewDialog isOpen={previewOpen} onClose={() => setPreviewOpen(false)} job={job} />
+      <TextPreviewDialog
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        job={job}
+        onReparse={onReparse}
+      />
 
       {downloadFormat && (
         <AudioDownloadDialog
@@ -698,4 +863,3 @@ function JobItem({ job, onReparse }: { job: TTSJob; onReparse?: (jobText: string
     </div>
   );
 }
-

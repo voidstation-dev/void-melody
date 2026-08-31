@@ -5,9 +5,10 @@ export type DeliveryTag = {
   label: string
   type: DeliveryTagType
   token: string
+  icon?: string
   engine?: string[]
   description?: string
-  colorVariant?: "green" | "amber" | "blue"
+  colorVariant?: "green" | "amber" | "blue" | "purple"
 }
 
 export type CueItem = {

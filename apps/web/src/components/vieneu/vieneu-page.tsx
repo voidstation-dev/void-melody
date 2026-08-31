@@ -38,7 +38,15 @@ import {
   DEFAULT_WAVEFORM_PEAKS,
 } from "@/constants";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getVoiceCalibrationAudioUrl } from "@/lib/voice-lab-api";
+import { VoiceLabFloatingBar } from "./voice-lab-floating-bar";
 
 function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -453,8 +461,8 @@ export function VieneuPage({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="mb-5 flex shrink-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex flex-1 flex-col space-y-5 max-w-[1600px] mx-auto w-full pb-8">
+      <header className="flex shrink-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-primary/60">
             VieNeu / local audio
@@ -473,14 +481,13 @@ export function VieneuPage({
         />
       </header>
 
-      <div className="mb-5 flex shrink-0 justify-end">
+      <div className="flex shrink-0 justify-end">
         <span className="hidden text-xs text-muted-foreground sm:block">
           V3 Turbo · 48 kHz
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-6">
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
           <div className="space-y-5">
             {/* STEP 1 */}
             <StepCard step="1" title={t("voiceLab.step1Title")}>
@@ -856,29 +863,60 @@ export function VieneuPage({
 
               {/* V2 Options: Denoise & Clone Mode */}
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <label className="text-xs font-semibold">
-                  {t("voiceLab.denoiseModeLabel")}
-                  <select
+                <div className="space-y-1.5">
+                  <label htmlFor="denoise-mode-select" className="text-xs font-semibold text-foreground">
+                    {t("voiceLab.denoiseModeLabel")}
+                  </label>
+                  <Select
                     value={denoiseMode}
-                    onChange={(e) => setDenoiseMode(e.target.value as "auto" | "off" | "on")}
-                    className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs cursor-pointer outline-none focus:border-primary"
+                    onValueChange={(val) => setDenoiseMode(val as "auto" | "off" | "on")}
                   >
-                    <option value="auto">{t("voiceLab.denoiseAuto")}</option>
-                    <option value="off">{t("voiceLab.denoiseOff")}</option>
-                    <option value="on">{t("voiceLab.denoiseOn")}</option>
-                  </select>
-                </label>
-                <label className="text-xs font-semibold">
-                  {t("voiceLab.cloneModeLabel")}
-                  <select
+                    <SelectTrigger
+                      id="denoise-mode-select"
+                      aria-label={t("voiceLab.denoiseModeLabel")}
+                      className="mt-1 w-full rounded-xl border border-border/80 bg-background/80 px-3.5 py-2.5 text-xs font-semibold hover:border-primary/50 transition-colors"
+                    >
+                      <SelectValue placeholder={t("voiceLab.denoiseAuto")} />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-border/80 shadow-xl backdrop-blur-md">
+                      <SelectItem value="auto" className="cursor-pointer text-xs font-medium py-2">
+                        {t("voiceLab.denoiseAuto")}
+                      </SelectItem>
+                      <SelectItem value="off" className="cursor-pointer text-xs font-medium py-2">
+                        {t("voiceLab.denoiseOff")}
+                      </SelectItem>
+                      <SelectItem value="on" className="cursor-pointer text-xs font-medium py-2">
+                        {t("voiceLab.denoiseOn")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="clone-mode-select" className="text-xs font-semibold text-foreground">
+                    {t("voiceLab.cloneModeLabel")}
+                  </label>
+                  <Select
                     value={cloneMode}
-                    onChange={(e) => setCloneMode(e.target.value as "fidelity" | "stability")}
-                    className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs cursor-pointer outline-none focus:border-primary"
+                    onValueChange={(val) => setCloneMode(val as "fidelity" | "stability")}
                   >
-                    <option value="fidelity">{t("voiceLab.cloneFidelity")}</option>
-                    <option value="stability">{t("voiceLab.cloneStability")}</option>
-                  </select>
-                </label>
+                    <SelectTrigger
+                      id="clone-mode-select"
+                      aria-label={t("voiceLab.cloneModeLabel")}
+                      className="mt-1 w-full rounded-xl border border-border/80 bg-background/80 px-3.5 py-2.5 text-xs font-semibold hover:border-primary/50 transition-colors"
+                    >
+                      <SelectValue placeholder={t("voiceLab.cloneFidelity")} />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-border/80 shadow-xl backdrop-blur-md">
+                      <SelectItem value="fidelity" className="cursor-pointer text-xs font-medium py-2">
+                        {t("voiceLab.cloneFidelity")}
+                      </SelectItem>
+                      <SelectItem value="stability" className="cursor-pointer text-xs font-medium py-2">
+                        {t("voiceLab.cloneStability")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="mt-4 flex items-center justify-between rounded-xl border border-border bg-muted/30 p-3 text-xs">
@@ -1313,160 +1351,27 @@ export function VieneuPage({
           </aside>
         </div>
 
-        {/* Test synthesis & Studio Quick Start section */}
-        <section className="mt-6 rounded-2xl border border-primary/20 bg-gradient-to-b from-card via-card to-primary/[0.02] p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-foreground">
-                  {t("voiceLab.useInStudio")}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Thử nghiệm tạo giọng đọc AI từ văn bản tùy ý hoặc chuyển tiếp trực tiếp vào Studio
-                </p>
-              </div>
-            </div>
-
-            {profile && (
-              <a
-                href={`/generate?voice=${profile.id}`}
-                className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-primary/30 bg-primary/5 px-3.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/10 transition-colors"
-              >
-                <span>Mở trong Studio</span>
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            )}
-          </div>
-
-          {/* Quick preset chips */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
-              <FileText className="h-3.5 w-3.5" /> Mẫu nhanh:
-            </span>
-            {referenceTranscript.trim() && (
-              <button
-                type="button"
-                onClick={() => setPreviewText(referenceTranscript.trim())}
-                disabled={!profile}
-                className="rounded-lg border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                🎙️ Lời thoại gốc
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setPreviewText("Xin chào các bạn, hôm nay tôi sẽ hướng dẫn các bạn cách ứng dụng trí tuệ nhân tạo để làm việc hiệu quả hơn.")}
-              disabled={!profile}
-              className="rounded-lg border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              👋 Lời chào
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreviewText("Đêm ấy, ánh trăng chiếu rọi xuống mặt hồ phẳng lặng như gương. Gió thu se lạnh khẽ lướt qua rặng liễu ven bờ.")}
-              disabled={!profile}
-              className="rounded-lg border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              📖 Kể chuyện
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreviewText("Bản tin công nghệ: Mô hình giọng nói AI cục bộ đang thay đổi hoàn toàn quy trình sáng tạo âm thanh và lồng tiếng video.")}
-              disabled={!profile}
-              className="rounded-lg border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-medium text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              📰 Tin tức
-            </button>
-          </div>
-
-          <div className="mt-3 space-y-4">
-            {/* Textarea container */}
-            <div className="relative rounded-xl border border-border bg-background transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
-              <textarea
-                value={previewText}
-                onChange={(event) => setPreviewText(event.target.value)}
-                disabled={!profile}
-                maxLength={500}
-                placeholder={
-                  profile
-                    ? t("voiceLab.previewTextPlaceholder")
-                    : t("voiceLab.createProfileToUnlockDesc")
-                }
-                className="min-h-24 w-full resize-y bg-transparent p-3.5 text-sm outline-none placeholder:text-muted-foreground/60 disabled:cursor-not-allowed"
-              />
-              <div className="flex items-center justify-between border-t border-border/50 bg-muted/20 px-3 py-1.5 text-[11px] text-muted-foreground">
-                <span>Nhập tối đa 500 ký tự cho bản nghe thử</span>
-                <span className="font-mono">{previewText.length}/500</span>
-              </div>
-            </div>
-
-            {/* Bottom Bar: Speed selector and action button */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              {/* Modern Speed Pills */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1 shrink-0">
-                  <Gauge className="h-3.5 w-3.5" />
-                  {t("generate.speed")}:
-                </span>
-                <div className="flex items-center gap-1 rounded-xl border border-border bg-muted/40 p-1">
-                  {[
-                    { label: "0.75×", value: "0.75" },
-                    { label: "1.0× (Chuẩn)", value: "1" },
-                    { label: "1.25×", value: "1.25" },
-                    { label: "1.5×", value: "1.5" },
-                    { label: "2.0×", value: "2" },
-                  ].map((preset) => {
-                    const isSelected = previewRate === preset.value;
-                    return (
-                      <button
-                        key={preset.value}
-                        type="button"
-                        onClick={() => setPreviewRate(preset.value)}
-                        disabled={!profile}
-                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                          isSelected
-                            ? "bg-primary text-primary-foreground shadow-xs font-bold"
-                            : "text-muted-foreground hover:text-foreground hover:bg-background/60"
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Generate Button */}
-              <button
-                type="button"
-                onClick={() => void generatePreview()}
-                disabled={
-                  !profile ||
-                  !previewText.trim() ||
-                  previewJob?.status === "queued" ||
-                  previewJob?.status === "processing"
-                }
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-98 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {(previewJob?.status === "queued" || previewJob?.status === "processing") ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>{t("voiceLab.synthesizing")}</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    <span>{t("voiceLab.generatePreview")}</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </section>
+        {/* Sticky Floating Bar for Voice Lab / Preview (with Expandable Studio Section) */}
+        <VoiceLabFloatingBar
+          profile={profile}
+          previewText={previewText}
+          setPreviewText={setPreviewText}
+          previewRate={previewRate}
+          setPreviewRate={setPreviewRate}
+          referenceTranscript={referenceTranscript}
+          previewJob={previewJob}
+          previewJobError={previewJobError}
+          isLoadingPreviewAudio={isLoadingPreviewAudio}
+          previewAudioBlobUrl={previewAudioBlobUrl}
+          isPreviewPlaying={isPreviewPlaying}
+          previewDuration={previewDuration}
+          previewCurrentTime={previewCurrentTime}
+          togglePlayPreview={togglePlayPreview}
+          handlePreviewSeek={handlePreviewSeek}
+          generatePreview={generatePreview}
+          downloadingFormat={downloadingFormat}
+          handleDownloadPreview={handleDownloadPreview}
+        />
       </div>
-    </div>
   );
 }

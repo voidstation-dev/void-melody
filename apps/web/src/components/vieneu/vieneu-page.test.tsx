@@ -119,7 +119,7 @@ describe("VieneuPage", () => {
 
     renderVieneu();
 
-    expect(screen.getByText("My Cloned Voice")).toBeInTheDocument();
+    expect(screen.getAllByText("My Cloned Voice").length).toBeGreaterThanOrEqual(1);
     const resetBtn = screen.getByRole("button", { name: /create another voice/i });
     expect(resetBtn).toBeInTheDocument();
 

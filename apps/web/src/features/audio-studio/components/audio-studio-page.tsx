@@ -5,12 +5,10 @@ import { useAudioShortcuts } from "../hooks/use-audio-shortcuts"
 import { AudioStudioHeader } from "./audio-studio-header"
 import { ScriptEditor } from "./script-editor"
 import { EmotionPanel } from "./emotion-panel"
-import { DeliveryPanel } from "./delivery-panel"
 import { VoiceSelector } from "./voice-selector"
 import { SpeedControl } from "./speed-control"
 import { OutputFormat } from "./output-format"
-import { RenderPreflight } from "./render-preflight"
-import { GenerateAudioButton } from "./generate-audio-button"
+import { StudioFloatingBar } from "./studio-floating-bar"
 import { JobQueueSidebar } from "@/components/tts/job-queue-sidebar"
 import { useQueue } from "@/hooks/use-queue"
 import { apiFetch } from "@/lib/api-client"
@@ -47,15 +45,16 @@ export function AudioStudioPage() {
   const { addToQueue } = useQueue()
 
   const handleGenerate = async () => {
-    if (!preflight.canGenerate || isSubmitting) return
+    if (!preflight.canGenerate || isSubmitting || !selectedVoice) return
 
     setIsSubmitting(true)
     try {
+      const voiceType = selectedVoice.voiceType || selectedVoice.id || selectedVoiceId
       const response = await apiFetch<BatchJobCreateResponse>("/api/v1/tts/jobs", {
         method: "POST",
         body: JSON.stringify({
           text,
-          voiceType: selectedVoiceId,
+          voiceType,
           resourceId: selectedVoice?.resourceId || undefined,
           rate: speed,
           exportFormat: outputFormat,
@@ -64,9 +63,10 @@ export function AudioStudioPage() {
 
       addToQueue(response.jobs)
       toast.success(t("audioStudio.queueSuccessToast"))
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to generate audio:", err)
-      toast.error(t("errors.generateFailed"))
+      const errorMsg = (err as Error)?.message || t("errors.generateFailed")
+      toast.error(errorMsg)
     } finally {
       setIsSubmitting(false)
     }
@@ -105,8 +105,8 @@ export function AudioStudioPage() {
 
       {/* Main Studio Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Script Editor & Expression Controls (7 or 8 cols) */}
-        <div className="lg:col-span-7 xl:col-span-8 flex flex-col space-y-4">
+        {/* Left Column: Script Editor with Autocomplete & Full Emotion Palette (7 or 8 cols) */}
+        <div className="lg:col-span-7 xl:col-span-8 flex flex-col space-y-5">
           <ScriptEditor
             text={text}
             onChange={setText}
@@ -119,11 +119,8 @@ export function AudioStudioPage() {
             onClearText={clearText}
           />
 
-          {/* Emotion & Native Cue Palette */}
+          {/* Unified Expression & Delivery Studio Palette */}
           <EmotionPanel onInsertTag={insertTag} />
-
-          {/* Advanced Delivery Controls */}
-          <DeliveryPanel onInsertTag={insertTag} />
         </div>
 
         {/* Right Column: Render Settings & Preflight (5 or 4 cols) */}
@@ -148,18 +145,8 @@ export function AudioStudioPage() {
             <OutputFormat format={outputFormat} onChange={setOutputFormat} disabled={isSubmitting} />
           </div>
 
-          {/* Render Preflight Summary */}
-          <RenderPreflight report={preflight} />
-
-          {/* Primary CTA */}
-          <GenerateAudioButton
-            onClick={handleGenerate}
-            disabled={!preflight.canGenerate}
-            isLoading={isSubmitting}
-          />
-
           {/* Real-time Job Queue */}
-          <div className="pt-2">
+          <div className="pt-1">
             <JobQueueSidebar
               onReparseText={handleReparseFromQueue}
               currentText={text}
@@ -168,6 +155,16 @@ export function AudioStudioPage() {
           </div>
         </div>
       </div>
+
+      {/* Sticky Bottom Floating Action Bar */}
+      <StudioFloatingBar
+        selectedVoice={selectedVoice}
+        speed={speed}
+        outputFormat={outputFormat}
+        report={preflight}
+        isSubmitting={isSubmitting}
+        onGenerate={handleGenerate}
+      />
     </div>
   )
 }

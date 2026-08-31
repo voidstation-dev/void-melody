@@ -5,6 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { EmotionTag } from "./emotion-tag"
 import { ADVANCED_DELIVERY_TAGS } from "../lib/delivery-tags"
 import { useTranslation } from "@/hooks/use-translation"
+import { cn } from "@/lib/utils"
 
 interface DeliveryPanelProps {
   onInsertTag: (token: string) => void
@@ -31,13 +32,13 @@ export function DeliveryPanel({ onInsertTag }: DeliveryPanelProps) {
                 <p className="text-xs text-muted-foreground">{t("audioStudio.deliveryDesc")}</p>
               </div>
             </div>
-            <div className="rounded-lg p-1 text-muted-foreground transition-transform">
-              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <div className="rounded-lg p-1 text-muted-foreground">
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-300 ease-out", isOpen && "rotate-180")} />
             </div>
           </button>
         </CollapsibleTrigger>
 
-        <CollapsibleContent>
+        <CollapsibleContent className="transition-all duration-300 ease-out">
           <CardContent className="pt-0 pb-5">
             <div className="flex flex-wrap gap-2 pt-2 border-t border-border/40">
               {ADVANCED_DELIVERY_TAGS.map((tag) => (

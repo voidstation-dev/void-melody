@@ -115,6 +115,7 @@ export type TranslationSchema = {
     nativeCueTagNotice: string;
     voiceLabel: string;
     voicePlaceholder: string;
+    voiceNotSelected: string;
     groupVieNeu: string;
     groupCustom: string;
     groupOther: string;
@@ -364,6 +365,10 @@ export type TranslationSchema = {
     useInStudio: string;
     viewInVoices: string;
     voiceLibrary: string;
+    voiceNotSelected: string;
+    compactSnippetPlaceholder: string;
+    expandScript: string;
+    collapseScript: string;
     voiceLabDesc: string;
     autoBestSegment: string;
     denoiseModeLabel: string;

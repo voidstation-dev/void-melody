@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { FileText, Sparkles } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { ImportToolbar } from "./import-toolbar"
+import { SmartTagAutocomplete } from "./smart-tag-autocomplete"
 import { useTranslation } from "@/hooks/use-translation"
 import { cn } from "@/lib/utils"
 
@@ -61,7 +62,7 @@ export function ScriptEditor({
   return (
     <Card
       className={cn(
-        "relative flex flex-col flex-1 min-h-[360px] lg:min-h-[440px] border-border/80 shadow-sm transition-all duration-200",
+        "relative flex flex-col flex-1 min-h-[360px] lg:min-h-[440px] border-border/80 shadow-sm transition-all duration-200 overflow-hidden",
         isDragging && "border-primary ring-2 ring-primary/20 bg-primary/5",
       )}
       onDragOver={handleDragOver}
@@ -85,7 +86,7 @@ export function ScriptEditor({
         />
 
         {/* Editor Area */}
-        <div className="relative flex-1 min-h-[260px] lg:min-h-[300px] w-full my-2">
+        <div className="relative flex-1 min-h-[260px] lg:min-h-[320px] w-full my-2">
           {!hasText && (
             <div className="pointer-events-none absolute inset-0 text-sm sm:text-base leading-relaxed text-muted-foreground/40 select-none p-1">
               <p className="font-semibold text-foreground/50">
@@ -107,9 +108,16 @@ export function ScriptEditor({
             placeholder=""
             autoFocus
           />
+
+          {/* Autocomplete dropdown when user types '[' or '/' */}
+          <SmartTagAutocomplete
+            textareaRef={textareaRef}
+            text={text}
+            onChange={onChange}
+          />
         </div>
 
-        {/* Footer Counters */}
+        {/* Footer Counters & Shortcut Hint */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-3">
             <span className="font-semibold">{t("audioStudio.segmentCount", { count: segmentCount })}</span>
@@ -119,6 +127,17 @@ export function ScriptEditor({
                 {t("audioStudio.cueCount", { count: cueCount })}
               </span>
             )}
+            <div className="hidden sm:flex items-center gap-1 text-[11px] text-muted-foreground/75 font-medium pl-2 border-l border-border/50">
+              <span>💡 Gõ</span>
+              <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold text-foreground border border-border/50">
+                [
+              </kbd>
+              <span>hoặc</span>
+              <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold text-foreground border border-border/50">
+                /
+              </kbd>
+              <span>để gợi ý</span>
+            </div>
           </div>
           <div className="font-mono text-[11px] font-semibold text-muted-foreground/80">
             {t("audioStudio.charCount", { count: characterCount.toLocaleString() })}

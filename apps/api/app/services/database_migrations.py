@@ -84,6 +84,7 @@ POST_BASELINE_COLUMNS = {
     "request_metadata",
     "export_path",
     "export_format",
+    "license_entitlement_id",
 }
 POST_BASELINE_CUSTOM_VOICE_COLUMNS = {
     "source_duration_seconds",
@@ -100,6 +101,7 @@ POST_BASELINE_CUSTOM_VOICE_COLUMNS = {
     "speaker_similarity_score",
     "calibration_quality_score",
     "enrollment_created_at",
+    "license_entitlement_id",
 }
 POST_BASELINE_OMNIVOICE_VOICE_COLUMNS = {
     "license_entitlement_id",
@@ -159,6 +161,12 @@ def _has_post_baseline_columns(connection: sqlite3.Connection) -> bool:
     if not POST_BASELINE_CUSTOM_VOICE_COLUMNS.issubset(custom_columns):
         return False
     if not _table_exists(connection, OMNIVOICE_VOICE_TABLE):
+        return False
+    omni_columns = {
+        row[1]
+        for row in connection.execute(f"PRAGMA table_info({OMNIVOICE_VOICE_TABLE})")
+    }
+    if not POST_BASELINE_OMNIVOICE_VOICE_COLUMNS.issubset(omni_columns):
         return False
     return True
 
@@ -282,17 +290,15 @@ def _run_database_migrations(
             if has_custom_voices and has_emotional_script_tables and has_audio_cache_table and has_post_baseline:
                 if current_revision != head_revision:
                     command.stamp(config, head_revision)
-            elif has_custom_voices and has_emotional_script_tables and has_audio_cache_table:
-                if current_revision != ENROLLMENT_V2_PREVIOUS_REVISION and current_revision != head_revision:
-                    command.stamp(config, ENROLLMENT_V2_PREVIOUS_REVISION)
-            elif has_custom_voices and has_emotional_script_tables and has_post_baseline:
-                if current_revision != OPTIMIZATION_PREVIOUS_REVISION and current_revision != head_revision:
-                    command.stamp(config, OPTIMIZATION_PREVIOUS_REVISION)
-            elif has_custom_voices and has_post_baseline:
-                if current_revision != EMOTIONAL_SCRIPT_PREVIOUS_REVISION:
-                    command.stamp(config, EMOTIONAL_SCRIPT_PREVIOUS_REVISION)
             elif current_revision is None:
-                _adopt_legacy_schema(config, database_path)
+                if has_custom_voices and has_emotional_script_tables and has_audio_cache_table:
+                    command.stamp(config, ENROLLMENT_V2_PREVIOUS_REVISION)
+                elif has_custom_voices and has_emotional_script_tables:
+                    command.stamp(config, OPTIMIZATION_PREVIOUS_REVISION)
+                elif has_custom_voices:
+                    command.stamp(config, EMOTIONAL_SCRIPT_PREVIOUS_REVISION)
+                else:
+                    _adopt_legacy_schema(config, database_path)
             elif current_revision != head_revision:
                 _backup_database(database_path)
 

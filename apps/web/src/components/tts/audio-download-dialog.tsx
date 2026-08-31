@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Download, X, FileAudio, Folder, Plus, User, Gauge } from "lucide-react";
 import { getFirstLine, slugify } from "@/lib/utils";
 import { TTSJob } from "@/types/tts-job";
@@ -29,7 +30,7 @@ export function AudioDownloadDialog({
 
   useEffect(() => {
     if (isDesktop && isOpen && !exportPath) {
-      downloadDir().then(dir => setExportPath(dir)).catch(console.error);
+      downloadDir().then((dir) => setExportPath(dir)).catch(console.error);
     }
   }, [isDesktop, isOpen, exportPath]);
 
@@ -40,7 +41,7 @@ export function AudioDownloadDialog({
         directory: true,
         multiple: false,
         defaultPath: exportPath || undefined,
-        title: t("generate.saveLocation")
+        title: t("generate.saveLocation", "Chọn thư mục lưu"),
       });
       if (selected && typeof selected === "string") {
         setExportPath(selected);
@@ -74,7 +75,7 @@ export function AudioDownloadDialog({
     }
   }, [isOpen, onClose]);
 
-  if (!isOpen || !job) return null;
+  if (!isOpen || !job || typeof document === "undefined") return null;
 
   const handleDownload = async () => {
     if (!fileName.trim()) return;
@@ -108,14 +109,23 @@ export function AudioDownloadDialog({
   );
   const isVieneuPreset = !isCustomVoice && job.providerId === "vieneu";
 
-  return (
-    <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-md p-4 overflow-hidden animate-backdrop-in"
+      style={{
+        animation: "modal-fade-in 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col gap-5">
+      <div
+        className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-2xl animate-modal-in flex flex-col gap-5 ring-1 ring-black/5 dark:ring-white/10 relative"
+        style={{
+          animation: "modal-scale-in 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3.5">
@@ -125,20 +135,20 @@ export function AudioDownloadDialog({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-foreground">
-                  {t("generate.downloadAudio")}
+                  {t("generate.downloadAudio", "Tải file âm thanh")}
                 </h3>
                 <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full bg-primary/10 text-primary border border-primary/20 tracking-wider">
                   {format}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {t("generate.downloadNotice")}
+                {t("generate.downloadNotice", "File sẽ được lưu tự động vào máy tính.")}
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -146,23 +156,23 @@ export function AudioDownloadDialog({
 
         {/* Metadata summary pill bar */}
         <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-muted/40 border border-border/50 text-xs">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <User className="h-3.5 w-3.5 text-primary" />
+          <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
+            <User className="h-3.5 w-3.5 text-primary shrink-0" />
             <span className="font-semibold text-foreground truncate max-w-[140px]">
               {job.voiceDisplayName || job.voiceType}
             </span>
             {isCustomVoice ? (
-              <span className="rounded-full bg-violet-500/15 px-1.5 py-0.2 text-[9px] font-bold text-violet-600 dark:text-violet-400">
+              <span className="rounded-full bg-violet-500/15 px-1.5 py-0.2 text-[9px] font-bold text-violet-600 dark:text-violet-400 shrink-0">
                 Clone
               </span>
             ) : isVieneuPreset ? (
-              <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
                 VieNeu
               </span>
             ) : null}
           </div>
-          <div className="h-3 w-[1px] bg-border/80 mx-1" />
-          <div className="flex items-center gap-1.5 text-muted-foreground">
+          <div className="h-3 w-[1px] bg-border/80 mx-1 shrink-0" />
+          <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
             <Gauge className="h-3.5 w-3.5 text-primary" />
             <span className="font-semibold text-foreground">
               {job.rate ? `${job.rate.toFixed(1)}x` : "1.0x"}
@@ -176,13 +186,13 @@ export function AudioDownloadDialog({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between px-0.5">
               <label className="text-xs font-semibold text-foreground">
-                {t("generate.fileName")}
+                {t("generate.fileName", "Tên tệp")}
               </label>
               <span className="text-[11px] font-mono text-muted-foreground">
                 .{format}
               </span>
             </div>
-            
+
             <div className="relative flex items-center">
               <input
                 type="text"
@@ -200,23 +210,23 @@ export function AudioDownloadDialog({
             {/* Append Quick Tags */}
             <div className="flex items-center gap-2 pt-0.5 px-0.5 flex-wrap">
               <span className="text-[11px] font-medium text-muted-foreground">
-                {t("generate.appendLabel")}
+                {t("generate.appendLabel", "Thêm vào tên:")}
               </span>
               <button
                 type="button"
                 onClick={() => appendToFileName(slugify(job.voiceDisplayName || job.voiceType))}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-primary/5 hover:bg-primary/15 text-primary border border-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-primary/5 hover:bg-primary/15 text-primary border border-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 <Plus className="h-3 w-3" />
-                <span>{t("generate.voiceName")}</span>
+                <span>{t("generate.voiceName", "Tên giọng")}</span>
               </button>
               <button
                 type="button"
                 onClick={() => appendToFileName(`${job.rate?.toFixed(1) || "1.0"}x`)}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-primary/5 hover:bg-primary/15 text-primary border border-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-primary/5 hover:bg-primary/15 text-primary border border-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
               >
                 <Plus className="h-3 w-3" />
-                <span>{t("generate.speed")}</span>
+                <span>{t("generate.speed", "Tốc độ")}</span>
               </button>
             </div>
           </div>
@@ -225,19 +235,19 @@ export function AudioDownloadDialog({
           {isDesktop && (
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-foreground px-0.5">
-                {t("generate.saveLocation")}
+                {t("generate.saveLocation", "Thư mục lưu:")}
               </label>
               <div className="flex items-center gap-2 rounded-2xl border border-border bg-background p-1.5 pl-3 shadow-2xs">
                 <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className="flex-1 text-xs text-muted-foreground truncate font-mono" title={exportPath}>
-                  {exportPath || t("generate.loadingDir")}
+                  {exportPath || t("generate.loadingDir", "Đang tải...")}
                 </span>
                 <button
                   type="button"
                   onClick={handleSelectFolder}
-                  className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-xl text-xs font-bold hover:bg-secondary/80 transition-all shrink-0"
+                  className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-xl text-xs font-bold hover:bg-secondary/80 transition-all shrink-0 cursor-pointer"
                 >
-                  {t("generate.changeVoice")}
+                  {t("generate.changeLocation", "Đổi thư mục")}
                 </button>
               </div>
             </div>
@@ -249,22 +259,23 @@ export function AudioDownloadDialog({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground rounded-xl transition-all"
+            className="px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground rounded-xl transition-all cursor-pointer"
           >
-            {t("common.cancel")}
+            {t("common.cancel", "Hủy")}
           </button>
 
           <button
             type="button"
             onClick={handleDownload}
             disabled={!fileName.trim() || (isDesktop && !exportPath)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all shadow-xs hover:shadow-sm active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all shadow-xs hover:shadow-sm active:scale-[0.98] cursor-pointer"
           >
             <Download className="h-3.5 w-3.5" />
-            <span>{t("generate.startDownload")}</span>
+            <span>{t("generate.startDownload", "Bắt đầu tải về")}</span>
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

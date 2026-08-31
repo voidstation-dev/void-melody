@@ -1,7 +1,8 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { STORAGE_KEYS } from "@/constants";
+import { STORAGE_KEYS, DEFAULT_DEV_KEY } from "@/constants";
 import { verifyLicenseKey, LicenseInfo } from "@/services/auth-service";
+import { setLicenseKey as setApiClientLicenseKey } from "@/lib/api-client";
 
 export interface AuthContextType {
   isAuthenticated: boolean;
@@ -47,6 +48,7 @@ export function AuthProvider({
             setLicenseKey(savedKey);
             setLicenseInfo(result.license);
             setIsAuthenticated(true);
+            setApiClientLicenseKey(savedKey);
           } else {
             // Key is invalid or expired, clear storage
             try {
@@ -55,6 +57,7 @@ export function AuthProvider({
             setLicenseKey(null);
             setLicenseInfo(null);
             setIsAuthenticated(false);
+            setApiClientLicenseKey(null);
           }
         }
       }
@@ -79,6 +82,7 @@ export function AuthProvider({
         setLicenseKey(result.license.key);
         setLicenseInfo(result.license);
         setIsAuthenticated(true);
+        setApiClientLicenseKey(result.license.key);
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem(STORAGE_KEYS.AUTH_KEY, result.license.key);
@@ -99,6 +103,7 @@ export function AuthProvider({
     setLicenseKey(null);
     setLicenseInfo(null);
     setIsAuthenticated(false);
+    setApiClientLicenseKey(null);
     if (typeof window !== "undefined") {
       try {
         localStorage.removeItem(STORAGE_KEYS.AUTH_KEY);

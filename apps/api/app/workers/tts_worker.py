@@ -124,7 +124,7 @@ async def process_chunk(
                 "ref_audio": job.reference_audio_path if job.speaker_emb is None else None,
                 "destination_path": destination,
             })
-        else:
+        elif job.provider_id == "omnivoice":
             synth_kwargs["destination_path"] = destination
 
         with timings.measure("vieneu_infer_ms" if job.provider_id == "vieneu" else "provider_ms") if timings else _null_context():
