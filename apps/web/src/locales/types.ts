@@ -531,6 +531,9 @@ export type TranslationSchema = {
   settings: {
     title: string;
     subtitle: string;
+    tabGeneral: string;
+    tabLicense: string;
+    tabLocalAi: string;
     appearanceHeading: string;
     appearanceDesc: string;
     themeLabel: string;

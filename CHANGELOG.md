@@ -4,6 +4,20 @@ All notable changes to VoidMelody Desktop are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-08-31
+
+### Added
+
+- **TweakCN-Inspired Multi-Theme Palette Engine**: Integrated 20+ rich theme presets spanning Studio & Minimal, Cyber & Tech, Nature, Pastel, and Classic Vintage aesthetics with persistent localStorage syncing.
+- **Visual Theme Palette Picker**: Added interactive theme catalog with 4-color dot preview swatches, real-time name & description fuzzy search, category filter pills, and random theme shuffle button.
+- **Dynamic Corner Radius Customizer**: Added live radius slider with 5 quick-click presets (from 0.25rem sharp to 1.25rem soft) that reacts instantly across all application components.
+- **Settings Studio Tabbed Redesign**: Restructured settings into an organized 3-tab layout (General, License, Local AI) with segmented controls.
+
+### Fixed
+
+- **Light & System Theme Toggle Synchronization**: Fixed light mode transition issue caused by DOM class race conditions when switching from system theme.
+- **Bilingual Theme Descriptions**: Added full English and Vietnamese localization for all theme preset titles and descriptions.
+
 ## [0.4.4] - 2026-08-31
 
 ### Added

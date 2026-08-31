@@ -531,6 +531,9 @@ export const vi: TranslationSchema = {
   settings: {
     title: "Cài đặt hệ thống",
     subtitle: "Tùy chỉnh giao diện, ngôn ngữ, bản quyền và quản lý cập nhật ứng dụng.",
+    tabGeneral: "Cài đặt chung",
+    tabLicense: "Bản quyền & Kích hoạt",
+    tabLocalAi: "AI Cục bộ & Mô hình",
     appearanceHeading: "Giao diện (Theme)",
     appearanceDesc: "Tùy chỉnh chế độ sáng, tối hoặc đồng bộ với hệ thống.",
     themeLabel: "Chế độ giao diện",

@@ -1,6 +1,7 @@
 import { ReactNode } from "react"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
+import { ThemePaletteProvider } from "@/contexts/theme-palette-provider"
 import { I18nProvider } from "@/contexts/i18n-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { TauriProvider } from "@/contexts/tauri-provider"
@@ -13,20 +14,22 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <I18nProvider>
-          <AuthProvider>
-            <TauriProvider>
-              <UpdateProvider>
-                <AuthGuard>
-                  <QueueProvider>
-                    {children}
-                  </QueueProvider>
-                </AuthGuard>
-                <UpdateModal />
-              </UpdateProvider>
-            </TauriProvider>
-          </AuthProvider>
-        </I18nProvider>
+        <ThemePaletteProvider>
+          <I18nProvider>
+            <AuthProvider>
+              <TauriProvider>
+                <UpdateProvider>
+                  <AuthGuard>
+                    <QueueProvider>
+                      {children}
+                    </QueueProvider>
+                  </AuthGuard>
+                  <UpdateModal />
+                </UpdateProvider>
+              </TauriProvider>
+            </AuthProvider>
+          </I18nProvider>
+        </ThemePaletteProvider>
       </ThemeProvider>
     </QueryProvider>
   )

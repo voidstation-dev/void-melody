@@ -531,6 +531,9 @@ export const en: TranslationSchema = {
   settings: {
     title: "Settings",
     subtitle: "Customize appearance, language, licensing, and manage application updates.",
+    tabGeneral: "General",
+    tabLicense: "License & Activation",
+    tabLocalAi: "Local AI & Models",
     appearanceHeading: "Appearance & Theme",
     appearanceDesc: "Choose light, dark, or sync with your system theme.",
     themeLabel: "Theme Mode",
