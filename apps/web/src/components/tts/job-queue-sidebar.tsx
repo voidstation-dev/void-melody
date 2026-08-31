@@ -20,6 +20,7 @@ import {
   Filter,
   FileText,
   Maximize2,
+  MoreHorizontal,
 } from "lucide-react";
 import { TTSJob } from "@/types/tts-job";
 import { apiFetchBlob } from "@/lib/api-client";
@@ -505,13 +506,13 @@ function JobItem({
           )}
         </div>
 
-        {/* Center: Voice Name + Speed + 1-Line Preview */}
+        {/* Center: Voice Name + Badges + Speed + 1-Line Preview */}
         <div
-          className="min-w-0 flex-1 cursor-pointer"
+          className="min-w-0 flex-1 cursor-pointer overflow-hidden"
           onClick={() => setIsExpanded((prev) => !prev)}
         >
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-bold text-foreground truncate max-w-[130px] sm:max-w-[180px]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs font-bold text-foreground truncate max-w-[90px] sm:max-w-[130px] shrink-0">
               {job.voiceDisplayName || job.voiceType}
             </span>
             {isCustomVoice ? (
@@ -529,38 +530,37 @@ function JobItem({
             >
               {speedText}
             </span>
+            {job.status === "completed" && (
+              <span className="shrink-0 text-[10px] font-mono font-bold text-muted-foreground/80 bg-muted/50 px-1.5 py-0.2 rounded">
+                {formatTime(job.audioDuration || 0)}
+              </span>
+            )}
             {job.status === "processing" && (
-              <span className="text-[10px] font-bold text-primary font-mono">
+              <span className="shrink-0 text-[10px] font-bold text-primary font-mono">
                 {job.progress && job.progress > 0
                   ? `${Math.round(job.progress)}%`
                   : t("jobQueue.statusGenerating")}
               </span>
             )}
             {job.status === "queued" && (
-              <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+              <span className="shrink-0 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
                 {t("jobQueue.statusWaiting")}
               </span>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground truncate leading-normal mt-0.5">
+          <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5 block w-full">
             {job.textPreview || job.text}
           </p>
         </div>
 
-        {/* Right: Duration / Timestamp & Quick Action Buttons */}
-        <div className="flex items-center gap-1 shrink-0">
-          {job.status === "completed" && (
-            <span className="text-[10px] font-mono font-bold text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded-md hidden sm:inline-block">
-              {formatTime(job.audioDuration || 0)}
-            </span>
-          )}
-
-          {/* Quick Actions */}
+        {/* Right: Quick Actions & Toggle */}
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          {/* Quick Download for completed audio */}
           {job.status === "completed" && job.audioUrl && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+                  className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-emerald-500/10 text-muted-foreground hover:text-emerald-500 transition-colors focus-visible:outline-none cursor-pointer"
                   title={t("generate.downloadAudioTooltip")}
                 >
                   {downloadingFormat ? (
@@ -598,6 +598,7 @@ function JobItem({
             </DropdownMenu>
           )}
 
+          {/* Quick Retry for failed jobs */}
           {job.status === "failed" && (
             <button
               onClick={handleRetry}
@@ -611,36 +612,53 @@ function JobItem({
             </button>
           )}
 
-          <button
-            onClick={() => setPreviewOpen(true)}
-            className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-            title="Xem kịch bản & Phân tích"
-          >
-            <FileText className="h-3.5 w-3.5" />
-          </button>
-
-          <button
-            onClick={() =>
-              onReparse?.(job.text, job.sourceFileName || undefined)
-            }
-            className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-orange-500/10 text-muted-foreground hover:text-orange-500 transition-colors"
-            title={t("generate.loadComposerTooltip")}
-          >
-            <CornerUpLeft className="h-3.5 w-3.5" />
-          </button>
-
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-colors disabled:opacity-50"
-            title={t("generate.deleteJobTooltip")}
-          >
-            {isDeleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5" />
-            )}
-          </button>
+          {/* More options menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center justify-center h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none cursor-pointer"
+                title="Tùy chọn khác"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="min-w-[170px] p-1 rounded-xl shadow-xl z-50 text-xs"
+            >
+              <DropdownMenuItem
+                onClick={() => setPreviewOpen(true)}
+                className="flex items-center gap-2 px-2.5 py-1.5 font-medium cursor-pointer rounded-lg"
+              >
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                <span>Xem kịch bản & phân tích</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  onReparse?.(job.text, job.sourceFileName || undefined)
+                }
+                className="flex items-center gap-2 px-2.5 py-1.5 font-medium cursor-pointer rounded-lg"
+              >
+                <CornerUpLeft className="h-3.5 w-3.5 text-orange-500" />
+                <span>{t("generate.loadComposerTooltip")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleCopyText}
+                className="flex items-center gap-2 px-2.5 py-1.5 font-medium cursor-pointer rounded-lg"
+              >
+                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Sao chép văn bản</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex items-center gap-2 px-2.5 py-1.5 font-medium cursor-pointer rounded-lg text-rose-600 dark:text-rose-400 focus:text-rose-600 focus:bg-rose-500/10"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{t("generate.deleteJobTooltip")}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Expand/Collapse Toggle */}
           <button
@@ -651,7 +669,7 @@ function JobItem({
             <ChevronDown
               className={cn(
                 "h-3.5 w-3.5 transition-transform duration-300 ease-out",
-                isExpanded && "rotate-180",
+                isExpanded && "rotate-180 text-primary",
               )}
             />
           </button>
@@ -817,14 +835,46 @@ function JobItem({
               </div>
             )}
 
-            {/* Failure Error Trace */}
-            {job.status === "failed" && (
-              <div className="p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
-                <p className="text-[11px] leading-relaxed font-medium text-destructive break-words whitespace-pre-wrap max-h-24 overflow-y-auto">
-                  {job.errorMessage || t("errors.generic")}
-                </p>
+            {/* Quick Action Toolbar inside expanded drawer */}
+            <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/40 text-xs select-none">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onReparse?.(job.text, job.sourceFileName || undefined)
+                  }
+                  className="flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 hover:bg-muted px-2 py-1 text-[11px] font-semibold text-foreground transition-colors cursor-pointer shadow-2xs"
+                  title={t("generate.loadComposerTooltip")}
+                >
+                  <CornerUpLeft className="h-3 w-3 text-orange-500" />
+                  <span>Nạp lại</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(true)}
+                  className="flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 hover:bg-muted px-2 py-1 text-[11px] font-semibold text-foreground transition-colors cursor-pointer shadow-2xs"
+                  title="Xem kịch bản chi tiết"
+                >
+                  <FileText className="h-3 w-3 text-primary" />
+                  <span>Xem chi tiết</span>
+                </button>
               </div>
-            )}
+
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex items-center gap-1 rounded-lg border border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/15 px-2 py-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 transition-colors cursor-pointer disabled:opacity-50"
+                title={t("generate.deleteJobTooltip")}
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3 w-3" />
+                )}
+                <span>Xóa</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
