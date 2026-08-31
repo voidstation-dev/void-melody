@@ -75,7 +75,15 @@ export function useAudioStudio(initialVoiceId?: string) {
 
   // Autosave draft debounce
   useEffect(() => {
-    if (!text.trim()) return
+    if (!text.trim()) {
+      try {
+        localStorage.removeItem(DRAFT_STORAGE_KEY)
+        setLastSavedAt(null)
+      } catch {
+        // ignore
+      }
+      return
+    }
     const timer = setTimeout(() => {
       try {
         const draft: AudioStudioDraft = {
