@@ -4,6 +4,21 @@ All notable changes to VoidMelody Desktop are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-08-31
+
+### Added
+
+- **Audio Studio UX Revamp & Expandable Floating Bar**: Redesigned floating action bar into a sleek, compact single-row dock with smooth CSS Grid accordion preflight inspection drawer and real-time validation checks.
+- **Smart Tag Autocomplete & Inline Ribbon**: Added trigger-based autocompletion for expression, delivery, and emotion tags with keyboard navigation.
+- **Minimalist Audio Track Job Queue**: Streamlined job queue cards into a 2-line clean layout (Voice + Duration, Tag + Script preview) with responsive right-side actions.
+- **OmniVoice Phase 2 Foundation**: Added voice design endpoints, model orchestration service, and license plan entitlement enforcement.
+
+### Fixed
+
+- **Job Queue Layout on Small Screens**: Resolved text overlapping and badge truncation on laptop and compact viewport sizes.
+- **Auto-Save Draft Synchronization**: Enhanced auto-save to immediately purge stale localStorage drafts when editor text is cleared.
+- **Full Application Translations**: Completed missing localization keys across all studio components.
+
 ## [0.4.3] - 2026-08-25
 
 ### Added
