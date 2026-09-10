@@ -155,9 +155,11 @@ class VoxCpmRuntimeClient:
                     f"Failed to start VoxCPM2 worker process: {exc}",
                 ) from exc
 
-        # Verify handshake with ping
+        # Verify handshake with ping. The worker imports torch on cold start,
+        # which can take tens of seconds on slow disks — the handshake
+        # timeout must tolerate that (a short timeout poisons every start).
         try:
-            await self.ping(timeout_seconds=5.0)
+            await self.ping(timeout_seconds=120.0)
         except Exception as exc:
             await self.shutdown()
             if isinstance(exc, VoxCpmRuntimeError):
