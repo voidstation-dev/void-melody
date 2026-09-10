@@ -17,6 +17,7 @@ from vieneu_core import default_descriptor as vieneu_default_descriptor
 CAPCUT = "capcut"
 VIENEU = "vieneu"
 OMNIVOICE = "omnivoice"
+VOXCPM2 = "voxcpm2"
 
 
 @dataclass(frozen=True)
@@ -108,6 +109,26 @@ def _omnivoice_descriptor() -> ProviderDescriptor:
     )
 
 
+def _voxcpm2_descriptor() -> ProviderDescriptor:
+    return ProviderDescriptor(
+        id=VOXCPM2,
+        label="VoxCPM2",
+        version="0.1.0",
+        capabilities=Capabilities(
+            supports_preset_voices=False,
+            supports_voice_cloning=True,
+            supports_streaming=True,
+            supports_styles=True,
+            supports_batch=False,
+            supports_emotion_tags=True,
+            supports_multilingual=True,
+            supports_voice_design=True,
+            supports_cross_lingual_clone=True,
+            sample_rate=48000,
+        ),
+    )
+
+
 class ProviderRegistry:
     """Registry of known TTS providers, keyed by stable id."""
 
@@ -136,3 +157,4 @@ provider_registry = ProviderRegistry()
 provider_registry.register(_capcut_descriptor())
 provider_registry.register(_vieneu_descriptor())
 provider_registry.register(_omnivoice_descriptor())
+provider_registry.register(_voxcpm2_descriptor())

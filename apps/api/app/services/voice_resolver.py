@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.custom_voice import CustomVoiceModel
 from app.models.omnivoice_voice import OmniVoiceVoiceModel
+from app.models.voxcpm_voice import VoxCpmVoiceModel
 from app.services.voice_catalog import voice_catalog
 from app.services.voice_profile_artifacts import load_enrollment_artifact
 
@@ -151,6 +152,43 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
         _custom_voice_cache[voice_type] = (now, resolved)
 
         return resolved
+
+    # Fall back to VoxCPM2 cloned voices (provider-aware identity: the
+    # provider_id travels on the resolved voice, never resolved by id alone).
+    vox = await session.scalar(
+        select(VoxCpmVoiceModel).where(VoxCpmVoiceModel.id == voice_type)
+    )
+    if vox:
+        if vox.status != "ready":
+            raise VoiceResolutionError(
+                "VOICE_NOT_READY",
+                "Selected VoxCPM2 voice is not ready for synthesis.",
+            )
+        if not vox.reference_audio_path or not Path(vox.reference_audio_path).is_file():
+            raise VoiceResolutionError(
+                "VOXCPM_REFERENCE_MISSING",
+                "Selected VoxCPM2 voice reference audio is missing.",
+            )
+        return ResolvedVoice(
+            voice_type=vox.id,
+            display_name=vox.display_name,
+            language_code="vi-VN",
+            resource_id=None,
+            provider_id=vox.provider_id or "voxcpm2",
+            source="custom",
+            status=vox.status,
+            voice_revision=(
+                vox.updated_at.isoformat()
+                if vox.updated_at
+                else f"reference:{Path(vox.reference_audio_path).stat().st_mtime_ns}"
+            ),
+            reference_audio_path=vox.reference_audio_path,
+            prompt_text=vox.reference_transcript,
+            profile_format_version="reference-v1",
+            speaker_emb=None,
+            ref_codes=None,
+            clone_mode="fidelity",
+        )
 
     # Fall back to OmniVoice designed voices.
     omni = await session.scalar(

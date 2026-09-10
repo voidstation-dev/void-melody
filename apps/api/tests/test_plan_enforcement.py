@@ -109,6 +109,7 @@ async def test_pro_plan_allows_all_features_and_providers(seeded_session):
     check_provider_allowed(features, "capcut")
     check_provider_allowed(features, "vieneu")
     check_provider_allowed(features, "omnivoice")
+    check_provider_allowed(features, "voxcpm2")
 
 
 @pytest.mark.asyncio

@@ -26,6 +26,28 @@ def _retry_after_from_data(data: dict[str, Any]) -> float | None:
 def map_provider_error(error: BaseException) -> TTSJobError:
     if isinstance(error, TTSJobError):
         return error
+    if type(error).__name__ == "VoxCpmProviderError":
+        # Explicit VoxCPM2 failure (voice missing, runtime busy, ...):
+        # surfaced as PROVIDER_REJECTED with the provider's code attached —
+        # never retried as a fallback to another provider.
+        return TTSJobError(
+            code="PROVIDER_REJECTED",
+            message=f"[voxcpm2] {getattr(error, 'code', '')}: {error}",
+            retryable=False,
+        )
+    if type(error).__name__ == "VoxCpmRuntimeError":
+        code = getattr(error, "code", "")
+        if code in ("VOXCPM_RUNTIME_TIMEOUT", "VOXCPM_RUNTIME_CRASHED"):
+            return TTSJobError(
+                code="PROVIDER_TIMEOUT",
+                message=f"[voxcpm2] {error}",
+                retryable=True,
+            )
+        return TTSJobError(
+            code="PROVIDER_UNAVAILABLE",
+            message=f"[voxcpm2] {error}",
+            retryable=False,
+        )
     if isinstance(error, (requests.Timeout, TimeoutError)):
         return TTSJobError(
             code="PROVIDER_TIMEOUT",

@@ -46,4 +46,33 @@ describe("CustomVoiceCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Xóa giọng" }))
     expect(onDelete).toHaveBeenCalledWith("custom-1")
   })
+
+  it("routes VoxCPM2 voices to VoxCPM2 Studio with 48 kHz badge (Phase 7)", () => {
+    const voxVoice = {
+      ...voice,
+      id: "vox-1",
+      provider_id: "voxcpm2",
+      quality_score: null,
+    }
+    render(
+      <I18nProvider initialLocale="vi">
+        <CustomVoiceCard voice={voxVoice} onDelete={vi.fn()} />
+      </I18nProvider>,
+    )
+
+    expect(screen.getByText("VoxCPM2")).toBeInTheDocument()
+    expect(screen.getByText("48 kHz")).toBeInTheDocument()
+    const useLink = screen.getByRole("link", { name: /dùng giọng/i })
+    expect(useLink.getAttribute("href")).toBe("/voxcpm?voice=vox-1")
+  })
+
+  it("keeps VieNeu voices routed to the studio (Phase 7)", () => {
+    render(
+      <I18nProvider initialLocale="vi">
+        <CustomVoiceCard voice={voice} onDelete={vi.fn()} />
+      </I18nProvider>,
+    )
+    const useLink = screen.getByRole("link", { name: /dùng giọng/i })
+    expect(useLink.getAttribute("href")).toBe("/?voice=custom-1")
+  })
 })

@@ -8,7 +8,14 @@ from typing import Any
 import numpy as np
 import pytest
 
-# Add worker directory to sys.path for direct component unit testing
+# Add worker directory to sys.path for direct component unit testing.
+# Both omnivoice-worker and voxcpm-worker expose top-level module names
+# (backend, errors, ...); evict conflicting entries from the other first.
+for _dir in [p for p in sys.path if p.endswith("voxcpm-worker")]:
+    sys.path.remove(_dir)
+for _name in ("backend", "errors", "path_utils", "mock_backend", "real_backend", "worker"):
+    sys.modules.pop(_name, None)
+
 WORKER_DIR = Path(__file__).resolve().parent.parent.parent / "omnivoice-worker"
 if str(WORKER_DIR) not in sys.path:
     sys.path.insert(0, str(WORKER_DIR))

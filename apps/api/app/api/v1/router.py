@@ -8,6 +8,7 @@ from app.api.v1 import (
     speech,
     tts_batches,
     tts_jobs,
+    voxcpm,
     voices,
     voice_design,
 )
@@ -22,3 +23,4 @@ api_router.include_router(speech.router, tags=["Speech"])
 api_router.include_router(runtimes.router, tags=["Runtimes"])
 api_router.include_router(emotional_scripts.router, tags=["Emotional Scripts"])
 api_router.include_router(voice_design.router, tags=["Voice Design"])
+api_router.include_router(voxcpm.router, tags=["VoxCPM2"])

@@ -4,6 +4,16 @@ All notable changes to VoidMelody Desktop are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **VoxCPM2 Studio (Isolated Provider)**: New `/voxcpm` workspace for reference-audio voice cloning and emotional TTS with a dedicated provider (`voxcpm2`), isolated JSONL worker runtime, and dedicated storage — no reuse of VieNeu voices and no fallback to other providers.
+- **Emotional TTS from Cloned Voices**: 10 emotion presets plus custom performance instructions, carried through the shared TTS job pipeline with cache-fingerprint isolation per emotion.
+- **Shared Voice Library Integration**: VoxCPM2 cloned voices appear in the shared custom voice library with provider badge, 48 kHz meta, and deep-link into VoxCPM2 Studio.
+- **Speech Runtime Coordinator**: Unload-before-load coordination across heavy speech runtimes (VoxCPM2, VieNeu, OmniVoice) so only one heavy runtime stays resident; explicit `VOXCPM_RUNTIME_BUSY` messaging instead of silent fallback.
+- **Settings & Model Lifecycle**: VoxCPM2 installation card (Install runtime / Verify / Remove) in Settings → Local AI, separated from live runtime state in the Studio's Runtime tab; bootstrap-only packaging with no model weights in the installer (`docs/VOXCPM2_PACKAGING_RELEASE.md`).
+
 ## [0.4.5] - 2026-08-31
 
 ### Added

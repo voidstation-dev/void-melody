@@ -62,6 +62,13 @@ def get_default_policies() -> dict[str, ProviderExecutionPolicy]:
             cache_enabled=settings.audio_cache_enabled,
             sample_rate=24000,
         ),
+        "voxcpm2": ProviderExecutionPolicy(
+            provider_id="voxcpm2",
+            job_concurrency=settings.voxcpm_job_concurrency,
+            chunk_concurrency=settings.voxcpm_chunk_concurrency,
+            cache_enabled=settings.audio_cache_enabled,
+            sample_rate=48000,
+        ),
         "script": ProviderExecutionPolicy(
             provider_id="script",
             job_concurrency=1,

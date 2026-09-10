@@ -4,6 +4,7 @@ import { useRuntimes } from "@/hooks/use-runtimes"
 import { useTranslation } from "@/hooks/use-translation"
 import { toast } from "sonner"
 import { SpeechModelSelector } from "./speech-model-selector"
+import { VoxCpmSettingsCard } from "./voxcpm-settings-card"
 
 function formatBytes(bytes: number): string {
   if (!bytes) return "0 MB"
@@ -227,6 +228,7 @@ export function LocalAiSettings() {
           description={t("settings.localAiVieneuDesc")}
         />
         <SpeechModelSelector />
+        <VoxCpmSettingsCard />
       </div>
     </section>
   )

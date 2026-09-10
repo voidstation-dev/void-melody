@@ -25,6 +25,8 @@ from app.database import get_async_session
 from app.models.custom_voice import CustomVoiceModel
 from app.models.omnivoice_voice import OmniVoiceVoiceModel
 from app.models.tts_job import TTSJobModel
+from app.models.voxcpm_voice import VoxCpmVoiceModel
+from app.models.voxcpm_voice import VoxCpmVoiceModel
 from app.schemas.custom_voice import (
     CustomVoiceListResponse,
     CustomVoiceResponse,
@@ -403,7 +405,63 @@ async def list_custom_voices(
         items.extend([_serialize_omnivoice_voice(v) for v in omni_voices])
         total = (total or 0) + (omni_total or 0)
 
+    if include_omnivoice:
+        # VoxCPM2 cloned voices ride the same shared library contract.
+        vox_filters = []
+        if q and q.strip():
+            vox_filters.append(VoxCpmVoiceModel.display_name.ilike(f"%{q.strip()}%"))
+        vox_stmt = (
+            select(VoxCpmVoiceModel)
+            .where(*vox_filters)
+            .order_by(VoxCpmVoiceModel.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        vox_result = await session.execute(vox_stmt)
+        vox_voices = vox_result.scalars().all()
+        vox_total = await session.scalar(
+            select(func.count(VoxCpmVoiceModel.id)).where(*vox_filters)
+        )
+        items.extend([_serialize_voxcpm_voice(v) for v in vox_voices])
+        total = (total or 0) + (vox_total or 0)
+
     return CustomVoiceListResponse(items=items, total=total or 0)
+
+
+def _serialize_voxcpm_voice(voice: VoxCpmVoiceModel) -> CustomVoiceResponse:
+    """Render a VoxCPM2 cloned voice in the custom-voice list shape.
+
+    Provider-aware identity: the id is namespaced by provider_id ("voxcpm2")
+    in the card badge; the reference WAV is the profile.
+    """
+    return CustomVoiceResponse.model_validate(
+        {
+            "id": voice.id,
+            "display_name": voice.display_name,
+            "transcript": voice.reference_transcript or voice.description or "",
+            "consent_given": True,
+            "created_at": voice.created_at,
+            "updated_at": voice.updated_at,
+            "provider_id": voice.provider_id or "voxcpm2",
+            "engine_id": voice.engine_id or "voxcpm2",
+            "status": voice.status,
+            "duration_seconds": None,
+            "source_duration_seconds": None,
+            "reference_duration_seconds": voice.reference_duration_seconds,
+            "selected_start_seconds": None,
+            "selected_end_seconds": None,
+            "quality_score": voice.quality_score,
+            "consent_version": "voxcpm2-clone-v1",
+            "profile_format_version": "voxcpm2-reference-v1",
+            "engine_version": voice.model_revision,
+            "denoise_mode": "auto",
+            "denoise_applied": False,
+            "clone_mode": "fidelity",
+            "speaker_similarity_score": None,
+            "calibration_quality_score": None,
+            "calibration_available": False,
+        }
+    )
 
 
 def _serialize_omnivoice_voice(voice: OmniVoiceVoiceModel) -> CustomVoiceResponse:
@@ -458,6 +516,12 @@ async def get_custom_voice(
     )
     if omni:
         return _serialize_omnivoice_voice(omni)
+
+    vox = await session.scalar(
+        select(VoxCpmVoiceModel).where(VoxCpmVoiceModel.id == voice_id)
+    )
+    if vox:
+        return _serialize_voxcpm_voice(vox)
 
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Custom voice not found.")
 
@@ -545,6 +609,40 @@ async def delete_custom_voice(
         invalidate_voice_cache(voice_id)
 
         await session.delete(omni)
+        await session.commit()
+        return
+
+    # Allow deleting VoxCPM2 cloned voices via the same custom-voice route.
+    vox = await session.scalar(
+        select(VoxCpmVoiceModel).where(VoxCpmVoiceModel.id == voice_id)
+    )
+    if vox:
+        active_jobs = await session.scalar(
+            select(func.count(TTSJobModel.id)).where(
+                TTSJobModel.voice_type == voice_id,
+                TTSJobModel.status.in_(["queued", "processing"]),
+            )
+        )
+        if active_jobs:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "VOICE_IN_USE",
+                    "message": "The voice cannot be deleted while a TTS job is queued or processing.",
+                },
+            )
+
+        from app.services.voice_resolver import invalidate_voice_cache
+
+        # Remove the reference WAV directory under data/voices/voxcpm2/<id>.
+        reference_dir = settings.custom_voices_dir / "voxcpm2" / voice_id
+        if reference_dir.is_dir():
+            import shutil
+
+            shutil.rmtree(reference_dir, ignore_errors=True)
+        invalidate_voice_cache(voice_id)
+
+        await session.delete(vox)
         await session.commit()
         return
 

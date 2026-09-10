@@ -15,7 +15,7 @@ PRO_PLAN_FEATURES = {
     "audio_studio": True,
     "transcription": True,
     "runtime_install": True,
-    "providers": ["capcut", "vieneu", "omnivoice"],
+    "providers": ["capcut", "vieneu", "omnivoice", "voxcpm2"],
     "max_custom_voices": 50,
     "max_concurrent_jobs": 5,
     "max_batch_files": 50,

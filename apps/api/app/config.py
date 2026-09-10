@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     omnivoice_job_concurrency: int = 1
     omnivoice_chunk_concurrency: int = 1
     omnivoice_inference_timeout_seconds: float = 180.0
+    voxcpm_job_concurrency: int = 1
+    voxcpm_chunk_concurrency: int = 1
+    voxcpm_inference_timeout_seconds: float = 300.0
     vieneu_macro_planner_enabled: bool = True
     vieneu_macro_target_chars: int = 1024
     vieneu_macro_hard_max_chars: int = 1280

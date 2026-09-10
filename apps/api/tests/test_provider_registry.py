@@ -4,6 +4,7 @@ from app.providers.registry import (
     CAPCUT,
     OMNIVOICE,
     VIENEU,
+    VOXCPM2,
     Capabilities,
     ProviderRegistry,
     provider_registry,
@@ -77,7 +78,7 @@ def test_omnivoice_descriptor_shape():
 def test_list_providers_returns_all():
     providers = provider_registry.list_providers()
     ids = {p.id for p in providers}
-    assert ids == {CAPCUT, VIENEU, OMNIVOICE}
+    assert ids == {CAPCUT, VIENEU, OMNIVOICE, VOXCPM2}
 
 
 def test_empty_registry_is_safe():
