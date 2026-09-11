@@ -151,17 +151,43 @@ def install_runtime() -> dict[str, Any]:
     }
 
 
+def _rmtree_best_effort(directory: Path) -> tuple[bool, str | None]:
+    """rmtree that survives Windows file locks instead of raising a 500.
+
+    Locked files (a running worker, an open HF blob handle) are removed on a
+    retry; whatever still cannot be deleted is reported instead of failing.
+    """
+    try:
+        shutil.rmtree(directory)
+        return True, None
+    except OSError as exc:
+        # Retry once after a short pause: transient locks (AV scans, a worker
+        # winding down) usually clear. Remaining locked entries stay behind.
+        import time
+
+        time.sleep(0.5)
+        try:
+            shutil.rmtree(directory, ignore_errors=False)
+            return True, None
+        except OSError as retry_exc:
+            logger.warning("Partial removal of %s: %s", directory, retry_exc)
+            if directory.is_dir():
+                return False, str(retry_exc)[-500:]
+            return True, None
+
+
 def remove_installation() -> dict[str, Any]:
     """Remove the dedicated worker env. The HF model cache is reported but
     only removed when ``remove_model`` is also requested by the caller."""
     env_dir = worker_env_dir()
     removed = False
+    error: str | None = None
     if env_dir.is_dir():
-        shutil.rmtree(env_dir)
-        removed = True
+        removed, error = _rmtree_best_effort(env_dir)
     return {
         "provider_id": "voxcpm2",
         "env_removed": removed,
+        "error": error,
         "model_cache_dir": str(_model_cache_dir()),
         "model_cache_present": _model_cache_dir().is_dir(),
     }
@@ -170,11 +196,14 @@ def remove_installation() -> dict[str, Any]:
 def remove_model_cache() -> dict[str, Any]:
     """Delete the downloaded HF model cache (frees ~4.6 GB)."""
     cache_dir = _model_cache_dir()
+    removed = True
+    error: str | None = None
     if cache_dir.is_dir():
-        shutil.rmtree(cache_dir)
+        removed, error = _rmtree_best_effort(cache_dir)
     return {
         "provider_id": "voxcpm2",
-        "model_removed": not cache_dir.is_dir(),
+        "model_removed": removed,
+        "error": error,
         "freed_bytes": None,
     }
 

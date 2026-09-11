@@ -25,6 +25,24 @@ VOXCPM_PYTHON_MAX_MINOR = 12  # voxcpm requires Python <3.13
 VOXCPM_INSTALL_MARKER = "voxcpm-runtime.installed"
 
 
+def _worker_source_dir() -> Path:
+    """Directory holding the worker package (worker.py, pyproject.toml).
+
+    Dev: apps/voxcpm-worker relative to the repo root. Frozen (PyInstaller
+    onefile): the worker sources ride along as --add-data under
+    ``voxcpm-worker/`` next to the bundle root, so resolve from the bundle
+    dir (``sys._MEIPASS``) instead of ``__file__`` (which lives in the temp
+    extraction dir and has no repo structure above it).
+    """
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            bundled = Path(meipass) / "voxcpm-worker"
+            if bundled.is_dir():
+                return bundled
+    return Path(__file__).resolve().parents[4] / "apps" / "voxcpm-worker"
+
+
 class VoxCpmEnvError(Exception):
     def __init__(self, code: str, message: str):
         super().__init__(message)
@@ -70,7 +88,8 @@ def _find_compatible_python() -> str | None:
     Preference order:
     1. VOID_VOXCPM_PYTHON override (absolute path to an interpreter)
     2. existing dedicated env (no-op)
-    3. uv-managed interpreters via `uv python list`
+    3. a system interpreter discovered via the `py` launcher or PATH
+    4. uv-managed interpreters via `uv python list`
     """
     override = os.environ.get("VOID_VOXCPM_PYTHON")
     if override and Path(override).is_file():
@@ -78,6 +97,28 @@ def _find_compatible_python() -> str | None:
 
     if env_exists():
         return str(worker_python_executable())
+
+    # Without uv, a packaged machine has no interpreter hint at all: the
+    # sidecar's own python is 3.14 (frozen) and unusable. Scan the `py`
+    # launcher and PATH for a compatible one so the venv fallback works.
+    from shutil import which
+
+    py_launcher = which("py")
+    if py_launcher:
+        for minor in (12, 11, 10):
+            probe = subprocess.run(
+                [py_launcher, f"-3.{minor}", "-c", "import sys; print(sys.executable)"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if probe.returncode == 0 and probe.stdout.strip():
+                return probe.stdout.strip()
+
+    for minor in (12, 11, 10):
+        candidate = which(f"python3.{minor}")
+        if candidate:
+            return candidate
 
     return None  # uv resolves interpreters itself via `uv venv --python`
 
@@ -95,11 +136,14 @@ def create_worker_env() -> Path:
 
     uv_path = _uv_executable()
     if uv_path and spec_python:
-        command = [uv_path, "venv", "--python", spec_python, str(env_dir)]
+        # --seed: uv venvs have no pip by default, and install_runtime drives
+        # pip through the env's own interpreter — seed it or the install
+        # step fails on every fresh uv-created env.
+        command = [uv_path, "venv", "--seed", "--python", spec_python, str(env_dir)]
     elif uv_path:
         # uv fetches a suitable managed interpreter (>=3.10,<3.13) itself.
         uv_version = os.environ.get("VOID_VOXCPM_UV_PYTHON", "3.12")
-        command = [uv_path, "venv", "--python", uv_version, str(env_dir)]
+        command = [uv_path, "venv", "--seed", "--python", uv_version, str(env_dir)]
     elif spec_python:
         command = [spec_python, "-m", "venv", str(env_dir)]
     else:
@@ -149,7 +193,7 @@ def install_runtime(env_dir: Path | None = None) -> Path:
         ".[runtime]",
     ]
     # Run pip from the worker directory so `.[runtime]` resolves.
-    worker_dir = Path(__file__).resolve().parents[4] / "apps" / "voxcpm-worker"
+    worker_dir = _worker_source_dir()
     logger.info("Installing VoxCPM2 runtime into %s", env_dir)
     result = subprocess.run(
         command,
@@ -183,9 +227,7 @@ def worker_python_args(mock_mode: bool = False) -> list[str]:
             "VOXCPM_RUNTIME_NOT_INSTALLED",
             f"VoxCPM2 worker env not found at {worker_env_dir()}",
         )
-    worker_script = (
-        Path(__file__).resolve().parents[4] / "apps" / "voxcpm-worker" / "worker.py"
-    )
+    worker_script = _worker_source_dir() / "worker.py"
     args = [str(python), str(worker_script)]
     if mock_mode:
         args.append("--mock")

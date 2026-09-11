@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import sys
 import uuid
 from dataclasses import dataclass
@@ -65,10 +66,11 @@ class VoxCpmRuntimeClient:
         mock_mode: bool = False,
     ):
         if worker_script_path is None:
-            # Default to apps/voxcpm-worker/worker.py relative to repo root
-            current_dir = Path(__file__).resolve().parent
-            repo_root = current_dir.parent.parent.parent.parent
-            worker_script_path = repo_root / "apps" / "voxcpm-worker" / "worker.py"
+            # Resolve the worker source the same way voxcpm_env does: repo
+            # layout in dev, the PyInstaller bundle dir when frozen.
+            from app.services.voxcpm_env import _worker_source_dir
+
+            worker_script_path = _worker_source_dir() / "worker.py"
 
         self.worker_script_path = Path(worker_script_path)
         if python_executable is not None:
@@ -132,12 +134,25 @@ class VoxCpmRuntimeClient:
             if self.mock_mode:
                 args.append("--mock")
 
+            # The worker's path sandbox needs an allowlist. Product code paths
+            # never configure VOID_VOXCPM_ALLOWED_ROOTS (only tests do), so a
+            # default install would fail every real synthesis with
+            # VOXCPM_ALLOWED_ROOTS_NOT_CONFIGURED. Default to the app data
+            # dir — voices, uploads, and generated audio all live under it —
+            # unless the user explicitly configured their own roots.
+            env = os.environ.copy()
+            if not self.mock_mode and not env.get("VOID_VOXCPM_ALLOWED_ROOTS"):
+                from app.config import _data_dir
+
+                env["VOID_VOXCPM_ALLOWED_ROOTS"] = str(_data_dir.resolve())
+
             try:
                 proc = await asyncio.create_subprocess_exec(
                     *args,
                     stdin=asyncio.subprocess.PIPE,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
+                    env=env,
                 )
                 self._process = proc
                 self._generation = gen

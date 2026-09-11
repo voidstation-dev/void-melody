@@ -30,9 +30,20 @@ class VoxCpmVoiceRepository:
             stmt = stmt.where(VoxCpmVoiceModel.status == status)
             count_stmt = count_stmt.where(VoxCpmVoiceModel.status == status)
         if q and q.strip():
-            pattern = f"%{q.strip()}%"
-            stmt = stmt.where(VoxCpmVoiceModel.display_name.ilike(pattern))
-            count_stmt = count_stmt.where(VoxCpmVoiceModel.display_name.ilike(pattern))
+            # Escape SQL LIKE wildcards so a literal name like "50% off"
+            # matches itself, not "50X off". SQLAlchemy parameterizes the
+            # value (no injection); this only makes % and _ literals.
+            escaped = (
+                q.strip()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+            )
+            pattern = f"%{escaped}%"
+            stmt = stmt.where(VoxCpmVoiceModel.display_name.ilike(pattern, escape="\\"))
+            count_stmt = count_stmt.where(
+                VoxCpmVoiceModel.display_name.ilike(pattern, escape="\\")
+            )
         stmt = stmt.order_by(desc(VoxCpmVoiceModel.created_at)).offset(offset).limit(limit)
         result = await self.session.execute(stmt)
         self.last_total = await self.session.scalar(count_stmt)

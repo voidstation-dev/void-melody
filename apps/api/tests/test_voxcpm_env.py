@@ -89,9 +89,19 @@ def test_worker_python_args_fail_fast_without_env(env_root: Path):
     assert exc_info.value.code == "VOXCPM_RUNTIME_NOT_INSTALLED"
 
 
+class _EmptyProbe:
+    """Stand-in for subprocess.run: nothing found on py launcher / PATH."""
+
+    returncode = 1
+    stdout = ""
+    stderr = ""
+
+
 def test_create_worker_env_no_uv_no_python_fails_fast(env_root: Path, monkeypatch: pytest.MonkeyPatch):
-    # Simulate: no uv on PATH, no VOID_VOXCPM_PYTHON, no existing env.
+    # Simulate: no uv on PATH, no VOID_VOXCPM_PYTHON, no existing env, and
+    # no discoverable system interpreter (py launcher / python3.x on PATH).
     monkeypatch.setattr(voxcpm_env, "_uv_executable", lambda: None)
+    monkeypatch.setattr(voxcpm_env.subprocess, "run", lambda *a, **k: _EmptyProbe())
 
     with pytest.raises(VoxCpmEnvError) as exc_info:
         create_worker_env()

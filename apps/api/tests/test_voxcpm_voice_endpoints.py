@@ -374,6 +374,7 @@ def fake_runtime(monkeypatch):
                 "text": request.text,
                 "reference": request.reference_wav_path,
                 "instruction": request.instruction,
+                "emotion": request.emotion,
                 "output_path": request.output_path,
             }
             out = Path(request.output_path)
@@ -507,6 +508,92 @@ async def test_generation_audio_serving(patch_storage, fake_runtime, pro_entitle
 
         traversal = await client.get("/api/v1/voxcpm/generations/..%2F..%2Fetc")
         assert traversal.status_code in (400, 404)  # must never serve files
+
+        # Windows path traversal: backslashes are separators on nt, so a
+        # drive-letter/UNC generation id must be rejected outright, not
+        # resolved to an absolute path outside the output dir.
+        backslash = await client.get(
+            "/api/v1/voxcpm/generations/C%3A%5CUsers%5Cvictim%5Cprivate%5Crecording"
+        )
+        assert backslash.status_code in (400, 404)
+        unc = await client.get(
+            "/api/v1/voxcpm/generations/%5C%5Cserver%5Cshare%5Cf"
+        )
+        assert unc.status_code in (400, 404)
+
+
+@pytest.mark.asyncio
+async def test_generate_emotion_reaches_worker(patch_storage, fake_runtime, pro_entitlement_auth):  # noqa: F811
+    """The selected emotion preset must ride into VoxCpmSynthesisRequest —
+    the worker's _resolve_instruction is what compiles presets to
+    performance text, so dropping the field silently degrades to neutral."""
+    session = TestSessionLocal()
+    ref_dir = patch_storage / "voxcpm2"
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    ref_path = ref_dir / "ref-e.wav"
+    ref_path.write_bytes(make_tone_wav(2.0))
+    session.add(VoxCpmVoiceModel(
+        id="gen-voice-e",
+        display_name="Gen Voice E",
+        reference_audio_path=str(ref_path),
+    ))
+    await session.commit()
+    await session.close()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/v1/voxcpm/generate",
+            json={"voice_id": "gen-voice-e", "text": "Hôm nay trời đẹp.", "emotion": "cheerful"},
+        )
+    assert resp.status_code == 200, resp.text
+    assert fake_runtime["synth"]["emotion"] == "cheerful"
+
+
+@pytest.mark.asyncio
+async def test_generate_without_worker_env_is_409_not_500(patch_storage, monkeypatch):
+    """When the dedicated worker env is absent, the VoxCpmRuntimeClient
+    constructor raises VoxCpmEnvError. The handler must translate that into
+    the same 409 as its other not-installed branches, not an unhandled 500."""
+    import wave as wave_mod
+
+    from app.services.voxcpm_env import VoxCpmEnvError
+
+    def raise_env_error(*args, **kwargs):
+        raise VoxCpmEnvError(
+            "VOXCPM_RUNTIME_NOT_INSTALLED",
+            "VoxCPM2 worker env not found. Install the runtime from Settings first.",
+        )
+
+    monkeypatch.setattr(
+        "app.services.voxcpm_runtime.VoxCpmRuntimeClient", raise_env_error
+    )
+
+    session = TestSessionLocal()
+    ref_dir = patch_storage / "voxcpm2"
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    ref_path = ref_dir / "ref-n.wav"
+    frames = int(16000 * 1.0)
+    with wave_mod.open(str(ref_path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(16000)
+        w.writeframes(b"\x00\x00" * frames)
+    session.add(VoxCpmVoiceModel(
+        id="gen-voice-n",
+        display_name="Gen Voice N",
+        reference_audio_path=str(ref_path),
+    ))
+    await session.commit()
+    await session.close()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/v1/voxcpm/generate",
+            json={"voice_id": "gen-voice-n", "text": "Kiểm tra", "emotion": "sad"},
+        )
+    assert resp.status_code == 409, resp.text
 
 
 # ---------------------------------------------------------------------------

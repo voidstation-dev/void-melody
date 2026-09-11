@@ -42,6 +42,7 @@ class VoxCpmWorker:
 
     def run(self) -> None:
         """Read JSONL from stdin and emit JSONL on stdout until EOF."""
+        self._stop = False
         for line in sys.stdin:
             line = line.strip()
             if not line:
@@ -51,6 +52,9 @@ class VoxCpmWorker:
             except json.JSONDecodeError as exc:
                 self._respond("", error={"code": "INVALID_JSON", "message": str(exc)})
                 continue
+
+            if getattr(self, "_stop", False):
+                break
 
             req_id = req.get("id", "")
             method = req.get("method", "")
@@ -70,7 +74,9 @@ class VoxCpmWorker:
 
         if method == "shutdown":
             self._respond(req_id, result={"status": "shutting_down"})
-            sys.stdin.close()
+            # Closing sys.stdin mid-iteration raises ValueError on Windows
+            # (and taints the iterator in CPython). Ask run() to stop instead.
+            self._stop = True
             return
 
         handler = getattr(self.backend, method, None)

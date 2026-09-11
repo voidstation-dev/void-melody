@@ -704,6 +704,17 @@ export type TranslationSchema = {
     useVoice: string;
     selectedVoice: string;
     emotionPreset: string;
+    emotionNeutral: string;
+    emotionHappy: string;
+    emotionExcited: string;
+    emotionSad: string;
+    emotionAngry: string;
+    emotionFearful: string;
+    emotionGentle: string;
+    emotionWhisper: string;
+    emotionCalm: string;
+    emotionStorytelling: string;
+    emotionCustom: string;
     customInstruction: string;
     customInstructionPlaceholder: string;
     contentLabel: string;
