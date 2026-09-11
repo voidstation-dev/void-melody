@@ -2,7 +2,7 @@
 
 Exit criteria (Phase 2): worker starts, ping passes, runtime_info passes,
 mock load/unload passes, timeout terminates poisoned worker + crash recovery,
-clean shutdown, no fallback to VieNeu/OmniVoice.
+clean shutdown, no fallback to VieNeu/CapCut.
 """
 
 import asyncio

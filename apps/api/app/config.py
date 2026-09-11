@@ -37,9 +37,6 @@ class Settings(BaseSettings):
     capcut_chunk_concurrency: int = 2
     vieneu_job_concurrency: int = 1
     vieneu_chunk_concurrency: int = 1
-    omnivoice_job_concurrency: int = 1
-    omnivoice_chunk_concurrency: int = 1
-    omnivoice_inference_timeout_seconds: float = 180.0
     voxcpm_job_concurrency: int = 1
     voxcpm_chunk_concurrency: int = 1
     voxcpm_inference_timeout_seconds: float = 300.0

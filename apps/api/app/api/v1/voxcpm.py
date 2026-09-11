@@ -401,7 +401,15 @@ async def generate_voxcpm_speech(
         # Emotional generation needs the model: load it if the worker is cold.
         await client.load_model(voice.model_id or "openbmb/VoxCPM2", device="auto")
         try:
-            result = await client.synthesize(synthesis, method="synthesize_emotional")
+            # CPU-only synthesis regularly exceeds the 60s RPC default, so
+            # the queue-lane provider passes the inference timeout
+            # (VOXCPM_INFERENCE_TIMEOUT_SECONDS, default 300s) — the direct
+            # endpoint must honor the same budget.
+            result = await client.synthesize(
+                synthesis,
+                method="synthesize_emotional",
+                timeout_seconds=settings.voxcpm_inference_timeout_seconds,
+            )
         except VoxCpmRuntimeError as exc:
             if exc.code == "VOXCPM_NOT_IMPLEMENTED":  # pragma: no cover - mock worker
                 raise HTTPException(

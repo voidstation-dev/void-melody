@@ -23,19 +23,13 @@ from vieneu_core import capabilities_for_runtime, probe_runtime
 from app.config import settings
 from app.database import get_async_session
 from app.models.custom_voice import CustomVoiceModel
-from app.models.omnivoice_voice import OmniVoiceVoiceModel
 from app.models.tts_job import TTSJobModel
-from app.models.voxcpm_voice import VoxCpmVoiceModel
 from app.models.voxcpm_voice import VoxCpmVoiceModel
 from app.schemas.custom_voice import (
     CustomVoiceListResponse,
     CustomVoiceResponse,
     VoiceAnalysisResponse,
     VoiceCapabilitiesResponse,
-)
-from app.schemas.omnivoice_voice import (
-    OmniVoiceVoiceListResponse,
-    OmniVoiceVoiceResponse,
 )
 from app.schemas.voice import VoiceListResponse, VoiceResponse
 from app.services.plan_enforcement import check_request_feature
@@ -364,9 +358,8 @@ async def list_custom_voices(
     q: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    include_omnivoice: bool = Query(default=True),
 ):
-    """List VieNeu custom voices, optionally including OmniVoice designed voices."""
+    """List custom voices (VieNeu and VoxCPM2)."""
     filters = []
     if q and q.strip():
         filters.append(CustomVoiceModel.display_name.ilike(f"%{q.strip()}%"))
@@ -386,44 +379,24 @@ async def list_custom_voices(
 
     items = [_serialize_custom_voice(v) for v in voices]
 
-    if include_omnivoice:
-        omni_filters = []
-        if q and q.strip():
-            omni_filters.append(OmniVoiceVoiceModel.display_name.ilike(f"%{q.strip()}%"))
-        omni_stmt = (
-            select(OmniVoiceVoiceModel)
-            .where(*omni_filters)
-            .order_by(OmniVoiceVoiceModel.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        )
-        omni_result = await session.execute(omni_stmt)
-        omni_voices = omni_result.scalars().all()
-        omni_total = await session.scalar(
-            select(func.count(OmniVoiceVoiceModel.id)).where(*omni_filters)
-        )
-        items.extend([_serialize_omnivoice_voice(v) for v in omni_voices])
-        total = (total or 0) + (omni_total or 0)
-
-    if include_omnivoice:
-        # VoxCPM2 cloned voices ride the same shared library contract.
-        vox_filters = []
-        if q and q.strip():
-            vox_filters.append(VoxCpmVoiceModel.display_name.ilike(f"%{q.strip()}%"))
-        vox_stmt = (
-            select(VoxCpmVoiceModel)
-            .where(*vox_filters)
-            .order_by(VoxCpmVoiceModel.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        )
-        vox_result = await session.execute(vox_stmt)
-        vox_voices = vox_result.scalars().all()
-        vox_total = await session.scalar(
-            select(func.count(VoxCpmVoiceModel.id)).where(*vox_filters)
-        )
-        items.extend([_serialize_voxcpm_voice(v) for v in vox_voices])
-        total = (total or 0) + (vox_total or 0)
+    # VoxCPM2 cloned voices ride the same shared library contract.
+    vox_filters = []
+    if q and q.strip():
+        vox_filters.append(VoxCpmVoiceModel.display_name.ilike(f"%{q.strip()}%"))
+    vox_stmt = (
+        select(VoxCpmVoiceModel)
+        .where(*vox_filters)
+        .order_by(VoxCpmVoiceModel.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    vox_result = await session.execute(vox_stmt)
+    vox_voices = vox_result.scalars().all()
+    vox_total = await session.scalar(
+        select(func.count(VoxCpmVoiceModel.id)).where(*vox_filters)
+    )
+    items.extend([_serialize_voxcpm_voice(v) for v in vox_voices])
+    total = (total or 0) + (vox_total or 0)
 
     return CustomVoiceListResponse(items=items, total=total or 0)
 
@@ -464,58 +437,19 @@ def _serialize_voxcpm_voice(voice: VoxCpmVoiceModel) -> CustomVoiceResponse:
     )
 
 
-def _serialize_omnivoice_voice(voice: OmniVoiceVoiceModel) -> CustomVoiceResponse:
-    """Render an OmniVoice designed voice in the custom-voice list shape.
-
-    Uses an aliased response so the Voice Library can display it without
-    creating a separate frontend card variant.
-    """
-    return CustomVoiceResponse.model_validate(
-        {
-            "id": voice.id,
-            "display_name": voice.display_name,
-            "transcript": voice.preview_text or "",
-            "consent_given": True,
-            "created_at": voice.created_at,
-            "updated_at": voice.updated_at,
-            "provider_id": voice.provider_id,
-            "engine_id": voice.engine_id,
-            "status": voice.status,
-            "duration_seconds": None,
-            "source_duration_seconds": None,
-            "reference_duration_seconds": None,
-            "selected_start_seconds": None,
-            "selected_end_seconds": None,
-            "quality_score": None,
-            "consent_version": "omnivoice-design-v1",
-            "profile_format_version": voice.prompt_format_version,
-            "engine_version": voice.engine_version,
-            "denoise_mode": "auto",
-            "denoise_applied": False,
-            "clone_mode": "fidelity",
-            "speaker_similarity_score": None,
-            "calibration_quality_score": None,
-            "calibration_available": False,
-        }
-    )
-
-
-@router.get("/tts/voices/custom/{voice_id}", response_model=CustomVoiceResponse)
+@router.get(
+    "/tts/voices/custom/{voice_id}",
+    response_model=CustomVoiceResponse,
+)
 async def get_custom_voice(
     voice_id: str,
     session: AsyncSession = Depends(get_async_session),  # noqa: B008
-):
+) -> CustomVoiceResponse:
     voice = await session.scalar(
         select(CustomVoiceModel).where(CustomVoiceModel.id == voice_id)
     )
     if voice:
         return _serialize_custom_voice(voice)
-
-    omni = await session.scalar(
-        select(OmniVoiceVoiceModel).where(OmniVoiceVoiceModel.id == voice_id)
-    )
-    if omni:
-        return _serialize_omnivoice_voice(omni)
 
     vox = await session.scalar(
         select(VoxCpmVoiceModel).where(VoxCpmVoiceModel.id == voice_id)
@@ -579,36 +513,6 @@ async def delete_custom_voice(
         invalidate_voice_cache(voice_id)
 
         await session.delete(voice)
-        await session.commit()
-        return
-
-    # Allow deleting OmniVoice designed voices via the same custom-voice route.
-    omni = await session.scalar(
-        select(OmniVoiceVoiceModel).where(OmniVoiceVoiceModel.id == voice_id)
-    )
-    if omni:
-        active_jobs = await session.scalar(
-            select(func.count(TTSJobModel.id)).where(
-                TTSJobModel.voice_type == voice_id,
-                TTSJobModel.status.in_(["queued", "processing"]),
-            )
-        )
-        if active_jobs:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    "code": "VOICE_IN_USE",
-                    "message": "The voice cannot be deleted while a TTS job is queued or processing.",
-                },
-            )
-
-        from app.services.voice_artifact_cleanup import delete_voice_profile_directory as delete_voice_dir
-        from app.services.voice_resolver import invalidate_voice_cache
-
-        delete_voice_dir(voice_id, settings.custom_voices_dir / "omnivoice")
-        invalidate_voice_cache(voice_id)
-
-        await session.delete(omni)
         await session.commit()
         return
 

@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.providers.registry import CAPCUT, OMNIVOICE, VIENEU, VOXCPM2
+from app.providers.registry import CAPCUT, VIENEU, VOXCPM2
 
 
 @dataclass(frozen=True)
@@ -74,52 +74,6 @@ def get_provider_runtime_status(provider_id: str) -> ProviderRuntimeStatus:
                 reason_code="VIENEU_PROBE_FAILED",
                 reason=str(exc),
             )
-
-    if provider_id == OMNIVOICE:
-        from app.services.omnivoice_model_service import omnivoice_model_service
-        from app.services.runtime_manager import RuntimeManagerService
-        from app.services.runtime_manager.models import RuntimeStatus
-
-        runtime_svc = RuntimeManagerService()
-        runtime_state = runtime_svc.status(OMNIVOICE)
-        model_state = omnivoice_model_service.status()
-
-        installed = runtime_state.status != RuntimeStatus.missing
-        available = runtime_state.status == RuntimeStatus.ready
-        model_installed = model_state.installed
-        model_loaded = model_state.loaded
-
-        if not installed:
-            status = "not_installed"
-            reason_code = "OMNI_RUNTIME_NOT_INSTALLED"
-            reason = "OmniVoice optional runtime is not installed."
-        elif runtime_state.status == RuntimeStatus.error:
-            status = "broken"
-            reason_code = "OMNI_RUNTIME_BROKEN"
-            reason = runtime_state.error or "OmniVoice runtime is broken."
-        elif not model_installed:
-            status = "not_installed"
-            reason_code = "OMNI_MODEL_NOT_INSTALLED"
-            reason = "OmniVoice runtime is installed but G-OmniVoice model is missing."
-        elif not available:
-            status = "broken"
-            reason_code = "OMNI_RUNTIME_BROKEN"
-            reason = "OmniVoice runtime is installed but not ready."
-        else:
-            status = "ready"
-            reason_code = None
-            reason = None
-
-        return ProviderRuntimeStatus(
-            provider_id=OMNIVOICE,
-            installed=installed,
-            available=available,
-            model_installed=model_installed,
-            model_loaded=model_loaded,
-            status=status,
-            reason_code=reason_code,
-            reason=reason,
-        )
 
     if provider_id == VOXCPM2:
         from app.services.voxcpm_env import (

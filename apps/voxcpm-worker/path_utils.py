@@ -1,7 +1,4 @@
-"""Filesystem path validation for the VoxCPM2 worker.
-
-Isolated from the OmniVoice worker: same guard pattern, VoxCPM2 env var and codes.
-"""
+"""Filesystem path validation for the VoxCPM2 worker."""
 
 from __future__ import annotations
 

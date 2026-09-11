@@ -17,10 +17,6 @@ import pytest
 WORKER_DIR = Path(__file__).resolve().parent.parent.parent / "voxcpm-worker"
 WORKER_MODULE_NAMES = ("backend", "errors", "path_utils", "mock_backend", "real_backend", "worker")
 
-# Evict the omnivoice worker's same-named top-level modules (see
-# test_voxcpm_worker_unit.py for the full explanation).
-for _dir in [p for p in sys.path if p.endswith("omnivoice-worker")]:
-    sys.path.remove(_dir)
 for _name in WORKER_MODULE_NAMES:
     sys.modules.pop(_name, None)
 if str(WORKER_DIR) not in sys.path:

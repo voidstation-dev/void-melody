@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.custom_voice import CustomVoiceModel
-from app.models.omnivoice_voice import OmniVoiceVoiceModel
 from app.models.voxcpm_voice import VoxCpmVoiceModel
 from app.services.voice_catalog import voice_catalog
 from app.services.voice_profile_artifacts import load_enrollment_artifact
@@ -185,38 +184,6 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
             reference_audio_path=vox.reference_audio_path,
             prompt_text=vox.reference_transcript,
             profile_format_version="reference-v1",
-            speaker_emb=None,
-            ref_codes=None,
-            clone_mode="fidelity",
-        )
-
-    # Fall back to OmniVoice designed voices.
-    omni = await session.scalar(
-        select(OmniVoiceVoiceModel).where(OmniVoiceVoiceModel.id == voice_type)
-    )
-    if omni:
-        if omni.status != "ready":
-            raise VoiceResolutionError(
-                "VOICE_NOT_READY",
-                "Selected OmniVoice voice is not ready for synthesis.",
-            )
-        if not omni.prompt_artifact_path or not Path(omni.prompt_artifact_path).is_file():
-            raise VoiceResolutionError(
-                "OMNI_VOICE_PROMPT_MISSING",
-                "Selected OmniVoice voice prompt artifact is missing.",
-            )
-        return ResolvedVoice(
-            voice_type=omni.id,
-            display_name=omni.display_name,
-            language_code="vi-VN",
-            resource_id=None,
-            provider_id=omni.provider_id,
-            source="custom",
-            status=omni.status,
-            voice_revision=omni.voice_revision or "v1",
-            reference_audio_path=omni.prompt_artifact_path,
-            prompt_text=omni.compiled_instruction,
-            profile_format_version=omni.prompt_format_version,
             speaker_emb=None,
             ref_codes=None,
             clone_mode="fidelity",

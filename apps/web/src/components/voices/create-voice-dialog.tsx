@@ -14,9 +14,9 @@ export function CreateVoiceDialog({ open, onClose }: CreateVoiceDialogProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
-  function handleDesign() {
+  function handleVoxCpm() {
     onClose()
-    navigate({ to: "/voice-design" })
+    navigate({ to: "/voxcpm" })
   }
 
   function handleClone() {
@@ -35,17 +35,17 @@ export function CreateVoiceDialog({ open, onClose }: CreateVoiceDialogProps) {
         <div className="space-y-3 pt-1">
           <button
             type="button"
-            onClick={handleDesign}
-            className="group flex w-full items-center gap-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-left transition-colors hover:bg-amber-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            onClick={handleVoxCpm}
+            className="group flex w-full items-center gap-4 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 text-left transition-colors hover:bg-indigo-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-foreground">{t("voices.voiceDesignCard")}</p>
-              <p className="text-[11px] text-muted-foreground">{t("voices.voiceDesignCardDesc")}</p>
+              <p className="text-sm font-bold text-foreground">VoxCPM2 Instant Clone</p>
+              <p className="text-[11px] text-muted-foreground">Clone giọng 48kHz chất lượng cao từ file mẫu ngắn</p>
             </div>
-            <span className="shrink-0 text-[11px] text-muted-foreground">{t("voices.voiceDesignCardEta")}</span>
+            <span className="shrink-0 text-[11px] text-muted-foreground">~5-10s</span>
           </button>
 
           <button

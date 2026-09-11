@@ -39,7 +39,6 @@ async def seeded_session(in_memory_session):
         features={
             "tts": True,
             "voice_lab": False,
-            "voice_design": False,
             "providers": ["capcut"],
             "max_custom_voices": 0,
         },
@@ -52,8 +51,7 @@ async def seeded_session(in_memory_session):
         features={
             "tts": True,
             "voice_lab": True,
-            "voice_design": True,
-            "providers": ["capcut", "vieneu", "omnivoice"],
+            "providers": ["capcut", "vieneu", "voxcpm2"],
             "max_custom_voices": 50,
         },
     )
@@ -77,15 +75,13 @@ async def test_unknown_key_resolves_to_default_plan(seeded_session):
 
 
 @pytest.mark.asyncio
-async def test_free_plan_blocks_voice_lab_and_voice_design(seeded_session):
+async def test_free_plan_blocks_voice_lab(seeded_session):
     entitlement = await resolve_entitlement(seeded_session, "")
     features = get_effective_features(entitlement)
     assert is_feature_enabled(features, "tts") is True
     assert is_feature_enabled(features, "voice_lab") is False
     with pytest.raises(PlanFeatureNotAllowedError):
         check_feature(features, "voice_lab")
-    with pytest.raises(PlanFeatureNotAllowedError):
-        check_feature(features, "voice_design")
 
 
 @pytest.mark.asyncio
@@ -96,7 +92,7 @@ async def test_free_plan_allows_only_capcut(seeded_session):
     with pytest.raises(PlanFeatureNotAllowedError):
         check_provider_allowed(features, "vieneu")
     with pytest.raises(PlanFeatureNotAllowedError):
-        check_provider_allowed(features, "omnivoice")
+        check_provider_allowed(features, "voxcpm2")
 
 
 @pytest.mark.asyncio
@@ -105,10 +101,8 @@ async def test_pro_plan_allows_all_features_and_providers(seeded_session):
     features = get_effective_features(entitlement)
     check_feature(features, "tts")
     check_feature(features, "voice_lab")
-    check_feature(features, "voice_design")
     check_provider_allowed(features, "capcut")
     check_provider_allowed(features, "vieneu")
-    check_provider_allowed(features, "omnivoice")
     check_provider_allowed(features, "voxcpm2")
 
 

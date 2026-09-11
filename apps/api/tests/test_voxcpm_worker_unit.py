@@ -1,10 +1,4 @@
-"""Unit tests for VoxCPM2 worker backend contracts, path security, and dispatcher.
-
-Both the omnivoice-worker and voxcpm-worker dirs expose top-level module names
-(backend, errors, worker, ...). The other test file may already have put the
-omnivoice-worker dir on sys.path, so remove stale entries and evict conflicting
-modules before importing this worker's modules.
-"""
+"""Unit tests for VoxCPM2 worker backend contracts, path security, and dispatcher."""
 
 import sys
 from pathlib import Path
@@ -14,8 +8,6 @@ import pytest
 WORKER_DIR = Path(__file__).resolve().parent.parent.parent / "voxcpm-worker"
 WORKER_MODULE_NAMES = ("backend", "errors", "path_utils", "mock_backend", "real_backend", "worker")
 
-for _dir in [p for p in sys.path if p.endswith("omnivoice-worker")]:
-    sys.path.remove(_dir)
 for _name in WORKER_MODULE_NAMES:
     sys.modules.pop(_name, None)
 if str(WORKER_DIR) not in sys.path:

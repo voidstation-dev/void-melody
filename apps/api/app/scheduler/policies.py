@@ -55,13 +55,6 @@ def get_default_policies() -> dict[str, ProviderExecutionPolicy]:
             cache_enabled=settings.audio_cache_enabled,
             sample_rate=24000,
         ),
-        "omnivoice": ProviderExecutionPolicy(
-            provider_id="omnivoice",
-            job_concurrency=settings.omnivoice_job_concurrency,
-            chunk_concurrency=settings.omnivoice_chunk_concurrency,
-            cache_enabled=settings.audio_cache_enabled,
-            sample_rate=24000,
-        ),
         "voxcpm2": ProviderExecutionPolicy(
             provider_id="voxcpm2",
             job_concurrency=settings.voxcpm_job_concurrency,

@@ -86,12 +86,12 @@ async def test_recovery_requeues_recoverable_jobs_and_fails_exhausted_jobs(
             attempt_count=3,
         ),
         TTSJobModel(
-            text="omnivoice",
-            text_hash="omnivoice",
-            voice_type="omni-voice",
-            voice_display_name="Omni voice",
+            text="voxcpm2",
+            text_hash="voxcpm2",
+            voice_type="voxcpm2-voice",
+            voice_display_name="VoxCPM2 voice",
             language_code="vi-VN",
-            provider_id="omnivoice",
+            provider_id="voxcpm2",
             status="queued",
             progress=0,
             attempt_count=0,
@@ -101,7 +101,7 @@ async def test_recovery_requeues_recoverable_jobs_and_fails_exhausted_jobs(
         session.add_all(jobs)
         await session.commit()
         recoverable_ids = {(jobs[0].id, 0), (jobs[1].id, 0), (jobs[3].id, 0)}
-        omnivoice_id = jobs[3].id
+        voxcpm2_id = jobs[3].id
         exhausted_id = jobs[2].id
 
     recovered = await recover_jobs(
@@ -110,7 +110,7 @@ async def test_recovery_requeues_recoverable_jobs_and_fails_exhausted_jobs(
     )
 
     assert set(recovered) == recoverable_ids
-    assert next(item for item in recovered if item.job_id == omnivoice_id).provider_id == "omnivoice"
+    assert next(item for item in recovered if item.job_id == voxcpm2_id).provider_id == "voxcpm2"
     async with async_session_factory() as session:
         recovered_jobs = [
             await session.get(TTSJobModel, job_id) for job_id, _ in recovered

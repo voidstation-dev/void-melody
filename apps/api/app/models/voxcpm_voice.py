@@ -1,9 +1,9 @@
 """VoxCPM2 cloned voice storage.
 
 This model intentionally does NOT reuse tts_custom_voices (VieNeu reference
-enrollment) or tts_omnivoice_voices (designed voice snapshots). A VoxCPM2 voice
-is a reference-audio identity asset: the canonical normalized reference WAV is
-the profile, and analysis metrics are stored alongside it for display.
+enrollment). A VoxCPM2 voice is a reference-audio identity asset: the
+canonical normalized reference WAV is the profile, and analysis metrics are
+stored alongside it for display.
 """
 
 from __future__ import annotations

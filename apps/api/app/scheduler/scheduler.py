@@ -10,7 +10,6 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.tts_job import TTSJobModel
 from app.providers.capcut_provider import CapCutProvider
-from app.providers.omnivoice_provider import OmniVoiceProvider
 from app.providers.vieneu_provider import VieneuProvider
 from app.providers.voxcpm_provider import VoxCpmProvider
 from app.scheduler.cancellation import cancellation_registry
@@ -53,7 +52,6 @@ class UnifiedScheduler:
                 circuit_breaker=self.circuit_breaker,
             ),
             "vieneu": VieneuProvider(),
-            "omnivoice": OmniVoiceProvider(),
             "voxcpm2": VoxCpmProvider(),
         }
 
@@ -73,19 +71,6 @@ class UnifiedScheduler:
                 policy=self.policies.get(
                     "vieneu",
                     ProviderExecutionPolicy("vieneu", settings.vieneu_job_concurrency, settings.vieneu_chunk_concurrency),
-                ),
-                worker_executor=self._execute_tts_job,
-                shutdown_grace_seconds=self.shutdown_grace_seconds,
-            ),
-            "omnivoice": ExecutionLane(
-                name="omnivoice",
-                policy=self.policies.get(
-                    "omnivoice",
-                    ProviderExecutionPolicy(
-                        "omnivoice",
-                        settings.omnivoice_job_concurrency,
-                        settings.omnivoice_chunk_concurrency,
-                    ),
                 ),
                 worker_executor=self._execute_tts_job,
                 shutdown_grace_seconds=self.shutdown_grace_seconds,

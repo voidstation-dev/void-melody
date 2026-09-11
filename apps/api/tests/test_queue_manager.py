@@ -75,29 +75,28 @@ async def test_omitted_provider_keeps_capcut_default():
 
 
 @pytest.mark.asyncio
-async def test_omnivoice_enqueue_uses_only_omnivoice_lane():
+async def test_vieneu_enqueue_uses_only_vieneu_lane():
     manager = TTSQueueManager(provider_registry={"capcut": object()})
     manager.accepting_jobs = True
 
-    assert await manager.enqueue("job-omni", provider_id="omnivoice") is True
-    assert manager.lanes["omnivoice"].queue.qsize() == 1
+    assert await manager.enqueue("job-vieneu", provider_id="vieneu") is True
+    assert manager.lanes["vieneu"].queue.qsize() == 1
     assert manager.lanes["capcut"].queue.empty()
-    assert manager.lanes["vieneu"].queue.empty()
 
 
 @pytest.mark.asyncio
-async def test_omnivoice_delayed_retry_stays_in_omnivoice_lane():
+async def test_vieneu_delayed_retry_stays_in_vieneu_lane():
     manager = TTSQueueManager(provider_registry={"capcut": object()})
     manager.accepting_jobs = True
 
     await manager.enqueue_after(
-        "job-omni-retry", delay_seconds=0, provider_id="omnivoice"
+        "job-vieneu-retry", delay_seconds=0, provider_id="vieneu"
     )
     async with asyncio.timeout(1):
-        while manager.lanes["omnivoice"].queue.empty():
+        while manager.lanes["vieneu"].queue.empty():
             await asyncio.sleep(0)
 
-    assert manager.lanes["omnivoice"].queue.qsize() == 1
+    assert manager.lanes["vieneu"].queue.qsize() == 1
     assert manager.lanes["capcut"].queue.empty()
 
 

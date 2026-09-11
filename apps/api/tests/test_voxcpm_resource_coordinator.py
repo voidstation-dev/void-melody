@@ -52,12 +52,12 @@ async def test_coordinator_raises_explicitly_when_unload_fails():
     async def failing_unload():
         raise RuntimeError("worker crashed")
 
-    coordinator.register("omnivoice", unload=failing_unload, is_loaded=lambda: True)
+    coordinator.register("other_runtime", unload=failing_unload, is_loaded=lambda: True)
 
     with pytest.raises(SpeechRuntimeCoordinatorError) as exc_info:
         await coordinator.acquire_exclusive("voxcpm2")
     assert exc_info.value.code == "SPEECH_RUNTIME_UNLOAD_FAILED"
-    assert "omnivoice" in exc_info.value.message
+    assert "other_runtime" in exc_info.value.message
 
 
 @pytest.mark.asyncio

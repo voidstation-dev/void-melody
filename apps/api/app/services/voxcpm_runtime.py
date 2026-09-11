@@ -4,8 +4,8 @@ Communicates with the out-of-process VoxCPM2 worker (apps/voxcpm-worker) via
 JSONL IPC on stdin/stdout. Handles process generation isolation, serialized
 requests, healthchecks, timeouts, and worker crash recovery.
 
-Isolated from the OmniVoice runtime: no fallback to mock unless mock_mode=True
-is explicitly passed, and never calls VieNeu/OmniVoice code.
+Isolated runtime: no fallback to mock unless mock_mode=True is explicitly passed,
+and never falls back to other providers.
 """
 
 from __future__ import annotations

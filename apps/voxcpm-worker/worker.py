@@ -5,8 +5,7 @@ Reads JSONL requests from stdin and writes JSONL responses to stdout.
 Supports a lightweight mock backend (no ML dependencies); the real backend
 defers torch/voxcpm imports until load_model (Phase 4).
 
-Follows the OmniVoice worker IPC pattern but owns VoxCPM2 semantics only:
-no VieNeu calls, no fallback, provider_id = "voxcpm2".
+Owns VoxCPM2 semantics only: no fallback, provider_id = "voxcpm2".
 """
 
 from __future__ import annotations

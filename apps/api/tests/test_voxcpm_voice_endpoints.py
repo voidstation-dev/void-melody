@@ -368,9 +368,10 @@ def fake_runtime(monkeypatch):
             calls["load_model_args"] = (model_id, device)
             return {"status": "loaded"}
 
-        async def synthesize(self, request, *, method="synthesize_clone"):
+        async def synthesize(self, request, *, method="synthesize_clone", timeout_seconds=None):
             calls["synth"] = {
                 "method": method,
+                "timeout": timeout_seconds,
                 "text": request.text,
                 "reference": request.reference_wav_path,
                 "instruction": request.instruction,
@@ -548,6 +549,10 @@ async def test_generate_emotion_reaches_worker(patch_storage, fake_runtime, pro_
         )
     assert resp.status_code == 200, resp.text
     assert fake_runtime["synth"]["emotion"] == "cheerful"
+    # Direct endpoint must honor the queue-lane inference budget — a 60s
+    # RPC default kills CPU synthesis long before the worker finishes.
+    from app.config import settings
+    assert fake_runtime["synth"]["timeout"] == settings.voxcpm_inference_timeout_seconds
 
 
 @pytest.mark.asyncio

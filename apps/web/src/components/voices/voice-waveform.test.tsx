@@ -12,7 +12,7 @@ describe("VoiceWaveform", () => {
     expect(screen.getAllByTestId("voice-waveform-bar")).toHaveLength(24)
   })
 
-  it("supports the amber accent used by OmniVoice design cards", () => {
+  it("supports the amber accent used by custom accent cards", () => {
     render(<VoiceWaveform accent="amber" />)
 
     const bars = screen.getAllByTestId("voice-waveform-bar")

@@ -378,8 +378,7 @@ async def test_voxcpm_job_not_configured_fails_cleanly(
     tmp_path: Path,
     monkeypatch,
 ):
-    """When voxcpm2 has no registry entry the job fails PROVIDER_NOT_CONFIGURED,
-    mirroring the existing omnivoice no-fallback test."""
+    """When voxcpm2 has no registry entry the job fails PROVIDER_NOT_CONFIGURED."""
     async with async_session_factory() as session:
         job = await create_tts_job(
             session,

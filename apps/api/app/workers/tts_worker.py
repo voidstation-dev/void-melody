@@ -63,7 +63,7 @@ async def process_chunk(
     # Provider-aware destination extension and mime type
     provider_descriptor = get_default_policies().get(job.provider_id)
     provider_sample_rate = provider_descriptor.sample_rate if provider_descriptor else None
-    is_local_wav = job.provider_id in ("vieneu", "omnivoice", "voxcpm2")
+    is_local_wav = job.provider_id in ("vieneu", "voxcpm2")
     ext = ".wav" if is_local_wav else ".mp3"
     destination = settings.audio_storage_dir / f"{job.id}_part{index}{ext}"
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -124,8 +124,6 @@ async def process_chunk(
                 "ref_audio": job.reference_audio_path if job.speaker_emb is None else None,
                 "destination_path": destination,
             })
-        elif job.provider_id == "omnivoice":
-            synth_kwargs["destination_path"] = destination
         elif job.provider_id == "voxcpm2":
             # Emotion preset travels in the job style column; the provider
             # compiles it to a performance instruction for the worker.

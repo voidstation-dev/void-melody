@@ -2,7 +2,6 @@
 
 from app.providers.registry import (
     CAPCUT,
-    OMNIVOICE,
     VIENEU,
     VOXCPM2,
     Capabilities,
@@ -38,13 +37,12 @@ def test_voxcpm2_capabilities_shape():
 def test_voxcpm2_stable_id():
     assert VOXCPM2 == "voxcpm2"
     assert VOXCPM2 != VIENEU
-    assert VOXCPM2 != OMNIVOICE
     assert VOXCPM2 != CAPCUT
 
 
 def test_list_providers_includes_voxcpm2():
     ids = {p.id for p in provider_registry.list_providers()}
-    assert ids == {CAPCUT, VIENEU, OMNIVOICE, VOXCPM2}
+    assert ids == {CAPCUT, VIENEU, VOXCPM2}
 
 
 def test_voxcpm2_runtime_status_not_installed_before_worker_phase(tmp_path, monkeypatch):
