@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.providers.registry import CAPCUT, OMNIVOICE, VIENEU
+from app.providers.registry import CAPCUT, VIENEU, VOXCPM2
 
 
 @dataclass(frozen=True)
@@ -75,50 +75,44 @@ def get_provider_runtime_status(provider_id: str) -> ProviderRuntimeStatus:
                 reason=str(exc),
             )
 
-    if provider_id == OMNIVOICE:
-        from app.services.omnivoice_model_service import omnivoice_model_service
-        from app.services.runtime_manager import RuntimeManagerService
-        from app.services.runtime_manager.models import RuntimeStatus
+    if provider_id == VOXCPM2:
+        from app.services.voxcpm_env import (
+            env_exists,
+            runtime_installed,
+            worker_python_executable,
+        )
 
-        runtime_svc = RuntimeManagerService()
-        runtime_state = runtime_svc.status(OMNIVOICE)
-        model_state = omnivoice_model_service.status()
-
-        installed = runtime_state.status != RuntimeStatus.missing
-        available = runtime_state.status == RuntimeStatus.ready
-        model_installed = model_state.installed
-        model_loaded = model_state.loaded
-
-        if not installed:
-            status = "not_installed"
-            reason_code = "OMNI_RUNTIME_NOT_INSTALLED"
-            reason = "OmniVoice optional runtime is not installed."
-        elif runtime_state.status == RuntimeStatus.error:
-            status = "broken"
-            reason_code = "OMNI_RUNTIME_BROKEN"
-            reason = runtime_state.error or "OmniVoice runtime is broken."
-        elif not model_installed:
-            status = "not_installed"
-            reason_code = "OMNI_MODEL_NOT_INSTALLED"
-            reason = "OmniVoice runtime is installed but G-OmniVoice model is missing."
-        elif not available:
-            status = "broken"
-            reason_code = "OMNI_RUNTIME_BROKEN"
-            reason = "OmniVoice runtime is installed but not ready."
-        else:
-            status = "ready"
-            reason_code = None
-            reason = None
-
+        if not env_exists():
+            return ProviderRuntimeStatus(
+                provider_id=VOXCPM2,
+                installed=False,
+                available=False,
+                model_installed=False,
+                model_loaded=False,
+                status="not_installed",
+                reason_code="VOXCPM_RUNTIME_NOT_INSTALLED",
+                reason="VoxCPM2 worker environment is not installed yet.",
+            )
+        if not runtime_installed():
+            return ProviderRuntimeStatus(
+                provider_id=VOXCPM2,
+                installed=True,
+                available=False,
+                model_installed=False,
+                model_loaded=False,
+                status="not_installed",
+                reason_code="VOXCPM_RUNTIME_NOT_INSTALLED",
+                reason=f"VoxCPM2 runtime package is missing from {worker_python_executable()}.",
+            )
+        # Env + package present. Model load state is worker-runtime truth,
+        # probed only when a client is active; core reports install readiness.
         return ProviderRuntimeStatus(
-            provider_id=OMNIVOICE,
-            installed=installed,
-            available=available,
-            model_installed=model_installed,
-            model_loaded=model_loaded,
-            status=status,
-            reason_code=reason_code,
-            reason=reason,
+            provider_id=VOXCPM2,
+            installed=True,
+            available=True,
+            model_installed=True,
+            model_loaded=False,
+            status="ready",
         )
 
     return ProviderRuntimeStatus(

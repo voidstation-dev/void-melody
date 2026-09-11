@@ -1,0 +1,27 @@
+[project]
+name = "melody-voxcpm-worker"
+version = "0.1.0"
+description = "Standalone VoxCPM2 worker (voice cloning + emotional TTS) for Void Melody. Runs as a JSONL stdin/stdout subprocess in its own Python environment; never installed into the FastAPI main environment."
+requires-python = ">=3.10,<3.13"
+
+dependencies = []
+
+[project.optional-dependencies]
+# Installed only inside the VoxCPM2 worker environment, never in core.
+runtime = [
+    # PyPI has no voxcpm <1.0 release; 2.x is the current line
+    # (verified: voxcpm 2.0.3 exposes VoxCPM.from_pretrained with
+    # load_denoiser and generate(text, reference_wav_path, ...)).
+    "voxcpm>=2.0,<3.0",
+    "torch>=2.5.0,<3.0",
+    "torchaudio>=2.5.0,<3.0",
+    "numpy>=1.26",
+    "soundfile",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["worker"]

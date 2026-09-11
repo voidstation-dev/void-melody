@@ -16,7 +16,7 @@ from vieneu_core import default_descriptor as vieneu_default_descriptor
 # Stable provider ids. These are stored on tts_jobs.provider_id.
 CAPCUT = "capcut"
 VIENEU = "vieneu"
-OMNIVOICE = "omnivoice"
+VOXCPM2 = "voxcpm2"
 
 
 @dataclass(frozen=True)
@@ -85,25 +85,22 @@ def _vieneu_descriptor() -> ProviderDescriptor:
     )
 
 
-def _omnivoice_descriptor() -> ProviderDescriptor:
+def _voxcpm2_descriptor() -> ProviderDescriptor:
     return ProviderDescriptor(
-        id=OMNIVOICE,
-        label="OmniVoice",
-        version="0.2.1",
+        id=VOXCPM2,
+        label="VoxCPM2",
+        version="0.1.0",
         capabilities=Capabilities(
             supports_preset_voices=False,
             supports_voice_cloning=True,
-            supports_streaming=False,
-            supports_styles=False,
-            supports_batch=True,
-            supports_emotion_tags=False,
+            supports_streaming=True,
+            supports_styles=True,
+            supports_batch=False,
+            supports_emotion_tags=True,
             supports_multilingual=True,
             supports_voice_design=True,
-            supports_target_duration=True,
-            supports_text_normalization=True,
             supports_cross_lingual_clone=True,
-            max_text_chars=5000,
-            sample_rate=24000,
+            sample_rate=48000,
         ),
     )
 
@@ -135,4 +132,4 @@ class ProviderRegistry:
 provider_registry = ProviderRegistry()
 provider_registry.register(_capcut_descriptor())
 provider_registry.register(_vieneu_descriptor())
-provider_registry.register(_omnivoice_descriptor())
+provider_registry.register(_voxcpm2_descriptor())

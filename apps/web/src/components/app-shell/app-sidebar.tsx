@@ -11,6 +11,7 @@ import {
   Sparkles,
   User,
   Clapperboard,
+  AudioWaveform,
 } from "lucide-react";
 
 export function AppSidebar() {
@@ -56,6 +57,7 @@ export function AppSidebar() {
           <nav className="space-y-1">
             {navItem("/", t("nav.generate"), Mic)}
             {navItem("/vieneu", t("nav.voiceLab"), Sparkles)}
+            {navItem("/voxcpm", t("nav.voxcpm"), AudioWaveform)}
           </nav>
         </div>
 

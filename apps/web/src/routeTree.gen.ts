@@ -14,8 +14,8 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as VieneuRouteImport } from './routes/vieneu'
-import { Route as VoiceDesignRouteImport } from './routes/voice-design'
 import { Route as VoicesRouteImport } from './routes/voices'
+import { Route as VoxcpmRouteImport } from './routes/voxcpm'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -42,14 +42,14 @@ const VieneuRoute = VieneuRouteImport.update({
   path: '/vieneu',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VoiceDesignRoute = VoiceDesignRouteImport.update({
-  id: '/voice-design',
-  path: '/voice-design',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const VoicesRoute = VoicesRouteImport.update({
   id: '/voices',
   path: '/voices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VoxcpmRoute = VoxcpmRouteImport.update({
+  id: '/voxcpm',
+  path: '/voxcpm',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -59,8 +59,8 @@ export interface FileRoutesByFullPath {
   '/scripts': typeof ScriptsRoute
   '/settings': typeof SettingsRoute
   '/vieneu': typeof VieneuRoute
-  '/voice-design': typeof VoiceDesignRoute
   '/voices': typeof VoicesRoute
+  '/voxcpm': typeof VoxcpmRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,8 +68,8 @@ export interface FileRoutesByTo {
   '/scripts': typeof ScriptsRoute
   '/settings': typeof SettingsRoute
   '/vieneu': typeof VieneuRoute
-  '/voice-design': typeof VoiceDesignRoute
   '/voices': typeof VoicesRoute
+  '/voxcpm': typeof VoxcpmRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,8 +78,8 @@ export interface FileRoutesById {
   '/scripts': typeof ScriptsRoute
   '/settings': typeof SettingsRoute
   '/vieneu': typeof VieneuRoute
-  '/voice-design': typeof VoiceDesignRoute
   '/voices': typeof VoicesRoute
+  '/voxcpm': typeof VoxcpmRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,8 +89,8 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/settings'
     | '/vieneu'
-    | '/voice-design'
     | '/voices'
+    | '/voxcpm'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,8 +98,8 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/settings'
     | '/vieneu'
-    | '/voice-design'
     | '/voices'
+    | '/voxcpm'
   id:
     | '__root__'
     | '/'
@@ -107,8 +107,8 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/settings'
     | '/vieneu'
-    | '/voice-design'
     | '/voices'
+    | '/voxcpm'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,8 +117,8 @@ export interface RootRouteChildren {
   ScriptsRoute: typeof ScriptsRoute
   SettingsRoute: typeof SettingsRoute
   VieneuRoute: typeof VieneuRoute
-  VoiceDesignRoute: typeof VoiceDesignRoute
   VoicesRoute: typeof VoicesRoute
+  VoxcpmRoute: typeof VoxcpmRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,18 +158,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VieneuRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/voice-design': {
-      id: '/voice-design'
-      path: '/voice-design'
-      fullPath: '/voice-design'
-      preLoaderRoute: typeof VoiceDesignRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/voices': {
       id: '/voices'
       path: '/voices'
       fullPath: '/voices'
       preLoaderRoute: typeof VoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/voxcpm': {
+      id: '/voxcpm'
+      path: '/voxcpm'
+      fullPath: '/voxcpm'
+      preLoaderRoute: typeof VoxcpmRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -181,8 +181,8 @@ const rootRouteChildren: RootRouteChildren = {
   ScriptsRoute: ScriptsRoute,
   SettingsRoute: SettingsRoute,
   VieneuRoute: VieneuRoute,
-  VoiceDesignRoute: VoiceDesignRoute,
   VoicesRoute: VoicesRoute,
+  VoxcpmRoute: VoxcpmRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

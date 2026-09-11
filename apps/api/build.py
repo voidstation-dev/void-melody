@@ -73,6 +73,12 @@ def get_pyinstaller_command() -> list[str]:
         "alembic.ini:.",
         "--add-data",
         "alembic:alembic",
+        # VoxCPM2 worker sources: the dedicated worker env installs from
+        # this directory (pip install .[runtime]) and the runtime spawns
+        # worker.py out of it. Resolved via voxcpm_env._worker_source_dir()
+        # (sys._MEIPASS in frozen builds).
+        "--add-data",
+        "../voxcpm-worker:voxcpm-worker",
         "--onefile",
         "--clean",
         "--noconfirm",

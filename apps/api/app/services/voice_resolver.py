@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.custom_voice import CustomVoiceModel
-from app.models.omnivoice_voice import OmniVoiceVoiceModel
+from app.models.voxcpm_voice import VoxCpmVoiceModel
 from app.services.voice_catalog import voice_catalog
 from app.services.voice_profile_artifacts import load_enrollment_artifact
 
@@ -152,33 +152,38 @@ async def resolve_voice(session: AsyncSession, voice_type: str) -> ResolvedVoice
 
         return resolved
 
-    # Fall back to OmniVoice designed voices.
-    omni = await session.scalar(
-        select(OmniVoiceVoiceModel).where(OmniVoiceVoiceModel.id == voice_type)
+    # Fall back to VoxCPM2 cloned voices (provider-aware identity: the
+    # provider_id travels on the resolved voice, never resolved by id alone).
+    vox = await session.scalar(
+        select(VoxCpmVoiceModel).where(VoxCpmVoiceModel.id == voice_type)
     )
-    if omni:
-        if omni.status != "ready":
+    if vox:
+        if vox.status != "ready":
             raise VoiceResolutionError(
                 "VOICE_NOT_READY",
-                "Selected OmniVoice voice is not ready for synthesis.",
+                "Selected VoxCPM2 voice is not ready for synthesis.",
             )
-        if not omni.prompt_artifact_path or not Path(omni.prompt_artifact_path).is_file():
+        if not vox.reference_audio_path or not Path(vox.reference_audio_path).is_file():
             raise VoiceResolutionError(
-                "OMNI_VOICE_PROMPT_MISSING",
-                "Selected OmniVoice voice prompt artifact is missing.",
+                "VOXCPM_REFERENCE_MISSING",
+                "Selected VoxCPM2 voice reference audio is missing.",
             )
         return ResolvedVoice(
-            voice_type=omni.id,
-            display_name=omni.display_name,
+            voice_type=vox.id,
+            display_name=vox.display_name,
             language_code="vi-VN",
             resource_id=None,
-            provider_id=omni.provider_id,
+            provider_id=vox.provider_id or "voxcpm2",
             source="custom",
-            status=omni.status,
-            voice_revision=omni.voice_revision or "v1",
-            reference_audio_path=omni.prompt_artifact_path,
-            prompt_text=omni.compiled_instruction,
-            profile_format_version=omni.prompt_format_version,
+            status=vox.status,
+            voice_revision=(
+                vox.updated_at.isoformat()
+                if vox.updated_at
+                else f"reference:{Path(vox.reference_audio_path).stat().st_mtime_ns}"
+            ),
+            reference_audio_path=vox.reference_audio_path,
+            prompt_text=vox.reference_transcript,
+            profile_format_version="reference-v1",
             speaker_emb=None,
             ref_codes=None,
             clone_mode="fidelity",

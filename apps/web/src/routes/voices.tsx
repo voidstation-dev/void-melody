@@ -37,7 +37,7 @@ function VoicesRoute() {
   // Presets are a small local catalog; fetching the complete list allows the
   // provider/language filters to work without changing the backend contract.
   const presetQuery = useVoices()
-  const customSearch = /vieneu|omnivoice|capcut|clone|vi-vn|en-us/i.test(search) ? undefined : search.trim() || undefined
+  const customSearch = /vieneu|voxcpm2|capcut|clone|vi-vn|en-us/i.test(search) ? undefined : search.trim() || undefined
   const customQuery = useCustomVoices(customSearch, customPage, customPageSize)
   const deleteVoice = useMutation({
     mutationFn: deleteCustomVoice,
@@ -80,7 +80,7 @@ function VoicesRoute() {
           search={search}
           provider={provider}
           language={language}
-          providers={[{ value: "all", label: t("voices.allProviders") }, ...providers.map((value) => ({ value, label: value === "vieneu" ? "VieNeu" : value === "omnivoice" ? "OmniVoice" : value === "capcut" ? "CapCut" : value }))]}
+          providers={[{ value: "all", label: t("voices.allProviders") }, ...providers.map((value) => ({ value, label: value === "vieneu" ? "VieNeu" : value === "voxcpm2" ? "VoxCPM2" : value === "capcut" ? "CapCut" : value }))]}
           languages={[{ value: "all", label: t("voices.allLanguages") }, ...languages.map((value) => ({ value, label: value }))]}
           onSearchChange={(value) => { setSearch(value); setCustomPage(1) }}
           onProviderChange={(value) => { setProvider(value); setCustomPage(1) }}

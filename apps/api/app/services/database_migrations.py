@@ -103,10 +103,7 @@ POST_BASELINE_CUSTOM_VOICE_COLUMNS = {
     "enrollment_created_at",
     "license_entitlement_id",
 }
-POST_BASELINE_OMNIVOICE_VOICE_COLUMNS = {
-    "license_entitlement_id",
-}
-OMNIVOICE_VOICE_TABLE = "tts_omnivoice_voices"
+VOXCPM_VOICE_TABLE = "tts_voxcpm_voices"
 
 
 class MigrationError(RuntimeError):
@@ -160,13 +157,9 @@ def _has_post_baseline_columns(connection: sqlite3.Connection) -> bool:
     }
     if not POST_BASELINE_CUSTOM_VOICE_COLUMNS.issubset(custom_columns):
         return False
-    if not _table_exists(connection, OMNIVOICE_VOICE_TABLE):
+    if not _table_exists(connection, VOXCPM_VOICE_TABLE):
         return False
-    omni_columns = {
-        row[1]
-        for row in connection.execute(f"PRAGMA table_info({OMNIVOICE_VOICE_TABLE})")
-    }
-    if not POST_BASELINE_OMNIVOICE_VOICE_COLUMNS.issubset(omni_columns):
+    if _table_exists(connection, "tts_omnivoice_voices"):
         return False
     return True
 

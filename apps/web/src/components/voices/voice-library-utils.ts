@@ -17,8 +17,8 @@ export function providerLabel(providerId?: string | null) {
   switch (providerId?.toLowerCase()) {
     case "vieneu":
       return "VieNeu"
-    case "omnivoice":
-      return "OmniVoice"
+    case "voxcpm2":
+      return "VoxCPM2"
     case "capcut":
       return "CapCut"
     default:

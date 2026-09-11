@@ -68,8 +68,8 @@ export function StudioFloatingBar({
                 <p className="truncate text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
                   {selectedVoice?.providerId === "vieneu"
                     ? "VieNeu AI"
-                    : selectedVoice?.providerId === "omnivoice"
-                      ? "OmniVoice"
+                    : selectedVoice?.providerId === "voxcpm2"
+                      ? "VoxCPM2"
                       : "CapCut Cloud"}
                 </p>
               </div>

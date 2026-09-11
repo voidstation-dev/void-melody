@@ -8,8 +8,8 @@ from app.models.emotional_script import (
 )
 from app.models.license_entitlement import LicenseEntitlementModel
 from app.models.license_plan import LicensePlanModel
-from app.models.omnivoice_voice import OmniVoiceVoiceModel
 from app.models.tts_job import TTSJobModel
+from app.models.voxcpm_voice import VoxCpmVoiceModel
 
 __all__ = [
     "AudioSegmentCacheModel",
@@ -17,9 +17,9 @@ __all__ = [
     "EmotionalScriptModel",
     "LicenseEntitlementModel",
     "LicensePlanModel",
-    "OmniVoiceVoiceModel",
     "ScriptAudioCacheModel",
     "ScriptRenderModel",
     "ScriptRenderSegmentModel",
     "TTSJobModel",
+    "VoxCpmVoiceModel",
 ]

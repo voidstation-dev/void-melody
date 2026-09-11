@@ -1,0 +1,20 @@
+"""Worker error codes and exception type for the VoxCPM2 worker."""
+
+from __future__ import annotations
+
+
+VOXCPM_ALLOWED_ROOTS_NOT_CONFIGURED = "VOXCPM_ALLOWED_ROOTS_NOT_CONFIGURED"
+VOXCPM_PATH_OUTSIDE_ROOT = "VOXCPM_PATH_OUTSIDE_ROOT"
+VOXCPM_INVALID_PARAMS = "VOXCPM_INVALID_PARAMS"
+VOXCPM_INFERENCE_FAILED = "VOXCPM_INFERENCE_FAILED"
+VOXCPM_METHOD_NOT_FOUND = "VOXCPM_METHOD_NOT_FOUND"
+VOXCPM_PACKAGE_NOT_INSTALLED = "VOXCPM_PACKAGE_NOT_INSTALLED"
+VOXCPM_REFERENCE_INVALID = "VOXCPM_REFERENCE_INVALID"
+VOXCPM_MODEL_NOT_LOADED = "VOXCPM_MODEL_NOT_LOADED"
+
+
+class WorkerError(Exception):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message

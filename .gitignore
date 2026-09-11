@@ -33,3 +33,4 @@ apps/web/src-tauri/bin/
 *.tsbuildinfo
 package-lock.json
 pytest_out.txt
+apps/web/data/

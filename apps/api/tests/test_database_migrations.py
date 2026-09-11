@@ -12,7 +12,7 @@ from app.services.database_migrations import (
 )
 
 ALEMBIC_INI = Path(__file__).parents[1] / "alembic.ini"
-HEAD_REVISION = "d356ea30efdd"
+HEAD_REVISION = "b1e2d3c4a5f6"
 
 
 def sqlite_url(path: Path) -> str:
@@ -400,6 +400,57 @@ async def test_migrations_adopt_current_unversioned_schema_with_provider_fields(
 
 
 @pytest.mark.asyncio
+async def test_migrations_run_new_revision_from_previous_head(tmp_path):
+    """A versioned DB at the previous head (d356ea30efdd, i.e. every DB
+    created before VoxCPM2 shipped) matches every post-baseline column
+    signal except the new provider table. The stamp-to-head heuristic must
+    NOT match it — otherwise startup skips `upgrade()`, the tts_voxcpm_voices
+    table is never created, and every VoxCPM2 query fails."""
+    database_path = tmp_path / "previous_head.db"
+
+    # Build the DB at the previous head by migrating up to it, then insert
+    # the version row so the heuristic sees a versioned DB.
+    await run_database_migrations(
+        database_url=sqlite_url(database_path),
+        alembic_ini_path=ALEMBIC_INI,
+    )
+
+    from alembic import command
+    from alembic.config import Config
+
+    from app.services.database_migrations import _sync_database_url
+
+    config = Config(str(ALEMBIC_INI))
+    sync_url = _sync_database_url(sqlite_url(database_path))
+    config.set_main_option("sqlalchemy.url", sync_url)
+    config.attributes["database_url"] = sync_url
+    config.attributes["configure_logger"] = False
+    command.downgrade(config, "d356ea30efdd")
+
+    with sqlite3.connect(database_path) as connection:
+        revision = connection.execute(
+            "SELECT version_num FROM alembic_version"
+        ).fetchone()[0]
+    assert revision == "d356ea30efdd"
+
+    # Startup path again — this must actually run the voxcpm migration.
+    await run_database_migrations(
+        database_url=sqlite_url(database_path),
+        alembic_ini_path=ALEMBIC_INI,
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        revision = connection.execute(
+            "SELECT version_num FROM alembic_version"
+        ).fetchone()[0]
+        has_table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='tts_voxcpm_voices'"
+        ).fetchone()
+    assert revision == HEAD_REVISION
+    assert has_table is not None
+
+
+@pytest.mark.asyncio
 async def test_migrations_downgrade_drops_provider_fields(tmp_path):
     database_path = tmp_path / "downgrade.db"
 
@@ -425,3 +476,45 @@ async def test_migrations_downgrade_drops_provider_fields(tmp_path):
     with sqlite3.connect(database_path) as connection:
         columns = {row[1] for row in connection.execute("PRAGMA table_info(tts_jobs)")}
     assert not (PROVIDER_FIELDS & columns)
+
+
+@pytest.mark.asyncio
+async def test_migrations_drops_omnivoice_table_when_migrating_to_head(tmp_path):
+    """When migrating from previous head (a9c4f2e8b1d7) where tts_omnivoice_voices exists,
+    the b1e2d3c4a5f6 migration must cleanly drop the tts_omnivoice_voices table."""
+    database_path = tmp_path / "drop_omni.db"
+
+    from alembic import command
+    from alembic.config import Config
+    from app.services.database_migrations import _sync_database_url
+
+    config = Config(str(ALEMBIC_INI))
+    sync_url = _sync_database_url(sqlite_url(database_path))
+    config.set_main_option("sqlalchemy.url", sync_url)
+    config.attributes["database_url"] = sync_url
+    config.attributes["configure_logger"] = False
+
+    # Migrate up to a9c4f2e8b1d7
+    command.upgrade(config, "a9c4f2e8b1d7")
+
+    with sqlite3.connect(database_path) as connection:
+        revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        has_omni = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='tts_omnivoice_voices'"
+        ).fetchone()
+    assert revision == "a9c4f2e8b1d7"
+    assert has_omni is not None
+
+    # Now run migrations to head (b1e2d3c4a5f6)
+    await run_database_migrations(
+        database_url=sqlite_url(database_path),
+        alembic_ini_path=ALEMBIC_INI,
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        has_omni_after = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='tts_omnivoice_voices'"
+        ).fetchone()
+    assert revision == HEAD_REVISION
+    assert has_omni_after is None

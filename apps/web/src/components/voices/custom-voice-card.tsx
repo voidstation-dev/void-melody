@@ -13,6 +13,7 @@ type CustomVoiceCardProps = { voice: CustomVoice; onDelete: (voiceId: string) =>
 export function CustomVoiceCard({ voice, onDelete, deleting = false }: CustomVoiceCardProps) {
   const { t } = useTranslation()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const isVoxCpm = voice.provider_id?.toLowerCase() === "voxcpm2"
   const duration = voice.reference_duration_seconds ?? voice.duration_seconds
   const durationLabel = duration != null ? `0:${String(Math.round(duration)).padStart(2, "0")}` : t("voices.previewDuration")
 
@@ -32,6 +33,12 @@ export function CustomVoiceCard({ voice, onDelete, deleting = false }: CustomVoi
 
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5 truncate">
             <span>{providerLabel(voice.provider_id)}</span>
+            {isVoxCpm && (
+              <>
+                <span className="text-muted-foreground/40">•</span>
+                <span>48 kHz</span>
+              </>
+            )}
             {voice.quality_score != null && (
               <>
                 <span className="text-muted-foreground/40">•</span>
@@ -42,8 +49,13 @@ export function CustomVoiceCard({ voice, onDelete, deleting = false }: CustomVoi
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          {/* VoxCPM2 voices route to VoxCPM2 Studio; other providers to the studio */}
           <a
-            href={`/?voice=${encodeURIComponent(voice.id)}`}
+            href={
+              isVoxCpm
+                ? `/voxcpm?voice=${encodeURIComponent(voice.id)}`
+                : `/?voice=${encodeURIComponent(voice.id)}`
+            }
             className="inline-flex items-center gap-1 rounded-lg bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground px-2.5 py-1 text-[11px] font-bold transition-all shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95"
             title={t("voices.useVoiceTitle")}
           >
