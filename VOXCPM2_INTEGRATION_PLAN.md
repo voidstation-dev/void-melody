@@ -1673,3 +1673,92 @@ Blockers: none for MVP scope. Note: CPU inference is slow (~13 min for
 Next: none — all MVP phases (0-7, 9-11) done. Branch feat/voxcpm2-studio,
   PR #25 updated.
 ```
+
+### 2026-09-11 — Post-integration crash/regression audit + packaged Windows benchmark
+```
+Scope: user request — check for crashes/regressions after adding VoxCPM2,
+  then measure real benchmarks on the packaged Windows build.
+Method: 18-agent workflow audit (6 dimensions × adversarial verify) over the
+  feat/voxcpm2-studio tree; packaged build via pnpm build:desktop
+  (PyInstaller onefile + Tauri NSIS); benchmark driven through the packaged
+  melody-api sidecar + dedicated worker env.
+Confirmed & fixed (regression tests added where applicable):
+  CRITICAL  Packaged app never set VOID_VOXCPM_ALLOWED_ROOTS → every real
+            synthesis failed VOXCPM_ALLOWED_ROOTS_NOT_CONFIGURED. Fix:
+            voxcpm_runtime.ensure_started injects the app data dir into the
+            worker env when the variable is unset (real mode only).
+  CRITICAL  Startup migration heuristic stamped pre-voxcpm DBs (revision
+            d356ea30efdd) straight to head without creating
+            tts_voxcpm_voices. Fix: _has_post_baseline_columns now requires
+            the provider table; regression test
+            test_migrations_run_new_revision_from_previous_head.
+  HIGH      /voxcpm/installation/verify + /install blocked the event loop
+            (sync subprocess.run up to 120s+). Fix: handlers now
+            asyncio.to_thread; DELETE env/model likewise.
+  HIGH      VoxCpmRuntimeClient constructor raises VoxCpmEnvError (sibling
+            class) when the worker env is missing → unhandled 500 on
+            POST /voxcpm/generate. Fix: explicit except branch → 409,
+            same contract as the RPC-level branch.
+  HIGH      Windows path traversal in GET /voxcpm/generations/{id} —
+            backslash/UNC ids escaped the output dir. Fix: reject
+            backslashes and re-resolve + parent check; regression tests.
+  HIGH      uv-created worker venvs have no pip → install_runtime always
+            failed on fresh uv path. Fix: `uv venv --seed`.
+  HIGH      No interpreter discovery for the non-uv fallback (packaged
+            machines have no hint). Fix: scan `py -3.12/11/10` launcher and
+            python3.x on PATH.
+  MEDIUM    emotion was dropped from VoxCpmSynthesisRequest → emotional
+            synthesis silently ran neutral. Fix: field now passed; worker
+            _resolve_instruction compiles presets again.
+  MEDIUM    DELETE /voxcpm/installation/* leaked raw OSError on Windows
+            file locks. Fix: _rmtree_best_effort with retry + error report.
+  LOW       Unescaped LIKE wildcards in voice search/duplicate check.
+            Fix: escaped ilike with escape char; false 409s gone.
+  LOW       Worker shutdown closed sys.stdin inside the iteration →
+            ValueError traceback on exit. Fix: stop-flag + clean break.
+Verified-not-broken (audit): memory-frugal loader dtype restore, stock
+  fallback invocation, worker-crash → VOXCPM_RUNTIME_CRASHED mapping,
+  dispose idempotency, mock-mode contracts, DB migrations for older
+  revisions, frontend store flows.
+Packaging verification:
+  melody-api-x86_64-pc-windows-msvc.exe (215MB) carries voxcpm-worker/
+  sources as --add-data (TOC-inspected); frozen sidecar resolves
+  worker.py via sys._MEIPASS and spawns the dedicated worker env
+  (uv python 3.12) with worker script inside the _MEIxxx bundle dir —
+  the packaged end-to-end path works.
+Benchmark (packaged sidecar, CPU-only i7-12700, 16GB RAM):
+  Harness: frozen melody-api sidecar launched from bin/, TEMP redirected
+  to D: (27GB free) because C: at <2GB free made onnxruntime spill fail
+  with os error 112 — on a 16GB host the C: drive must keep >=3GB free
+  or every VoxCPM2 synthesis dies at load.
+  Machine context during the run: system commit at 27.6/32.2GB (RAM
+  2.1GB free) with non-project processes resident (rust-analyzer 4.1GB,
+  unrelated node project 1.2GB), and 554 legacy CapCut jobs churning in
+  the queue lane. Numbers below are therefore an upper bound for this
+  machine state, not a clean-host figure.
+  Run log:
+  - GEN1 (cold: worker spawn + torch/model load + synth, neutral):
+    wall=834.9s -> worker native crash in c10.dll (0xc0000005,
+    APPCRASH event 11:58:31) after ~14 min of model load, under commit
+    pressure; "Worker process terminated" surfaced as HTTP 502.
+    Previous runs (before TEMP redirect) failed faster with os error
+    112 disk-full from onnxruntime spill.
+  - GEN2/GEN3: see follow-up run (this section updated after the
+    retry completes; cold-start floor observed so far is ~14 min just
+    for model load on this 16GB CPU-only host).
+Remaining known issues (not fixed here, documented for follow-up):
+  - POST /voxcpm/generate spawns a per-request worker and pays a full
+    model load per call (no shared cache with the queue lane worker);
+    on 16GB hosts two resident workers can exceed the commit limit.
+  - RPCs are not serialized when voxcpm_chunk_concurrency > 1 (timeout
+    killer can destroy an in-flight synthesis).
+  - App shutdown mid-synthesis abandons the RPC (CancelledError not
+    handled in _call_rpc) → orphaned worker holds the model.
+  - SpeechRuntimeCoordinator has a single registrant (structural no-op).
+  - Frontend: trim inputs display-only, emotion preset dropdown shows
+    raw translation keys, <audio>/<a download> bypass token auth,
+    emotional tab never fetches voices when visited directly, API
+    catch-all fallback masks real errors, tab switch destroys an
+    in-progress clone, voice library deep link doesn't open TTS tab.
+  - Deleting a shared-library VoxCPM2 voice orphans the reference WAV.
+```
